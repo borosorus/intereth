@@ -43,7 +43,7 @@ export default function ContractManager({addContract}: {addContract: (c: ethers.
         addContract(contract);
     }
     return(
-        <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', m: 2, border: 'solid'}}>
+        <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', m: 2}}>
             <FormControl sx={{width: 0.5, m: 1}}>
                 <InputLabel htmlFor="my-input">Contract target address</InputLabel>
                 <Input id="my-input" aria-describedby="my-helper-text" value={address} onChange={(e) => setAddress(e.target.value)}/>

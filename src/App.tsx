@@ -23,12 +23,13 @@ export default function App(){
     const deleteContract = useMemo(() => (id: number) => {
       setContracts(contracts.splice(id));
     }, [contracts]);
+
     return (
       <Container sx={{width: 1}}>
         <ContractManager addContract={addContract}/>
         <Container>
           <Stack spacing={2}>
-              {contracts.map((contract) => (<ContractItem contract={contract}/>))}
+              {contracts.map((contract) => (<ContractItem key={Math.floor((Math.random() * 929219) + 1)} contract={contract}/>))}
           </Stack>
         </Container>
       </Container>

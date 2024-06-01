@@ -25,7 +25,7 @@ export default function ContractItem(
             <AccordionDetails>
             {contract.interface.fragments
                 .filter((f) => f.type === "function")
-                .map((f)=> <FunctionItem frag={f as ethers.FunctionFragment} contract={contract}/>)}
+                .map((f)=> <FunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract}/>)}
             </AccordionDetails>
       </Accordion>);
 }
