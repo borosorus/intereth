@@ -1,10 +1,11 @@
 import { Accordion, AccordionDetails, AccordionSummary, Button, FormControl, Input, InputLabel, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { DynamicContract } from "../App";
 
 interface FunctionItemProps {
-    contract: ethers.BaseContract; 
+    contract: DynamicContract; 
     frag: ethers.FunctionFragment;
 }
 
@@ -31,10 +32,11 @@ export default function FunctionItem({contract, frag}: FunctionItemProps){
 
     const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
 
-    //TODO handle state modif funcs
+    const isDisabled = useMemo(() => contract.isStatic && (frag.stateMutability === "nonpayable" || frag.stateMutability === "payable"), [contract, frag]);
+
     const call = async () => {
         try{
-            const resp = await contract.getFunction(frag)(...args);
+            const resp = await contract.contract.getFunction(frag)(...args);
             setResponse(resp.toString());
         }
         catch(error){
@@ -49,12 +51,19 @@ export default function FunctionItem({contract, frag}: FunctionItemProps){
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1, m: 1}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography>{frag.format("full")}</Typography>
+                <Typography color={isDisabled ? 'red' : 'black'} >{frag.format("full")}</Typography>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column'}}>
-                {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
-                <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-                <Typography>{response}</Typography>
+                {isDisabled ? (
+                    <Typography>You need to be connected to make state modifying calls.</Typography>
+                )
+                : (
+                    <>
+                        {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
+                        <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
+                        <Typography>{response}</Typography>
+                    </>
+                )}
             </AccordionDetails>
         </Accordion>
     );

@@ -1,14 +1,17 @@
-import { Button, Container, FormControl, FormControlLabel, Input, InputLabel, Switch } from "@mui/material";
+import { Button, Container, FormControl, FormControlLabel, Input, InputLabel, MenuItem, Select, Switch } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
 import { useEffect, useState } from "react";
+import { chains } from "../onboard";
+import { DynamicContract } from "../App";
 
-export default function ContractManager({addContract}: {addContract: (c: ethers.BaseContract) => void}) {
+export default function ContractManager({addContract}: {addContract: (c: DynamicContract) => void}) {
     const [{wallet}, connect] = useConnectWallet();
 
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [address, setAddress] = useState('');
     const [abi, setAbi] = useState('');
+    const [providerIndex, setProviderIndex] = useState(0);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
 
     useEffect(() => {
@@ -35,6 +38,8 @@ export default function ContractManager({addContract}: {addContract: (c: ethers.
             else {
                 const walletState = await connect();
                 if(walletState[0]){
+                    const signer = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
+                    setSigner(signer);
                     setUseBrowserWallet(true);
                 }
                 else{
@@ -46,8 +51,21 @@ export default function ContractManager({addContract}: {addContract: (c: ethers.
 
     const handleAddContract = () => {
         //TODO handle useBrowserWallet
-        if(useBrowserWallet && signer){
-            addContract(new ethers.BaseContract(address, new ethers.Interface(abi), signer))
+        if(useBrowserWallet){
+            if(signer){
+                const dynContract = {
+                    contract: new ethers.BaseContract(address, new ethers.Interface(abi), signer),
+                    isStatic: false,
+                }
+                addContract(dynContract);
+            }
+        }else {
+            const provider = new ethers.JsonRpcProvider(chains[providerIndex].rpcUrl);
+            const dynContract = {
+                contract: new ethers.BaseContract(address, new ethers.Interface(abi), provider),
+                isStatic: true,
+            }
+            addContract(dynContract);
         }
     }
     return(
@@ -60,8 +78,22 @@ export default function ContractManager({addContract}: {addContract: (c: ethers.
                 <InputLabel htmlFor="my-input">Contract target abi</InputLabel>
                 <Input id="my-input" aria-describedby="my-helper-text" value={abi} onChange={(e) => setAbi(e.target.value)}/>
             </FormControl>
-            <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet" />
-
+            <Container sx={{width: 0.5, m: 1, display: 'flex', justifyContent: 'space-around'}}>
+                {!useBrowserWallet && (
+                <FormControl>
+                    <InputLabel id="demo-simple-select-label">Rpc Provider</InputLabel>
+                    <Select
+                        labelId="demo-simple-select-label"
+                        id="demo-simple-select"
+                        value={providerIndex}
+                        label="RpcProvider"
+                        onChange={(event) => setProviderIndex(event.target.value as number)}
+                    >
+                        {chains.map((chain, index) => <MenuItem key={index} value={index}>{chain.label}</MenuItem>)}
+                    </Select>
+                </FormControl>)}
+                <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet" />
+            </Container>
             <Button variant="contained" onClick={() => handleAddContract()}>Add Instance</Button>
         </Container>
     )
