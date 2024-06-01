@@ -1,11 +1,11 @@
-import { Accordion, AccordionDetails, AccordionSummary, Paper, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FunctionItem from "./FunctionItem";
 
 interface ContractItemProps {
-    contract: ethers.Contract; 
+    contract: ethers.BaseContract; 
 }
 
 export default function ContractItem(

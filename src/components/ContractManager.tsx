@@ -1,27 +1,35 @@
-import { Button, Container, FormControl, FormControlLabel, FormGroup, Input, InputLabel, Switch } from "@mui/material";
+import { Button, Container, FormControl, FormControlLabel, Input, InputLabel, Switch } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-export default function ContractManager({addContract}: {addContract: (c: ethers.Contract) => void}) {
+export default function ContractManager({addContract}: {addContract: (c: ethers.BaseContract) => void}) {
     const [{wallet}, connect] = useConnectWallet();
 
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [address, setAddress] = useState('');
     const [abi, setAbi] = useState('');
-
-    const isConnected = useMemo(() => !!wallet, [wallet]);
+    const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
 
     useEffect(() => {
-        if(!isConnected && useBrowserWallet){
+        if(wallet?.provider){
+            (new ethers.BrowserProvider(wallet.provider)).getSigner()
+                .then((signer) => setSigner(signer));
+        }else {
+            setSigner(null);
+        }
+     }, [wallet]);
+
+    useEffect(() => {
+        if(!signer && useBrowserWallet){
             setUseBrowserWallet(false);
         }
-    }, [isConnected, useBrowserWallet]);
+    }, [signer, useBrowserWallet]);
 
     const tryChangeUseBrowserWallet = async () => {
         if (useBrowserWallet) setUseBrowserWallet(false);
         else {
-            if (isConnected) {
+            if (signer) {
                 setUseBrowserWallet(true);
             }
             else {
@@ -38,9 +46,9 @@ export default function ContractManager({addContract}: {addContract: (c: ethers.
 
     const handleAddContract = () => {
         //TODO handle useBrowserWallet
-        const provider = new ethers.BrowserProvider(wallet!.provider);
-        const contract = new ethers.Contract(address, new ethers.Interface(abi), provider);
-        addContract(contract);
+        if(useBrowserWallet && signer){
+            addContract(new ethers.BaseContract(address, new ethers.Interface(abi), signer))
+        }
     }
     return(
         <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', m: 2}}>

@@ -1,10 +1,10 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Card, CardActions, CardContent, FormControl, Input, InputLabel, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, FormControl, Input, InputLabel, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface FunctionItemProps {
-    contract: ethers.Contract; 
+    contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
 }
 
@@ -32,8 +32,14 @@ export default function FunctionItem({contract, frag}: FunctionItemProps){
     const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
 
     //TODO handle state modif funcs
-    const call = () => {
-        contract.getFunction(frag)(...args).then((r) => setResponse(r.toString()));
+    const call = async () => {
+        try{
+            const resp = await contract.getFunction(frag)(...args);
+            setResponse(resp.toString());
+        }
+        catch(error){
+            setResponse((error as Error).toString());
+        }
     }
 
     const handleInputChange = (ind: number, value: string) => {
