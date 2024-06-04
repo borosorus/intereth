@@ -111,7 +111,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     return(
-            <Grid container spacing={2} padding={1} sx={{width: 0.5, m: 2, border: 'solid 1px', borderRadius: 1}}>
+            <Grid container spacing={2} padding={2} sx={{width: 0.5, m: 2, border: 'solid 2px gray', borderRadius: 1, boxShadow: 1}} >
                 <Grid item xs={12}>
                     <Typography sx={{w: 1, textAlign: 'center'}}>Add Contract</Typography>
                 </Grid>
@@ -168,7 +168,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     </FormControl>
                 </Grid>)}
                 <Grid item xs={12}>
-                    <Button variant="contained" onClick={() => handleAddContract()}>Add Instance</Button>
+                    <Button variant="contained" color="secondary" onClick={() => handleAddContract()}>Add Instance</Button>
                 </Grid>
             </Grid>
     )
