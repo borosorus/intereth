@@ -1,17 +1,54 @@
-import { Button, Container, FormControl, FormControlLabel, Input, InputLabel, MenuItem, Select, Switch } from "@mui/material";
+import { Box, Button, CircularProgress, Container, FormControl, FormControlLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography, styled } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
 import { useEffect, useState } from "react";
 import { chains } from "../onboard";
 import { DynamicContract } from "../App";
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+
+enum CustomRpcState {
+    idle,
+    connecting,
+    failed,
+    connected
+}
+
+function renderCustomRpcProgress(state: CustomRpcState){
+    switch(state){
+        case CustomRpcState.failed:
+            return <ErrorOutlineIcon />;
+        case CustomRpcState.connecting:
+            return <CircularProgress />;
+        case CustomRpcState.connected:
+            return <CheckCircleOutlineIcon />;
+        default:
+            return '';
+    }
+}
 
 export default function ContractManager({addContract}: {addContract: (c: DynamicContract) => void}) {
-    const [{wallet}, connect] = useConnectWallet();
 
-    const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [address, setAddress] = useState('');
     const [abi, setAbi] = useState('');
+
     const [providerIndex, setProviderIndex] = useState(0);
+
+    //Custom rpc handling
+    const [customRpc, setCustomRpc] = useState('');
+    const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.idle);
+
+    useEffect(() => {
+        if(customRpc !== '' && providerIndex === -1){
+            if(customRpcState === CustomRpcState.idle) setCustomRpcState(CustomRpcState.connecting);
+            const provider = new ethers.JsonRpcProvider(customRpc);
+            provider._detectNetwork().then((n) => setCustomRpcState(CustomRpcState.connected), () => setCustomRpcState(CustomRpcState.failed));
+        } 
+        else setCustomRpcState(CustomRpcState.idle);
+    }, [customRpc, providerIndex]);
+
+    const [{wallet}, connect] = useConnectWallet();
+    const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
 
     useEffect(() => {
@@ -50,7 +87,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     const handleAddContract = () => {
-        //TODO handle useBrowserWallet
+        //TODO handle exception
         if(useBrowserWallet){
             if(signer){
                 const dynContract = {
@@ -58,9 +95,13 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     isStatic: false,
                 }
                 addContract(dynContract);
-            }
+            }//TODO
         }else {
-            const provider = new ethers.JsonRpcProvider(chains[providerIndex].rpcUrl);
+            const rpcUrl = providerIndex === -1 ? customRpc : chains[providerIndex].rpcUrl;
+            if(rpcUrl === ''){
+                return;//TODO
+            }
+            const provider = new ethers.JsonRpcProvider(rpcUrl);
             const dynContract = {
                 contract: new ethers.BaseContract(address, new ethers.Interface(abi), provider),
                 isStatic: true,
@@ -68,33 +109,67 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
             addContract(dynContract);
         }
     }
+
     return(
-        <Container sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', m: 2}}>
-            <FormControl sx={{width: 0.5, m: 1}}>
-                <InputLabel htmlFor="my-input">Contract target address</InputLabel>
-                <Input id="my-input" aria-describedby="my-helper-text" value={address} onChange={(e) => setAddress(e.target.value)}/>
-            </FormControl>
-            <FormControl sx={{width: 0.5, m: 1}}>
-                <InputLabel htmlFor="my-input">Contract target abi</InputLabel>
-                <Input id="my-input" aria-describedby="my-helper-text" value={abi} onChange={(e) => setAbi(e.target.value)}/>
-            </FormControl>
-            <Container sx={{width: 0.5, m: 1, display: 'flex', justifyContent: 'space-around'}}>
+            <Grid container spacing={2} padding={1} sx={{width: 0.5, m: 2, border: 'solid 1px', borderRadius: 1}}>
+                <Grid item xs={12}>
+                    <Typography sx={{w: 1, textAlign: 'center'}}>Add Contract</Typography>
+                </Grid>
+                <Grid item xs={12}>
+                    <FormControl sx={{width: 0.9}}>
+                        <InputLabel htmlFor="contract-target-address-label">Contract target address</InputLabel>
+                        <Input id="contract-target-address" aria-describedby="contract-target-address-label" value={address} onChange={(e) => setAddress(e.target.value)}/>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                    <FormControl sx={{width: 0.9}}>
+                        <TextField
+                            id="outlined-multiline-static"
+                            label="Contract target abi"
+                            multiline
+                            rows={4}
+                            maxRows={4}
+                            value={abi} onChange={(e) => setAbi(e.target.value)}
+                        />
+                    </FormControl>
+                </Grid>
+                
                 {!useBrowserWallet && (
-                <FormControl>
-                    <InputLabel id="demo-simple-select-label">Rpc Provider</InputLabel>
-                    <Select
-                        labelId="demo-simple-select-label"
-                        id="demo-simple-select"
-                        value={providerIndex}
-                        label="RpcProvider"
-                        onChange={(event) => setProviderIndex(event.target.value as number)}
-                    >
-                        {chains.map((chain, index) => <MenuItem key={index} value={index}>{chain.label}</MenuItem>)}
-                    </Select>
-                </FormControl>)}
-                <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet" />
-            </Container>
-            <Button variant="contained" onClick={() => handleAddContract()}>Add Instance</Button>
-        </Container>
+                <Grid item xs={8}>
+                    <FormControl>
+                        <InputLabel id="rpc-provider-label">Rpc Provider</InputLabel>
+                        <Select
+                            labelId="rpc-provider-label"
+                            id="rpc-provider-select"
+                            value={providerIndex}
+                            label="RpcProvider"
+                            onChange={(event) => setProviderIndex(event.target.value as number)}
+                        >
+                            {chains.map((chain, index) => <MenuItem key={index} value={index}>{chain.label}</MenuItem>)}
+                            <MenuItem key={-1} value={-1}>Custom</MenuItem>
+                        </Select>
+                    </FormControl>
+                </Grid>)}
+                <Grid item xs={4}>
+                    <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet" />
+                </Grid>
+                {(providerIndex === -1 && !useBrowserWallet) &&
+                (<Grid item xs={12}>
+                    <FormControl sx={{width: 0.5, m: 1}}>
+                        <TextField id="custom-rpc" label="Custom http RPC URL" error={customRpcState !== CustomRpcState.connected && customRpcState !== CustomRpcState.connecting} value={customRpc} onChange={(e) => setCustomRpc(e.target.value)} 
+                        InputProps={{
+                            endAdornment: 
+                                <InputAdornment position="end">
+                                    {providerIndex === -1 && (
+                                    <Box >{renderCustomRpcProgress(customRpcState)}</Box>
+                                )}
+                                </InputAdornment>,
+                    }}/>
+                    </FormControl>
+                </Grid>)}
+                <Grid item xs={12}>
+                    <Button variant="contained" onClick={() => handleAddContract()}>Add Instance</Button>
+                </Grid>
+            </Grid>
     )
 }

@@ -26,6 +26,12 @@ export const chains = [
         token: 'ETH',
         label: 'Base',
         rpcUrl: 'https://mainnet.base.org'
+      },
+      {
+        id: 10,
+        token: 'OETH',
+        label: 'Optimism',
+        rpcUrl: 'https://1rpc.io/op'
       }
 ]
 export const web3Onboard = init({

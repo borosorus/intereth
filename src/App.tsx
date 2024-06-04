@@ -16,8 +16,6 @@ export default function App(){
       setContracts(contracts.concat([contract]));
     };
 
-    useEffect(() => console.log(contracts), [contracts]);
-
     const deleteContract = (ind: number) => {
       setContracts(contracts.filter((c, index) => index !== ind));
     };
