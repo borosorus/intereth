@@ -111,7 +111,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     return(
-            <Grid container spacing={2} padding={2} sx={{width: 0.5, m: 2, border: 'solid 2px gray', borderRadius: 1, boxShadow: 1}} >
+            <Grid container spacing={2} padding={2} sx={{width: 0.5, m: 'auto', my: 2, border: 'solid 2px gray', borderRadius: 1, boxShadow: 1}} >
                 <Grid item xs={12}>
                     <Typography sx={{w: 1, textAlign: 'center'}}>Add Contract</Typography>
                 </Grid>
@@ -128,7 +128,6 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                             label="Contract target abi"
                             multiline
                             rows={4}
-                            maxRows={4}
                             value={abi} onChange={(e) => setAbi(e.target.value)}
                         />
                     </FormControl>

@@ -1,8 +1,9 @@
 import ContractManager from './components/ContractManager';
 import { Container, Stack } from '@mui/material';
 import { ethers } from 'ethers';
-import { useEffect, useState } from 'react';
-import ContractItem from './components/ContractItem';
+import { useState } from 'react';
+import DynamicContractItem from './components/DynamicContractItem';
+import StaticContractItem from './components/StaticContractItem';
 
 export interface DynamicContract {
   contract: ethers.BaseContract;
@@ -25,7 +26,10 @@ export default function App(){
         <ContractManager addContract={addContract}/>
         <Container>
           <Stack spacing={2}>
-              {contracts.map((contract, index) => (<ContractItem key={index} contract={contract} del={() => deleteContract(index)}/>))}
+              {contracts.map((contract, index) => 
+                (contract.isStatic ? 
+                  <StaticContractItem key={index} contract={contract.contract} del={() => deleteContract(index)}/> :
+                  <DynamicContractItem key={index} contract={contract.contract} del={() => deleteContract(index)}/>))}
           </Stack>
         </Container>
       </Container>
