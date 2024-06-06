@@ -1,14 +1,14 @@
-import { Box, Button, CircularProgress, Container, FormControl, FormControlLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography, styled } from "@mui/material";
+import { Box, Button, CircularProgress, Container, FormControl, FormControlLabel, FormHelperText, FormLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography, styled } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { chains } from "../onboard";
 import { DynamicContract } from "../App";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 enum CustomRpcState {
-    idle,
+    disabled,
     connecting,
     failed,
     connected
@@ -36,15 +36,17 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
 
     //Custom rpc handling
     const [customRpc, setCustomRpc] = useState('');
-    const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.idle);
+    const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
 
     useEffect(() => {
-        if(customRpc !== '' && providerIndex === -1){
-            if(customRpcState === CustomRpcState.idle) setCustomRpcState(CustomRpcState.connecting);
-            const provider = new ethers.JsonRpcProvider(customRpc);
-            provider._detectNetwork().then((n) => setCustomRpcState(CustomRpcState.connected), () => setCustomRpcState(CustomRpcState.failed));
+        if(providerIndex === -1){
+            if(customRpcState === CustomRpcState.disabled) setCustomRpcState(CustomRpcState.connecting);
+            if(customRpc !== ''){
+                const provider = new ethers.JsonRpcProvider(customRpc);
+                provider._detectNetwork().then((n) => setCustomRpcState(CustomRpcState.connected), () => setCustomRpcState(CustomRpcState.failed));
+            }
         } 
-        else setCustomRpcState(CustomRpcState.idle);
+        else setCustomRpcState(CustomRpcState.disabled);
     }, [customRpc, providerIndex]);
 
     const [{wallet}, connect] = useConnectWallet();
@@ -66,6 +68,13 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
         }
     }, [signer, useBrowserWallet]);
 
+    const canAddInstance = useMemo(() => {
+        if(customRpcState !== CustomRpcState.disabled){
+            return customRpcState === CustomRpcState.connected;
+        }
+        return true;
+    }, [customRpcState]);
+
     const tryChangeUseBrowserWallet = async () => {
         if (useBrowserWallet) setUseBrowserWallet(false);
         else {
@@ -79,15 +88,11 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     setSigner(signer);
                     setUseBrowserWallet(true);
                 }
-                else{
-                    //TODO message on checkbox connect to wallet failed
-                }
             }
         }
     }
 
     const handleAddContract = () => {
-        //TODO handle exception
         if(useBrowserWallet){
             if(signer){
                 const dynContract = {
@@ -95,11 +100,11 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     isStatic: false,
                 }
                 addContract(dynContract);
-            }//TODO
+            }
         }else {
             const rpcUrl = providerIndex === -1 ? customRpc : chains[providerIndex].rpcUrl;
             if(rpcUrl === ''){
-                return;//TODO
+                return;
             }
             const provider = new ethers.JsonRpcProvider(rpcUrl);
             const dynContract = {
@@ -167,7 +172,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     </FormControl>
                 </Grid>)}
                 <Grid item xs={12}>
-                    <Button variant="contained" color="secondary" onClick={() => handleAddContract()}>Add Instance</Button>
+                    <Button variant="contained" color="secondary" disabled={!canAddInstance} onClick={() => handleAddContract()}>Add Instance</Button>
                 </Grid>
             </Grid>
     )

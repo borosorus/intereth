@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Container, FormControl, FormControlLabel, Input, InputLabel, Paper, Switch, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -7,6 +7,59 @@ import ParamInput from "./ParamInput";
 import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
 
+function RawCall({contract}: {contract: ethers.BaseContract}){
+    const [isResponseLoading, setIsResponseLoading] = useState(false);
+    const [response, setResponse] = useState('');
+    const [error, setError] = useState('');
+
+    const [data, setData] = useState('');
+    const [value, setValue] = useState('');
+    const [staticCall, setStatic] = useState(false);
+
+    const call = useMemo(() => async () => {
+        if(contract.runner?.sendTransaction && contract.runner?.call){
+            try{
+                setIsResponseLoading(true);
+                if(!staticCall){
+                        const resp: ethers.TransactionResponse = await contract.runner.sendTransaction({data: data, value: value});
+                        const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
+                        if(receipt){
+                            setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
+                        }
+                }else{
+                        setIsResponseLoading(true)
+                        const resp = await contract.runner.call({data: data});
+                        setResponse(resp.toString());
+                }
+                setIsResponseLoading(false);
+            }
+            catch(error){
+                if(!staticCall) setIsResponseLoading(false);
+                setError((error as Error).toString());
+            }
+        }else{
+            setError("Failed to find a runner for the transaction");
+        }
+    }, [contract, staticCall]);
+
+    return (
+    <Paper sx={{m: 1, p: 1}}>
+        <Typography sx={{textAlign: 'center', width: 1}}>Raw Call</Typography>
+        <FormControl sx={{width: 0.5, m: 1}}>
+            <InputLabel>Hex Calldata</InputLabel>
+            <Input value={data} onChange={(e) => setData(e.target.value)}/>
+        </FormControl>
+        {!staticCall && (<FormControl sx={{width: 0.5, m: 1}}>
+            <InputLabel>Wei Value</InputLabel>
+            <Input value={value} onChange={(e) => setValue(e.target.value)}/>
+        </FormControl>)}
+        <FormControlLabel control={<Switch checked={staticCall} onChange={() => setStatic(!staticCall)}/>} label="Static Call" />
+        <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
+        {isResponseLoading ? <CircularProgress /> : <Typography>{response}</Typography>}
+        <ErrorDialog error={error} setError={setError}/>
+    </Paper>
+    );
+}
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
@@ -21,15 +74,21 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
     const isStateModifying = useMemo(() => (frag.stateMutability === "nonpayable" || frag.stateMutability === "payable"), []);
 
-    const call = async () => {
+    useEffect(() => {
+        if(!expanded && isStateModifying){
+            setResponse('');
+            setIsResponseLoading(false);
+        }
+    }, [expanded, isStateModifying]);
+
+    const call = useMemo(() => async () => {
         try{
             setIsResponseLoading(true);
             if(isStateModifying){
                 const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...args);
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
-                if(receipt && frag.outputs.length > 0){
-                    const data = await receipt.getResult();//TODO error on getTransaction result, depends on node ?
-                    setResponse(data);
+                if(receipt){
+                    setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
                 }
             }else{
                 setIsResponseLoading(true)
@@ -42,7 +101,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             if(isStateModifying) setIsResponseLoading(false);
             setError((error as Error).toString());
         }
-    }
+    }, [contract, isStateModifying]);
 
     const handleInputChange = (ind: number, value: string) => {
         setArgs(args.map((el, index) => (ind === index) ? value : el));
@@ -105,6 +164,7 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                 .map((f)=> <DynamicFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract.connect(signer)}/>) :
                 "Please connect to your browser wallet to interact."    
             }
+            <RawCall contract={contract}/>
             </AccordionDetails>
       </Accordion>);
 }
