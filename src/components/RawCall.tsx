@@ -1,5 +1,5 @@
 import { Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress } from "@mui/material";
-import { JsonRpcApiProvider, JsonRpcProvider, ethers } from "ethers";
+import { ethers } from "ethers";
 import { useMemo, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 

@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@mui/material";
 import { JsonRpcProvider, ethers } from "ethers";
 import { useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
