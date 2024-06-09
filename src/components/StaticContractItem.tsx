@@ -5,6 +5,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
+import RawCall from "./RawCall";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -85,6 +86,7 @@ export default function StaticContractItem({contract, del}: StaticContractItemPr
             {contract.interface.fragments
                 .filter((f) => f.type === "function")
                 .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract}/>)}
+            <RawCall contract={contract} isStaticOnly={true}/>
             </AccordionDetails>
       </Accordion>);
 }

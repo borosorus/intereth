@@ -107,8 +107,9 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                 return;
             }
             const provider = new ethers.JsonRpcProvider(rpcUrl);
+            const iface = abi === '' ? new ethers.Interface(["fallback(bytes calldata data) external view"]) : new ethers.Interface(abi);
             const dynContract = {
-                contract: new ethers.BaseContract(address, new ethers.Interface(abi), provider),
+                contract: new ethers.BaseContract(address, iface, provider),
                 isStatic: true,
             }
             addContract(dynContract);

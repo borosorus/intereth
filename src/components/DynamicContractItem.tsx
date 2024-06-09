@@ -6,60 +6,8 @@ import { ethers } from "ethers";
 import ParamInput from "./ParamInput";
 import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
+import RawCall from "./RawCall";
 
-function RawCall({contract}: {contract: ethers.BaseContract}){
-    const [isResponseLoading, setIsResponseLoading] = useState(false);
-    const [response, setResponse] = useState('');
-    const [error, setError] = useState('');
-
-    const [data, setData] = useState('');
-    const [value, setValue] = useState('');
-    const [staticCall, setStatic] = useState(false);
-
-    const call = useMemo(() => async () => {
-        if(contract.runner?.sendTransaction && contract.runner?.call){
-            try{
-                setIsResponseLoading(true);
-                if(!staticCall){
-                        const resp: ethers.TransactionResponse = await contract.runner.sendTransaction({data: data, value: value});
-                        const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                        if(receipt){
-                            setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
-                        }
-                }else{
-                        setIsResponseLoading(true)
-                        const resp = await contract.runner.call({data: data});
-                        setResponse(resp.toString());
-                }
-                setIsResponseLoading(false);
-            }
-            catch(error){
-                if(!staticCall) setIsResponseLoading(false);
-                setError((error as Error).toString());
-            }
-        }else{
-            setError("Failed to find a runner for the transaction");
-        }
-    }, [contract, staticCall]);
-
-    return (
-    <Paper sx={{m: 1, p: 1}}>
-        <Typography sx={{textAlign: 'center', width: 1}}>Raw Call</Typography>
-        <FormControl sx={{width: 0.5, m: 1}}>
-            <InputLabel>Hex Calldata</InputLabel>
-            <Input value={data} onChange={(e) => setData(e.target.value)}/>
-        </FormControl>
-        {!staticCall && (<FormControl sx={{width: 0.5, m: 1}}>
-            <InputLabel>Wei Value</InputLabel>
-            <Input value={value} onChange={(e) => setValue(e.target.value)}/>
-        </FormControl>)}
-        <FormControlLabel control={<Switch checked={staticCall} onChange={() => setStatic(!staticCall)}/>} label="Static Call" />
-        <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-        {isResponseLoading ? <CircularProgress /> : <Typography>{response}</Typography>}
-        <ErrorDialog error={error} setError={setError}/>
-    </Paper>
-    );
-}
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
