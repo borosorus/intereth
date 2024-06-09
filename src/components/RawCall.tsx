@@ -1,5 +1,5 @@
 import { Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress } from "@mui/material";
-import { ethers } from "ethers";
+import { JsonRpcApiProvider, JsonRpcProvider, ethers } from "ethers";
 import { useMemo, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 
@@ -16,21 +16,16 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
         if((isStaticOnly || contract.runner?.sendTransaction) && contract.runner?.call){
             try{
                 setIsResponseLoading(true);
+                const contractAddress = await contract.getAddress();
                 if(!staticCall){
-                        const resp: ethers.TransactionResponse = await contract.runner.sendTransaction!({data: data, value: value});
-                        const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                        if(receipt){
-                            setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
-                        }
+                    const resp: ethers.TransactionResponse = await contract.runner.sendTransaction!({to: contractAddress, data: data, value: value});
+                    const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
+                    if(receipt){
+                        setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
+                    }
                 }else{
-                        setIsResponseLoading(true)
-                        try{
-                            const resp = await contract.fallback?.call({data: data});
-                            setResponse(resp!.toString());
-                        }
-                        catch(e){
-                            console.info(e)
-                        }
+                    const resp = await contract.runner.call({to: contractAddress, data: data});
+                    setResponse(resp.toString());
                         
                 }
                 setIsResponseLoading(false);
@@ -42,7 +37,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
         }else{
             setError("Failed to find a runner for the transaction");
         }
-    }, [contract, staticCall]);
+    }, [contract, staticCall, data]);
 
     return (
     <Paper sx={{m: 1, p: 1}}>

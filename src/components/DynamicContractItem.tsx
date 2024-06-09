@@ -49,7 +49,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             if(isStateModifying) setIsResponseLoading(false);
             setError((error as Error).toString());
         }
-    }, [contract, isStateModifying]);
+    }, [contract, isStateModifying, args]);
 
     const handleInputChange = (ind: number, value: string) => {
         setArgs(args.map((el, index) => (ind === index) ? value : el));
