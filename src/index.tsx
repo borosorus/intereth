@@ -5,14 +5,14 @@ import Bar from './components/Bar';
 import { Web3OnboardProvider } from '@web3-onboard/react';
 import { web3Onboard } from './onboard';
 import App from './App';
-import { ThemeProvider, createTheme } from '@mui/material';
+import { ThemeProvider, createTheme, responsiveFontSizes } from '@mui/material';
 import { blueGrey, deepOrange } from '@mui/material/colors';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 
-const theme = createTheme({
+const theme = responsiveFontSizes(createTheme({
   palette: {
     primary: {
       main: blueGrey[500],
@@ -21,7 +21,7 @@ const theme = createTheme({
       main: deepOrange[500],
     },
   },
-});
+}));
 
 root.render(
   <React.StrictMode>

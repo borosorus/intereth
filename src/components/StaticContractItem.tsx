@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, Grid, Typography } from "@mui/material";
 import { JsonRpcProvider, ethers } from "ethers";
 import { useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -77,10 +77,20 @@ export default function StaticContractItem({contract, del}: StaticContractItemPr
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography sx={{m: 1}}>{address}</Typography>
-                <Typography sx={{m: 1, width: 1}}>RPC: {rpcUrl}</Typography>
-                <Typography sx={{m: 1, width: 1}}>Chain ID: {chainId}</Typography>
-                <DeleteIcon sx={{m: 'auto'}} onClick={() => del()}/>
+                <Grid container spacing={1}>
+                    <Grid item xs={12} md={6}>
+                        <Typography sx={{m: 1}}>{address}</Typography>
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                        <Typography sx={{m: 1, width: 1}}>RPC: {rpcUrl}</Typography>
+                    </Grid>
+                    <Grid item xs={10} md={2}>
+                        <Typography sx={{m: 1, width: 1}}>Chain ID: {chainId}</Typography>
+                    </Grid>
+                    <Grid item xs={2} md={1} sx={{display: 'flex', flexDirection: 'revert'}}>
+                        <DeleteIcon sx={{m: 'auto'}} onClick={() => del()}/>
+                    </Grid>
+                </Grid>
             </AccordionSummary>
             <AccordionDetails>
             {contract.interface.fragments

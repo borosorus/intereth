@@ -22,10 +22,10 @@ export default function App(){
     };
 
     return (
-      <Container sx={{width: 1}}>
+      <Container sx={{width: 1, border: 'solid'}}>
         <ContractManager addContract={addContract}/>
         <Container>
-          <Stack spacing={2}>
+          <Stack spacing={1}>
               {contracts.map((contract, index) => 
                 (contract.isStatic ? 
                   <StaticContractItem key={index} contract={contract.contract} del={() => deleteContract(index)}/> :
