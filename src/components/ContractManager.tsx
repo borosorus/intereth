@@ -117,7 +117,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     return(
-            <Grid container spacing={2} padding={2} sx={{minWidth: 0.5, m: 2, border: 'solid 1px gray', borderRadius: 1, boxShadow: 1}} >
+            <Grid container spacing={2} padding={2} sx={{minWidth: 0.5, m: 0, border: 'solid 1px gray', borderRadius: 1, boxShadow: 1}} >
                 <Grid item xs={12}>
                     <Typography sx={{w: 1, textAlign: 'center'}}>Add Contract</Typography>
                 </Grid>

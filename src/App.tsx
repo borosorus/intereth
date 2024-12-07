@@ -4,6 +4,8 @@ import { ethers } from 'ethers';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
+import UniswapX from './components/UniswapX';
+import { useConnectWallet } from '@web3-onboard/react';
 
 export interface DynamicContract {
   contract: ethers.BaseContract;
@@ -12,6 +14,7 @@ export interface DynamicContract {
 
 export default function App(){
     const [contracts, setContracts] = useState<DynamicContract[]>([]);
+    const [{wallet}] = useConnectWallet();
 
     const addContract = (contract: DynamicContract) => {
       setContracts(contracts.concat([contract]));
@@ -22,7 +25,10 @@ export default function App(){
     };
 
     return (
-      <Container sx={{width: 1, border: 'solid'}}>
+      <Container sx={{width: 1}}>
+        {
+          wallet && (<UniswapX wallet={wallet}/>)
+        }
         <ContractManager addContract={addContract}/>
         <Container>
           <Stack spacing={1}>
