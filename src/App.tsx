@@ -28,7 +28,7 @@ export default function App(){
         <Title />
         <ContractManager addContract={addContract}/>
         <Container>
-          <Stack spacing={1}>
+          <Stack spacing={1} sx={{py: 2}}>
               {contracts.map((contract, index) => 
                 (contract.isStatic ? 
                   <StaticContractItem key={index} contract={contract.contract} del={() => deleteContract(index)}/> :

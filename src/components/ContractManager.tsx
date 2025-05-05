@@ -117,7 +117,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     return(
-            <Grid container spacing={2} padding={2} sx={{backgroundColor: '#fafafa',minWidth: 0.5, m: 0, border: 'solid 0px gray', borderRadius: 1, boxShadow: 2, mt: 4}} >
+            <Grid container spacing={2} padding={2} sx={{backgroundColor: '#fafafa',minWidth: 0.5, borderRadius: 1, boxShadow: 2, mt: 4}} >
                 <Grid item xs={12}>
                     <FormControl sx={{width: 0.9}}>
                         <InputLabel htmlFor="contract-target-address-label">Contract target address</InputLabel>
