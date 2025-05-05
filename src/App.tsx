@@ -1,10 +1,11 @@
 import ContractManager from './components/ContractManager';
-import { Container, Stack } from '@mui/material';
+import { Container, Stack, Typography } from '@mui/material';
 import { ethers } from 'ethers';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
 import { useConnectWallet } from '@web3-onboard/react';
+import Title from './components/Title';
 
 export interface DynamicContract {
   contract: ethers.BaseContract;
@@ -24,6 +25,7 @@ export default function App(){
 
     return (
       <Container sx={{width: 1}}>
+        <Title />
         <ContractManager addContract={addContract}/>
         <Container>
           <Stack spacing={1}>

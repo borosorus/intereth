@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, Container, FormControl, FormControlLabel, FormHelperText, FormLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Paper, Select, Switch, TextField, Typography, styled } from "@mui/material";
+import { Box, Button, CircularProgress, FormControl, FormControlLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Select, Switch, TextField } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
 import { useEffect, useMemo, useState } from "react";
@@ -117,10 +117,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
     }
 
     return(
-            <Grid container spacing={2} padding={2} sx={{minWidth: 0.5, m: 0, border: 'solid 1px gray', borderRadius: 1, boxShadow: 1}} >
-                <Grid item xs={12}>
-                    <Typography sx={{w: 1, textAlign: 'center'}}>Add Contract</Typography>
-                </Grid>
+            <Grid container spacing={2} padding={2} sx={{backgroundColor: '#fafafa',minWidth: 0.5, m: 0, border: 'solid 0px gray', borderRadius: 1, boxShadow: 2, mt: 4}} >
                 <Grid item xs={12}>
                     <FormControl sx={{width: 0.9}}>
                         <InputLabel htmlFor="contract-target-address-label">Contract target address</InputLabel>
@@ -156,7 +153,7 @@ export default function ContractManager({addContract}: {addContract: (c: Dynamic
                     </FormControl>
                 </Grid>)}
                 <Grid item xs={4}>
-                    <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet" />
+                    <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet RPC" />
                 </Grid>
                 {(providerIndex === -1 && !useBrowserWallet) &&
                 (<Grid item xs={12}>
