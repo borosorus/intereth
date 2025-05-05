@@ -1,6 +1,7 @@
-# Getting Started with Create React App
+# A simple user interface to interact with any contract on any chain
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Just specify a smart contract address, an abi and an RPC url to fetch data from the chain.
+You can also connect with your browser wallet to make state changing calls.
 
 ## Available Scripts
 
