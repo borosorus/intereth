@@ -13,13 +13,13 @@ export default function Title(){
             >
                 <Box
                     component="img"
-                    src= "/eth-logo.png"
-                    alt="Ethereum Logo"
-                    sx={{ width: 56, height: 56 }}
+                    src={`${process.env.PUBLIC_URL}/intereth-mark.svg`}
+                    alt="Intereth logo"
+                    sx={{ width: 40, height: 40 }}
                 />
                 <Box sx={{textAlign: {xs: 'center', sm: 'left'}}}>
                     <Typography variant="h3" sx={{fontWeight: 700, letterSpacing: -0.8}}>
-                        EVM Playground
+                        Intereth
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                         Inspect contracts, run calls, and switch providers without leaving the page.
