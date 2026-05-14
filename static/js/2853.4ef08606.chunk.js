@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkintereth=self.webpackChunkintereth||[]).push([[2853],{2853:(e,i,n)=>{n.d(i,{defineChain:()=>t.x,extractChain:()=>r});var t=n(9954);function r(e){let{chains:i,id:n}=e;return i.find((e=>e.id===n))}},9954:(e,i,n)=>{function t(e){return{formatters:void 0,fees:void 0,serializers:void 0,...e}}n.d(i,{x:()=>t})}}]);
+//# sourceMappingURL=2853.4ef08606.chunk.js.map
