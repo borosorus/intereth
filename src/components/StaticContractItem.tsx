@@ -48,7 +48,7 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
                     <>
                         {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
                         <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-                        <Typography>{response}</Typography>
+                        <Typography gutterBottom textOverflow={'ellipsis'}>{response}</Typography>
                     </>
                 )}
             </AccordionDetails>
