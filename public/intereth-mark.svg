@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Intereth mark</title>
+  <desc id="desc">Minimal Ethereum-inspired diamond mark</desc>
+  <defs>
+    <linearGradient id="a" x1="256" y1="48" x2="256" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#627EEA"/>
+      <stop offset="1" stop-color="#3C4DA6"/>
+    </linearGradient>
+    <linearGradient id="b" x1="256" y1="148" x2="256" y2="364" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9DB0FF"/>
+      <stop offset="1" stop-color="#627EEA"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="#F4F7FB"/>
+  <path d="M256 48L128 256L256 336L384 256L256 48Z" fill="url(#a)"/>
+  <path d="M256 336L128 256L256 464L384 256L256 336Z" fill="url(#b)"/>
+  <path d="M256 96L184 256L256 292L328 256L256 96Z" fill="white" fill-opacity="0.28"/>
+</svg>
