@@ -1,6 +1,6 @@
-import { Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress } from "@mui/material";
+import { Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress, Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 
 export default function RawCall({contract, isStaticOnly}: {contract: ethers.BaseContract, isStaticOnly?: boolean}){
@@ -12,47 +12,54 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
     const [value, setValue] = useState('');
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
 
-    const call = useMemo(() => async () => {
-        if((isStaticOnly || contract.runner?.sendTransaction) && contract.runner?.call){
-            try{
-                setIsResponseLoading(true);
-                const contractAddress = await contract.getAddress();
-                if(!staticCall){
-                    const resp: ethers.TransactionResponse = await contract.runner.sendTransaction!({to: contractAddress, data: data, value: value});
-                    const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                    if(receipt){
-                        setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
-                    }
-                }else{
-                    const resp = await contract.runner.call({to: contractAddress, data: data});
-                    setResponse(resp.toString());
-                        
-                }
-                setIsResponseLoading(false);
-            }
-            catch(error){
-                setIsResponseLoading(false);
-                setError((error as Error).toString());
-            }
-        }else{
+    const call = useCallback(async () => {
+        const runner = contract.runner;
+        const sendRunner = runner?.sendTransaction;
+        const callRunner = runner?.call;
+        const hasTxRunner = Boolean(sendRunner);
+        const hasCallRunner = Boolean(callRunner);
+        if (!hasCallRunner || (!staticCall && !hasTxRunner)) {
             setError("Failed to find a runner for the transaction");
+            return;
         }
-    }, [contract, staticCall, data]);
+
+        try {
+            setIsResponseLoading(true);
+            setResponse('');
+            const contractAddress = await contract.getAddress();
+            if (!staticCall) {
+                const resp: ethers.TransactionResponse = await sendRunner!({to: contractAddress, data, value});
+                const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
+                if (receipt) {
+                    setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
+                }
+            } else {
+                const resp = await callRunner!({to: contractAddress, data});
+                setResponse(resp.toString());
+            }
+        } catch (error) {
+            setError((error as Error).toString());
+        } finally {
+            setIsResponseLoading(false);
+        }
+    }, [contract, data, staticCall, value]);
 
     return (
-    <Paper sx={{m: 1, p: 1}}>
-        <Typography sx={{textAlign: 'center', width: 1}}>Raw Call</Typography>
-        <FormControl sx={{width: 0.5, m: 1}}>
-            <InputLabel>Hex Calldata</InputLabel>
-            <Input value={data} onChange={(e) => setData(e.target.value)}/>
-        </FormControl>
-        {!staticCall && (<FormControl sx={{width: 0.5, m: 1}}>
-            <InputLabel>Wei Value</InputLabel>
-            <Input value={value} onChange={(e) => setValue(e.target.value)}/>
-        </FormControl>)}
-        {!isStaticOnly && (<FormControlLabel control={<Switch checked={staticCall} onChange={() => setStatic(!staticCall)}/>} label="Static Call" />)}
-        <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-        {isResponseLoading ? <CircularProgress /> : <Typography>{response}</Typography>}
+    <Paper sx={{mt: 2, p: {xs: 2, md: 3}, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.82)'}}>
+        <Stack spacing={2}>
+            <Typography variant="subtitle1" sx={{fontWeight: 700}}>Raw Call</Typography>
+            <FormControl fullWidth>
+                <InputLabel>Hex Calldata</InputLabel>
+                <Input value={data} onChange={(e) => setData(e.target.value)}/>
+            </FormControl>
+            {!staticCall && (<FormControl fullWidth>
+                <InputLabel>Wei Value</InputLabel>
+                <Input value={value} onChange={(e) => setValue(e.target.value)}/>
+            </FormControl>)}
+            {!isStaticOnly && (<FormControlLabel control={<Switch checked={staticCall} onChange={() => setStatic(!staticCall)}/>} label="Static Call" />)}
+            <Button variant="contained" color="secondary" sx={{alignSelf: 'flex-start'}} onClick={() => call()}>Call</Button>
+            {isResponseLoading ? <CircularProgress size={24} /> : <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>}
+        </Stack>
         <ErrorDialog error={error} setError={setError}/>
     </Paper>
     );

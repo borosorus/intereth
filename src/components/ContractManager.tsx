@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, FormControl, FormControlLabel, Grid, Input, InputAdornment, InputLabel, MenuItem, Select, Switch, TextField } from "@mui/material";
+import { Box, Button, CircularProgress, FormControl, FormControlLabel, Grid, InputAdornment, InputLabel, MenuItem, Select, Stack, Switch, TextField, Typography } from "@mui/material";
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
 import { useEffect, useMemo, useState } from "react";
@@ -17,161 +17,224 @@ enum CustomRpcState {
 function renderCustomRpcProgress(state: CustomRpcState){
     switch(state){
         case CustomRpcState.failed:
-            return <ErrorOutlineIcon />;
+            return <ErrorOutlineIcon color="error" fontSize="small" />;
         case CustomRpcState.connecting:
-            return <CircularProgress />;
+            return <CircularProgress size={18} />;
         case CustomRpcState.connected:
-            return <CheckCircleOutlineIcon />;
+            return <CheckCircleOutlineIcon color="success" fontSize="small" />;
         default:
-            return '';
+            return null;
     }
 }
 
 export default function ContractManager({addContract}: {addContract: (c: DynamicContract) => void}) {
-
     const [address, setAddress] = useState('');
     const [abi, setAbi] = useState('');
-
     const [providerIndex, setProviderIndex] = useState(0);
-
-    //Custom rpc handling
     const [customRpc, setCustomRpc] = useState('');
     const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
-
-    useEffect(() => {
-        if(providerIndex === -1){
-            if(customRpcState === CustomRpcState.disabled) setCustomRpcState(CustomRpcState.connecting);
-            if(customRpc !== ''){
-                const provider = new ethers.JsonRpcProvider(customRpc);
-                provider._detectNetwork().then((n) => setCustomRpcState(CustomRpcState.connected), () => setCustomRpcState(CustomRpcState.failed));
-            }
-        } 
-        else setCustomRpcState(CustomRpcState.disabled);
-    }, [customRpc, providerIndex]);
-
-    const [{wallet}, connect] = useConnectWallet();
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
 
-    useEffect(() => {
-        if(wallet?.provider){
-            (new ethers.BrowserProvider(wallet.provider)).getSigner()
-                .then((signer) => setSigner(signer));
-        }else {
-            setSigner(null);
-        }
-     }, [wallet]);
+    const [{wallet}, connect] = useConnectWallet();
 
     useEffect(() => {
-        if(!signer && useBrowserWallet){
+        if (wallet?.provider) {
+            (new ethers.BrowserProvider(wallet.provider)).getSigner().then((nextSigner) => setSigner(nextSigner));
+        } else {
+            setSigner(null);
+        }
+    }, [wallet]);
+
+    useEffect(() => {
+        if (!signer && useBrowserWallet) {
             setUseBrowserWallet(false);
         }
     }, [signer, useBrowserWallet]);
 
-    const canAddInstance = useMemo(() => {
-        if(customRpcState !== CustomRpcState.disabled){
-            return customRpcState === CustomRpcState.connected;
+    useEffect(() => {
+        if (providerIndex !== -1) {
+            setCustomRpcState(CustomRpcState.disabled);
+            return;
         }
-        return true;
-    }, [customRpcState]);
+
+        const rpcUrl = customRpc.trim();
+        if (!rpcUrl) {
+            setCustomRpcState(CustomRpcState.disabled);
+            return;
+        }
+
+        let cancelled = false;
+        setCustomRpcState(CustomRpcState.connecting);
+
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        provider._detectNetwork()
+            .then(() => {
+                if (!cancelled) {
+                    setCustomRpcState(CustomRpcState.connected);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setCustomRpcState(CustomRpcState.failed);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [customRpc, providerIndex]);
+
+    const selectedRpcUrl = useMemo(() => {
+        if (providerIndex === -1) {
+            return customRpc.trim();
+        }
+        return chains[providerIndex]?.rpcUrl ?? '';
+    }, [customRpc, providerIndex]);
+
+    const isAddressValid = ethers.isAddress(address);
+    const canAddInstance = useBrowserWallet
+        ? Boolean(signer && isAddressValid)
+        : Boolean(isAddressValid && selectedRpcUrl && (providerIndex !== -1 ? true : customRpcState === CustomRpcState.connected));
 
     const tryChangeUseBrowserWallet = async () => {
-        if (useBrowserWallet) setUseBrowserWallet(false);
-        else {
-            if (signer) {
-                setUseBrowserWallet(true);
-            }
-            else {
-                const walletState = await connect();
-                if(walletState[0]){
-                    const signer = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
-                    setSigner(signer);
-                    setUseBrowserWallet(true);
-                }
-            }
+        if (useBrowserWallet) {
+            setUseBrowserWallet(false);
+            return;
         }
-    }
+
+        if (signer) {
+            setUseBrowserWallet(true);
+            return;
+        }
+
+        const walletState = await connect();
+        if (walletState[0]) {
+            const nextSigner = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
+            setSigner(nextSigner);
+            setUseBrowserWallet(true);
+        }
+    };
 
     const handleAddContract = () => {
-        if(useBrowserWallet){
-            if(signer){
-                const dynContract = {
-                    contract: new ethers.BaseContract(address, new ethers.Interface(abi), signer),
-                    isStatic: false,
-                }
-                addContract(dynContract);
-            }
-        }else {
-            const rpcUrl = providerIndex === -1 ? customRpc : chains[providerIndex].rpcUrl;
-            if(rpcUrl === ''){
+        if (!isAddressValid) {
+            return;
+        }
+
+        if (useBrowserWallet) {
+            if (!signer) {
                 return;
             }
-            const provider = new ethers.JsonRpcProvider(rpcUrl);
-            const iface = abi === '' ? new ethers.Interface(["fallback(bytes calldata data) external view"]) : new ethers.Interface(abi);
-            const dynContract = {
-                contract: new ethers.BaseContract(address, iface, provider),
-                isStatic: true,
-            }
-            addContract(dynContract);
-        }
-    }
 
-    return(
-            <Grid container spacing={2} padding={2} sx={{backgroundColor: '#fafafa',minWidth: 0.5, borderRadius: 1, boxShadow: 2, mt: 4}} >
-                <Grid item xs={12}>
-                    <FormControl sx={{width: 0.9}}>
-                        <InputLabel htmlFor="contract-target-address-label">Contract target address</InputLabel>
-                        <Input id="contract-target-address" aria-describedby="contract-target-address-label" value={address} onChange={(e) => setAddress(e.target.value)}/>
-                    </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                    <FormControl sx={{width: 0.9}}>
-                        <TextField
-                            id="outlined-multiline-static"
-                            label="Contract target abi"
-                            multiline
-                            rows={4}
-                            value={abi} onChange={(e) => setAbi(e.target.value)}
-                        />
-                    </FormControl>
-                </Grid>
-                
+            addContract({
+                id: crypto.randomUUID(),
+                contract: new ethers.BaseContract(address, new ethers.Interface(abi), signer),
+                isStatic: false,
+            });
+            return;
+        }
+
+        if (!selectedRpcUrl) {
+            return;
+        }
+
+        const provider = new ethers.JsonRpcProvider(selectedRpcUrl);
+        const iface = abi === '' ? new ethers.Interface(["fallback(bytes calldata data) external view"]) : new ethers.Interface(abi);
+        addContract({
+            id: crypto.randomUUID(),
+            contract: new ethers.BaseContract(address, iface, provider),
+            isStatic: true,
+        });
+    };
+
+    return (
+        <Stack spacing={2}>
+            <TextField
+                label="Contract address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value.trim())}
+                error={address !== '' && !isAddressValid}
+                helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
+                fullWidth
+            />
+            <TextField
+                label="Contract ABI"
+                multiline
+                minRows={4}
+                value={abi}
+                onChange={(e) => setAbi(e.target.value)}
+                helperText="Optional. Leave empty to use the raw-call fallback."
+                fullWidth
+            />
+
+            <Grid container spacing={2} alignItems="center">
                 {!useBrowserWallet && (
-                <Grid item xs={8}>
-                    <FormControl>
-                        <InputLabel id="rpc-provider-label">Rpc Provider</InputLabel>
-                        <Select
-                            labelId="rpc-provider-label"
-                            id="rpc-provider-select"
-                            value={providerIndex}
-                            label="RpcProvider"
-                            onChange={(event) => setProviderIndex(event.target.value as number)}
-                        >
-                            {chains.map((chain, index) => <MenuItem key={index} value={index}>{chain.label}</MenuItem>)}
-                            <MenuItem key={-1} value={-1}>Custom</MenuItem>
-                        </Select>
-                    </FormControl>
-                </Grid>)}
-                <Grid item xs={4}>
-                    <FormControlLabel control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>} label="Use Browser Wallet RPC" />
+                    <Grid item xs={12} md={7}>
+                        <FormControl fullWidth>
+                            <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
+                            <Select
+                                labelId="rpc-provider-label"
+                                id="rpc-provider-select"
+                                value={providerIndex}
+                                label="RPC Provider"
+                                onChange={(event) => setProviderIndex(event.target.value as number)}
+                            >
+                                {chains.map((chain, index) => <MenuItem key={index} value={index}>{chain.label}</MenuItem>)}
+                                <MenuItem value={-1}>Custom</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
+                )}
+                <Grid item xs={12} md={useBrowserWallet ? 12 : 5}>
+                    <FormControlLabel
+                        control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>}
+                        label="Use browser wallet"
+                    />
                 </Grid>
-                {(providerIndex === -1 && !useBrowserWallet) &&
-                (<Grid item xs={12}>
-                    <FormControl sx={{width: 0.5, m: 1}}>
-                        <TextField id="custom-rpc" label="Custom http RPC URL" error={customRpcState !== CustomRpcState.connected && customRpcState !== CustomRpcState.connecting} value={customRpc} onChange={(e) => setCustomRpc(e.target.value)} 
-                        InputProps={{
-                            endAdornment: 
-                                <InputAdornment position="end">
-                                    {providerIndex === -1 && (
-                                    <Box >{renderCustomRpcProgress(customRpcState)}</Box>
-                                )}
-                                </InputAdornment>,
-                    }}/>
-                    </FormControl>
-                </Grid>)}
-                <Grid item xs={12}>
-                    <Button variant="contained" color="secondary" disabled={!canAddInstance} onClick={() => handleAddContract()}>Add Instance</Button>
-                </Grid>
+                {providerIndex === -1 && !useBrowserWallet && (
+                    <Grid item xs={12}>
+                        <TextField
+                            fullWidth
+                            id="custom-rpc"
+                            label="Custom HTTP RPC URL"
+                            value={customRpc}
+                            onChange={(e) => setCustomRpc(e.target.value)}
+                            error={customRpc !== '' && customRpcState === CustomRpcState.failed}
+                            helperText={
+                                customRpcState === CustomRpcState.failed
+                                    ? 'Unable to reach this RPC URL.'
+                                    : 'A full HTTP RPC endpoint.'
+                            }
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        {renderCustomRpcProgress(customRpcState)}
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Grid>
+                )}
             </Grid>
-    )
+
+            <Box sx={{display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between', flexWrap: 'wrap'}}>
+                <Typography variant="body2" color="text.secondary">
+                    {useBrowserWallet
+                        ? (signer ? 'Connected to browser wallet.' : 'Connect a browser wallet to enable interactive calls.')
+                        : (providerIndex === -1
+                            ? 'Using a custom RPC endpoint.'
+                            : `Using ${chains[providerIndex]?.label ?? 'selected RPC'}.`)
+                    }
+                </Typography>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    disabled={!canAddInstance}
+                    onClick={handleAddContract}
+                >
+                    Add Instance
+                </Button>
+            </Box>
+        </Stack>
+    );
 }

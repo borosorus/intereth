@@ -1,6 +1,6 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, Grid, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { JsonRpcProvider, ethers } from "ethers";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput from "./ParamInput";
@@ -19,7 +19,7 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
 
     const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
 
-    const isDisabled = useMemo(() => (frag.stateMutability === "nonpayable" || frag.stateMutability === "payable"), []);
+    const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
 
     const call = async () => {
         try{
@@ -32,23 +32,23 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
     }
 
     const handleInputChange = (ind: number, value: string) => {
-        setArgs(args.map((el, index) => (ind === index) ? value : el));
+        setArgs((current) => current.map((el, index) => (ind === index) ? value : el));
     }
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1, m: 1}}>
+        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography color={isDisabled ? 'red' : 'black'} >{frag.format("full")}</Typography>
+                <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 600}}>{frag.format("full")}</Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column'}}>
+            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
                 {isDisabled ? (
-                    <Typography>You need to use connect to a browser wallet to make state modifying calls.</Typography>
+                    <Typography color="text.secondary">Connect a browser wallet to make state-modifying calls.</Typography>
                 )
                 : (
                     <>
                         {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
-                        <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-                        <Typography gutterBottom textOverflow={'ellipsis'}>{response}</Typography>
+                        <Button variant="contained" color="secondary" sx={{alignSelf: 'flex-start'}} onClick={() => call()}>Call</Button>
+                        <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>
                     </>
                 )}
             </AccordionDetails>
@@ -71,31 +71,44 @@ export default function StaticContractItem({contract, del}: StaticContractItemPr
     useEffect(() => {
         contract.getAddress().then((a) => setAddress(a));
         contract.runner?.provider?.getNetwork().then((n) => setChainId(n.chainId.toString()));
-        setRpcUrl((contract.runner?.provider as JsonRpcProvider)._getConnection().url);
-    }, []);
+        const provider = contract.runner?.provider as (JsonRpcProvider & { connection?: { url?: string } }) | undefined;
+        setRpcUrl(provider?.connection?.url ?? 'Unknown RPC');
+    }, [contract]);
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1}}>
+        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
-                        <Typography sx={{m: 1}}>{address}</Typography>
+                        <Typography sx={{m: 1, fontWeight: 600}}>{address}</Typography>
                     </Grid>
                     <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1, width: 1}}>RPC: {rpcUrl}</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: {rpcUrl}</Typography>
                     </Grid>
                     <Grid item xs={10} md={2}>
-                        <Typography sx={{m: 1, width: 1}}>Chain ID: {chainId}</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {chainId}</Typography>
                     </Grid>
-                    <Grid item xs={2} md={1} sx={{display: 'flex', flexDirection: 'revert'}}>
-                        <DeleteIcon sx={{m: 'auto'}} onClick={() => del()}/>
+                    <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <IconButton
+                          size="small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            del();
+                          }}
+                        >
+                            <DeleteIcon fontSize="small"/>
+                        </IconButton>
                     </Grid>
                 </Grid>
             </AccordionSummary>
-            <AccordionDetails>
-            {contract.interface.fragments
-                .filter((f) => f.type === "function")
-                .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract}/>)}
+            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+              <Stack spacing={1.5}>
+                {contract.interface.fragments
+                    .filter((f) => f.type === "function")
+                    .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract}/>)}
+              </Stack>
+            </Paper>
             <RawCall contract={contract} isStaticOnly={true}/>
             </AccordionDetails>
       </Accordion>);

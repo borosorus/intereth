@@ -5,7 +5,7 @@ import Bar from './components/Bar';
 import { Web3OnboardProvider } from '@web3-onboard/react';
 import { web3Onboard } from './onboard';
 import App from './App';
-import { ThemeProvider, createTheme, responsiveFontSizes } from '@mui/material';
+import { ThemeProvider, createTheme, responsiveFontSizes, GlobalStyles } from '@mui/material';
 import { blueGrey, deepOrange } from '@mui/material/colors';
 
 const root = ReactDOM.createRoot(
@@ -13,29 +13,47 @@ const root = ReactDOM.createRoot(
 );
 
 const theme = responsiveFontSizes(createTheme({
+  typography: {
+    fontFamily: [
+      'Roboto',
+      'system-ui',
+      '-apple-system',
+      'BlinkMacSystemFont',
+      'sans-serif',
+    ].join(','),
+  },
   palette: {
     primary: {
-      main: blueGrey[500],
+      main: blueGrey[700],
     },
     secondary: {
       main: deepOrange[500],
+    },
+    background: {
+      default: '#f4f7fb',
+      paper: '#ffffff',
     },
   },
 }));
 
 root.render(
   <React.StrictMode>
-    <CssBaseline>
-      <ThemeProvider theme={theme}>
-        <Web3OnboardProvider web3Onboard={web3Onboard}>
-          <header className="App-header">
-            <Bar/>
-          </header>
-          <div className="App">
-            <App/>
-          </div>
-        </Web3OnboardProvider>
-      </ThemeProvider>
-    </CssBaseline>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <GlobalStyles
+        styles={{
+          html: { height: '100%' },
+          body: {
+            minHeight: '100%',
+            background: `radial-gradient(circle at top, ${blueGrey[50]} 0%, #f4f7fb 42%, #eef2f8 100%)`,
+          },
+          '#root': { minHeight: '100%' },
+        }}
+      />
+      <Web3OnboardProvider web3Onboard={web3Onboard}>
+        <Bar/>
+        <App/>
+      </Web3OnboardProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

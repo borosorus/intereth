@@ -1,5 +1,5 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Grid, Typography } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
@@ -20,7 +20,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [error, setError] = useState('');
 
     const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
-    const isStateModifying = useMemo(() => (frag.stateMutability === "nonpayable" || frag.stateMutability === "payable"), []);
+    const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
 
     useEffect(() => {
         if(!expanded && isStateModifying){
@@ -29,9 +29,10 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         }
     }, [expanded, isStateModifying]);
 
-    const call = useMemo(() => async () => {
+    const call = useCallback(async () => {
         try{
             setIsResponseLoading(true);
+            setResponse('');
             if(isStateModifying){
                 const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...args);
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
@@ -39,31 +40,34 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                     setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
                 }
             }else{
-                setIsResponseLoading(true)
                 const resp = await contract.getFunction(frag).staticCall(...args);
                 setResponse(resp.toString());
             }
-            setIsResponseLoading(false);
         }
         catch(error){
-            if(isStateModifying) setIsResponseLoading(false);
             setError((error as Error).toString());
+        } finally {
+            setIsResponseLoading(false);
         }
-    }, [contract, isStateModifying, args]);
+    }, [args, contract, frag, isStateModifying]);
 
     const handleInputChange = (ind: number, value: string) => {
-        setArgs(args.map((el, index) => (ind === index) ? value : el));
+        setArgs((current) => current.map((el, index) => (ind === index) ? value : el));
     }
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1, m: 1}}>
+        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography>{frag.format("full")}</Typography>
+                <Typography sx={{fontWeight: 600}}>{frag.format("full")}</Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column'}}>
-                {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
-                <Button variant="outlined" sx={{m: 'auto', maxWidth: 1}} onClick={() => call()}>Call</Button>
-                {isResponseLoading ? <CircularProgress /> : <Typography>{response}</Typography>}
+            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+                <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+                    <Stack spacing={1}>
+                        {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
+                        <Button variant="contained" color="secondary" sx={{alignSelf: 'flex-start'}} onClick={() => call()}>Call</Button>
+                    </Stack>
+                </Paper>
+                {isResponseLoading ? <CircularProgress size={24} /> : <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>}
             </AccordionDetails>
             <ErrorDialog error={error} setError={setError}/>
         </Accordion>
@@ -92,36 +96,55 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
      }, [wallet]);
 
     useEffect(() => {
+        contract.getAddress().then((a) => setAddress(a));
+    }, [contract]);
+
+    useEffect(() => {
         if(signer) {
-            contract.connect(signer).getAddress().then((a) => setAddress(a));
-            signer.provider.getNetwork().then((n) => setChainId(n.chainId.toString()));
+            signer.provider?.getNetwork().then((n) => setChainId(n.chainId.toString()));
+        } else {
+            setChainId('');
         }
     }, [signer]);
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 1}}>
+        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
-                        <Typography sx={{m: 1}}>{address}</Typography>
+                        <Typography sx={{m: 1, fontWeight: 600}}>{address}</Typography>
                     </Grid>
                     <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1, width: 1}}>RPC: Browser Wallet</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
                     </Grid>
                     <Grid item xs={10} md={2}>
-                        <Typography sx={{m: 1, width: 1}}>Chain ID: {chainId}</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {chainId}</Typography>
                     </Grid>
-                    <Grid item xs={2} md={1} sx={{display: 'flex', flexDirection: 'revert'}}>
-                        <DeleteIcon sx={{m: 'auto'}} onClick={() => del()}/>
+                    <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <IconButton
+                          size="small"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            del();
+                          }}
+                        >
+                            <DeleteIcon fontSize="small"/>
+                        </IconButton>
                     </Grid>
                 </Grid>
             </AccordionSummary>
-            <AccordionDetails>
-            {signer ? contract.interface.fragments
-                .filter((f) => f.type === "function")
-                .map((f)=> <DynamicFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract.connect(signer)}/>) :
-                "Please connect to your browser wallet to interact."    
-            }
+            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            {signer ? (
+              <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+                <Stack spacing={1.5}>
+                  {contract.interface.fragments
+                      .filter((f) => f.type === "function")
+                      .map((f)=> <DynamicFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract.connect(signer)}/>)}
+                </Stack>
+              </Paper>
+            ) : (
+                <Typography color="text.secondary">Please connect your browser wallet to interact.</Typography>
+            )}
             <RawCall contract={contract}/>
             </AccordionDetails>
       </Accordion>);
