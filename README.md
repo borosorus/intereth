@@ -1,47 +1,51 @@
-# A simple user interface to interact with any contract on any chain
+# Intereth
 
-Just specify a smart contract address, an abi and an RPC url to fetch data from the chain.
-You can also connect with your browser wallet to make state changing calls.
+Intereth is a browser-based interface for inspecting and calling EVM smart contracts. Provide a contract address, ABI, and RPC endpoint for read-only access, or connect a browser wallet to send transactions.
 
-## Available Scripts
+Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- Works with predefined networks or any custom HTTP RPC endpoint.
+- Includes Ethereum examples for WETH, ENS Registry, and Uniswap V3 Factory.
+- Provides editable ERC-20, ERC-721, and ERC-1155 ABI presets.
+- Supports nested tuples, arrays, raw calldata, payable calls, and transaction values.
+- Formats unsigned integer inputs as wei, gwei, or ETH while previewing the final integer value.
+- Shows the active RPC URL and chain ID on read-only contract instances.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Usage
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+1. Enter a contract address or choose an example to prefill the form.
+2. Paste a JSON ABI or a JSON array of human-readable fragments, select a preset, or leave it empty for raw calls only.
+3. Select an RPC provider for read-only calls, or enable the browser wallet for state-changing calls.
+4. Add the instance, expand a function, complete its inputs, and run the call.
 
-### `npm test`
+Custom RPC endpoints are validated before use. Their full URLs are displayed in the interface, including any embedded API keys, so avoid exposing the page in screenshots or screen shares when using credentialed URLs.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Always verify the contract address, network, function arguments, and wallet transaction preview before signing.
 
-### `npm run build`
+## Development
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Requires Node.js and npm.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+npm start
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The development server runs at [http://localhost:3000](http://localhost:3000).
 
-### `npm run eject`
+```bash
+npm test -- --watchAll=false
+npm run build
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+The production build is written to `build/` and uses `/intereth/` as its GitHub Pages base path.
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Deployment
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+The `homepage` field in `package.json` controls the GitHub Pages URL. To build and publish the `build/` directory to the `gh-pages` branch:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm run deploy
+```
