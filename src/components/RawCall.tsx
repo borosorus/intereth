@@ -3,11 +3,13 @@ import { ethers } from "ethers";
 import { useCallback, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
+import CallResult from "./CallResult";
+import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 
 export default function RawCall({contract, isStaticOnly}: {contract: ethers.BaseContract, isStaticOnly?: boolean}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
-    const [response, setResponse] = useState('');
-    const [error, setError] = useState('');
+    const [result, setResult] = useState<CallResultData | null>(null);
+    const [error, setError] = useState<NormalizedError | null>(null);
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
@@ -17,32 +19,44 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
 
     const call = useCallback(async () => {
         const runner = contract.runner;
-        const sendRunner = runner?.sendTransaction;
-        const callRunner = runner?.call;
-        const hasTxRunner = Boolean(sendRunner);
-        const hasCallRunner = Boolean(callRunner);
+        const hasTxRunner = typeof runner?.sendTransaction === "function";
+        const hasCallRunner = typeof runner?.call === "function";
         if (!hasCallRunner || (!staticCall && !hasTxRunner)) {
-            setError("Failed to find a runner for the transaction");
+            setError(normalizeError(new Error("The connected provider cannot perform this action."), "Runner unavailable"));
             return;
         }
 
         try {
             setIsResponseLoading(true);
-            setResponse('');
+            setResult(null);
+            setError(null);
             const contractAddress = await contract.getAddress();
+            const callData = data.trim() || "0x";
+            if (!ethers.isHexString(callData)) {
+                throw Object.assign(new Error("Calldata must be a valid even-length hexadecimal value prefixed with 0x."), {code: "INVALID_ARGUMENT"});
+            }
             if (!staticCall) {
                 const transactionValue = toWeiValue(valueAmount, valueUnit);
-                const resp: ethers.TransactionResponse = await sendRunner!({to: contractAddress, data, value: transactionValue});
+                const resp: ethers.TransactionResponse = await runner!.sendTransaction!({to: contractAddress, data: callData, value: transactionValue});
+                setResult({kind: "transaction", status: "submitted", hash: resp.hash});
                 const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                if (receipt) {
-                    setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
-                }
+                setResult(receipt ? {
+                    kind: "transaction",
+                    status: receipt.status === 1 ? "confirmed" : "failed",
+                    hash: receipt.hash,
+                    blockNumber: receipt.blockNumber,
+                    gasUsed: receipt.gasUsed.toString(),
+                } : {kind: "transaction", status: "pending", hash: resp.hash});
             } else {
-                const resp = await callRunner!({to: contractAddress, data});
-                setResponse(resp.toString());
+                const resp = await runner!.call!({to: contractAddress, data: callData});
+                setResult({kind: "raw", data: resp});
             }
         } catch (error) {
-            setError((error as Error).toString());
+            const normalized = normalizeError(error, staticCall ? "Raw call failed" : "Transaction failed");
+            setResult((current) => current?.kind === "transaction"
+                ? {...current, status: normalized.code === "CALL_EXCEPTION" ? "failed" : "pending"}
+                : current);
+            setError(normalized);
         } finally {
             setIsResponseLoading(false);
         }
@@ -90,15 +104,9 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
             >
                 {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : actionLabel}
             </Button>
-            {response && (
-                <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.85)'}}>
-                    <Typography variant="body2" sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>
-                        {response}
-                    </Typography>
-                </Paper>
-            )}
+            <CallResult result={result} />
         </Stack>
-        <ErrorDialog error={error} setError={setError}/>
+        <ErrorDialog error={error} onClose={() => setError(null)}/>
     </Paper>
     );
 }

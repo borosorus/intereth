@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, CircularProgress, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -8,6 +8,9 @@ import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { ProviderDetails } from "../presets";
+import CallResult from "./CallResult";
+import CopyButton from "./CopyButton";
+import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -16,23 +19,28 @@ interface StaticFunctionItemProps {
 
 function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
     const [expanded, setExpanded] = useState(false);
-    const [response, setResponse] = useState('');
-    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [result, setResult] = useState<CallResultData | null>(null);
+    const [error, setError] = useState<NormalizedError | null>(null);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
 
     const call = async () => {
-        try{
+        try {
+            setIsLoading(true);
+            setResult(null);
+            setError(null);
             const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
             const resp = await contract.getFunction(frag)(...callArgs);
-            setResponse(resp.toString());
+            setResult({kind: "function", outputs: frag.outputs, value: resp});
+        } catch (error) {
+            setError(normalizeError(error));
+        } finally {
+            setIsLoading(false);
         }
-        catch(error){
-            setError((error as Error).toString());
-        }
-    }
+    };
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -68,17 +76,18 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
                                 variant="contained"
                                 color="secondary"
                                 fullWidth
-                                onClick={() => call()}
+                                disabled={isLoading}
+                                onClick={call}
                                 sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                             >
-                                Call function
+                                {isLoading ? <CircularProgress size={20} color="inherit" /> : "Call function"}
                             </Button>
                         </Stack>
-                        <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>
+                        <CallResult result={result} />
                     </>
                 )}
             </AccordionDetails>
-            <ErrorDialog error={error} setError={setError}/>
+            <ErrorDialog error={error} onClose={() => setError(null)}/>
         </Accordion>
     );
 }
@@ -93,11 +102,19 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
     const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
     const [detectedChainId, setDetectedChainId] = useState<string>('');
+    const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
 
     useEffect(() => {
-        contract.getAddress().then((a) => setAddress(a));
+        contract.getAddress()
+            .then((nextAddress) => setAddress(nextAddress))
+            .catch((error) => {
+                setAddress('Address unavailable');
+                setMetadataError(normalizeError(error, "Contract details unavailable"));
+            });
         if (!providerDetails?.chainId) {
-            contract.runner?.provider?.getNetwork().then((network) => setDetectedChainId(network.chainId.toString()));
+            contract.runner?.provider?.getNetwork()
+                .then((network) => setDetectedChainId(network.chainId.toString()))
+                .catch((error) => setMetadataError(normalizeError(error, "Network details unavailable")));
         }
     }, [contract, providerDetails?.chainId]);
 
@@ -109,7 +126,10 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
                         <Stack spacing={0.25} sx={{m: 1}}>
-                            <Typography sx={{fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
+                            <Box sx={{display: "flex", alignItems: "center", gap: 0.5}}>
+                                <Typography sx={{fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
+                                {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
+                            </Box>
                             <Typography variant="caption" color="text.secondary">Read-only contract</Typography>
                         </Stack>
                     </Grid>
@@ -146,6 +166,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                     <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
                         <IconButton
                           size="small"
+                          aria-label="Delete contract instance"
                           onClick={(event) => {
                             event.stopPropagation();
                             del();
@@ -166,5 +187,6 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
             </Paper>
             <RawCall contract={contract} isStaticOnly={true}/>
             </AccordionDetails>
+            <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
       </Accordion>);
 }

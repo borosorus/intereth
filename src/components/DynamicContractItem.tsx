@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -8,6 +8,9 @@ import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
+import CallResult from "./CallResult";
+import CopyButton from "./CopyButton";
+import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -17,8 +20,8 @@ interface DynamicFunctionItemProps {
 function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [expanded, setExpanded] = useState(false);
     const [isResponseLoading, setIsResponseLoading] = useState(false);
-    const [response, setResponse] = useState('');
-    const [error, setError] = useState('');
+    const [result, setResult] = useState<CallResultData | null>(null);
+    const [error, setError] = useState<NormalizedError | null>(null);
     const [valueAmount, setValueAmount] = useState('');
     const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("wei");
 
@@ -29,30 +32,39 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
 
     useEffect(() => {
         if(!expanded && isStateModifying){
-            setResponse('');
+            setResult(null);
             setIsResponseLoading(false);
         }
     }, [expanded, isStateModifying]);
 
     const call = useCallback(async () => {
-        try{
+        try {
             setIsResponseLoading(true);
-            setResponse('');
+            setResult(null);
+            setError(null);
             const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
-            if(isStateModifying){
+            if (isStateModifying) {
                 const overrides = isPayable ? { value: toWeiValue(valueAmount, valueUnit) } : undefined;
                 const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...(overrides ? [...callArgs, overrides] : callArgs));
+                setResult({kind: "transaction", status: "submitted", hash: resp.hash});
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
-                if(receipt){
-                    setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
-                }
-            }else{
+                setResult(receipt ? {
+                    kind: "transaction",
+                    status: receipt.status === 1 ? "confirmed" : "failed",
+                    hash: receipt.hash,
+                    blockNumber: receipt.blockNumber,
+                    gasUsed: receipt.gasUsed.toString(),
+                } : {kind: "transaction", status: "pending", hash: resp.hash});
+            } else {
                 const resp = await contract.getFunction(frag).staticCall(...callArgs);
-                setResponse(resp.toString());
+                setResult({kind: "function", outputs: frag.outputs, value: resp});
             }
-        }
-        catch(error){
-            setError((error as Error).toString());
+        } catch (error) {
+            const normalized = normalizeError(error, isStateModifying ? "Transaction failed" : "Call failed");
+            setResult((current) => current?.kind === "transaction"
+                ? {...current, status: normalized.code === "CALL_EXCEPTION" ? "failed" : "pending"}
+                : current);
+            setError(normalized);
         } finally {
             setIsResponseLoading(false);
         }
@@ -103,9 +115,9 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                         </Button>
                     </Stack>
                 </Paper>
-                {isResponseLoading ? <CircularProgress size={24} /> : <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>}
+                <CallResult result={result} />
             </AccordionDetails>
-            <ErrorDialog error={error} setError={setError}/>
+            <ErrorDialog error={error} onClose={() => setError(null)}/>
         </Accordion>
     );
 }
@@ -121,23 +133,38 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
     const [address, setAddress] = useState('loading...');
     const [chainId, setChainId] = useState<string>('');
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
+    const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
 
     useEffect(() => {
         if(wallet?.provider){
             (new ethers.BrowserProvider(wallet.provider)).getSigner()
-                .then((signer) => setSigner(signer));
+                .then((nextSigner) => setSigner(nextSigner))
+                .catch((error) => {
+                    setSigner(null);
+                    setMetadataError(normalizeError(error, "Wallet connection failed"));
+                });
         }else {
             setSigner(null);
         }
      }, [wallet]);
 
     useEffect(() => {
-        contract.getAddress().then((a) => setAddress(a));
+        contract.getAddress()
+            .then((nextAddress) => setAddress(nextAddress))
+            .catch((error) => {
+                setAddress('Address unavailable');
+                setMetadataError(normalizeError(error, "Contract details unavailable"));
+            });
     }, [contract]);
 
     useEffect(() => {
         if(signer) {
-            signer.provider?.getNetwork().then((n) => setChainId(n.chainId.toString()));
+            signer.provider?.getNetwork()
+                .then((network) => setChainId(network.chainId.toString()))
+                .catch((error) => {
+                    setChainId('');
+                    setMetadataError(normalizeError(error, "Network details unavailable"));
+                });
         } else {
             setChainId('');
         }
@@ -148,7 +175,10 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
-                        <Typography sx={{m: 1, fontWeight: 600}}>{address}</Typography>
+                        <Box sx={{m: 1, display: "flex", alignItems: "center", gap: 0.5}}>
+                            <Typography sx={{fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
+                            {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
+                        </Box>
                     </Grid>
                     <Grid item xs={12} md={3}>
                         <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
@@ -159,6 +189,7 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                     <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
                         <IconButton
                           size="small"
+                          aria-label="Delete contract instance"
                           onClick={(event) => {
                             event.stopPropagation();
                             del();
@@ -183,5 +214,6 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
             )}
             <RawCall contract={contract}/>
             </AccordionDetails>
+            <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
       </Accordion>);
 }

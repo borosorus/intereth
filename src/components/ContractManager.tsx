@@ -28,6 +28,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DynamicContract } from "../App";
 import { chains } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
+import ErrorDialog from "./ErrorDialog";
+import { NormalizedError, normalizeError } from "../callUtils";
 
 enum CustomRpcState {
     disabled,
@@ -123,13 +125,19 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [predefinedRpcState, setPredefinedRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
+    const [managerError, setManagerError] = useState<NormalizedError | null>(null);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
     const [{wallet}, connect] = useConnectWallet();
 
     useEffect(() => {
         if (wallet?.provider) {
-            (new ethers.BrowserProvider(wallet.provider)).getSigner().then((nextSigner) => setSigner(nextSigner));
+            (new ethers.BrowserProvider(wallet.provider)).getSigner()
+                .then((nextSigner) => setSigner(nextSigner))
+                .catch((error) => {
+                    setSigner(null);
+                    setManagerError(normalizeError(error, "Wallet connection failed"));
+                });
         } else {
             setSigner(null);
         }
@@ -272,21 +280,26 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         : Boolean(isAddressValid && selectedProviderDetails));
 
     const tryChangeUseBrowserWallet = async () => {
-        if (useBrowserWallet) {
-            setUseBrowserWallet(false);
-            return;
-        }
+        try {
+            setManagerError(null);
+            if (useBrowserWallet) {
+                setUseBrowserWallet(false);
+                return;
+            }
 
-        if (signer) {
-            setUseBrowserWallet(true);
-            return;
-        }
+            if (signer) {
+                setUseBrowserWallet(true);
+                return;
+            }
 
-        const walletState = await connect();
-        if (walletState[0]) {
-            const nextSigner = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
-            setSigner(nextSigner);
-            setUseBrowserWallet(true);
+            const walletState = await connect();
+            if (walletState[0]) {
+                const nextSigner = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
+                setSigner(nextSigner);
+                setUseBrowserWallet(true);
+            }
+        } catch (error) {
+            setManagerError(normalizeError(error, "Wallet connection failed"));
         }
     };
 
@@ -299,26 +312,31 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             return;
         }
 
-        if (useBrowserWallet && signer) {
+        try {
+            setManagerError(null);
+            if (useBrowserWallet && signer) {
+                addContract({
+                    id: crypto.randomUUID(),
+                    contract: new ethers.BaseContract(address, getInterface(), signer),
+                    isStatic: false,
+                });
+                return;
+            }
+
+            if (!selectedProviderDetails) {
+                return;
+            }
+
+            const provider = new ethers.JsonRpcProvider(selectedProviderDetails.url);
             addContract({
                 id: crypto.randomUUID(),
-                contract: new ethers.BaseContract(address, getInterface(), signer),
-                isStatic: false,
+                contract: new ethers.BaseContract(address, getInterface(), provider),
+                isStatic: true,
+                providerDetails: selectedProviderDetails,
             });
-            return;
+        } catch (error) {
+            setManagerError(normalizeError(error, "Unable to add contract"));
         }
-
-        if (!selectedProviderDetails) {
-            return;
-        }
-
-        const provider = new ethers.JsonRpcProvider(selectedProviderDetails.url);
-        addContract({
-            id: crypto.randomUUID(),
-            contract: new ethers.BaseContract(address, getInterface(), provider),
-            isStatic: true,
-            providerDetails: selectedProviderDetails,
-        });
     };
 
     const selectAbiPreset = (selection: AbiPresetSelection) => {
@@ -564,6 +582,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     </Box>
                 </>
             )}
+            <ErrorDialog error={managerError} onClose={() => setManagerError(null)} />
         </Stack>
     );
 }
