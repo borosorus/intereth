@@ -2,6 +2,7 @@ import { Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabe
 import { ethers } from "ethers";
 import { useCallback, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
+import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
 
 export default function RawCall({contract, isStaticOnly}: {contract: ethers.BaseContract, isStaticOnly?: boolean}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -9,7 +10,8 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
     const [error, setError] = useState('');
 
     const [data, setData] = useState('');
-    const [value, setValue] = useState('');
+    const [valueAmount, setValueAmount] = useState('');
+    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("ether");
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
     const actionLabel = staticCall ? "Run call" : "Send transaction";
 
@@ -29,7 +31,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
             setResponse('');
             const contractAddress = await contract.getAddress();
             if (!staticCall) {
-                const transactionValue = value.trim() === "" ? "0" : value.trim();
+                const transactionValue = toWeiValue(valueAmount, valueUnit);
                 const resp: ethers.TransactionResponse = await sendRunner!({to: contractAddress, data, value: transactionValue});
                 const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
                 if (receipt) {
@@ -44,7 +46,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
         } finally {
             setIsResponseLoading(false);
         }
-    }, [contract, data, staticCall, value]);
+    }, [contract, data, staticCall, valueAmount, valueUnit]);
 
     return (
     <Paper variant="outlined" sx={{mt: 2, p: {xs: 2, md: 3}, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.82)'}}>
@@ -69,10 +71,13 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
                     <Input value={data} onChange={(e) => setData(e.target.value)} />
                 </FormControl>
                 {!staticCall && (
-                    <FormControl fullWidth>
-                        <InputLabel>Value in wei</InputLabel>
-                        <Input value={value} onChange={(e) => setValue(e.target.value)} />
-                    </FormControl>
+                    <TransactionValueInput
+                        amount={valueAmount}
+                        unit={valueUnit}
+                        onAmountChange={setValueAmount}
+                        onUnitChange={setValueUnit}
+                        label="Transaction value"
+                    />
                 )}
             </Stack>
             <Button

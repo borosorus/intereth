@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, FormControl, Grid, IconButton, Input, InputLabel, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -7,6 +7,7 @@ import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "
 import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
+import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -18,7 +19,8 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
-    const [value, setValue] = useState('');
+    const [valueAmount, setValueAmount] = useState('');
+    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("ether");
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
@@ -38,7 +40,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             setResponse('');
             const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
             if(isStateModifying){
-                const overrides = isPayable ? { value: value.trim() === "" ? "0" : value.trim() } : undefined;
+                const overrides = isPayable ? { value: toWeiValue(valueAmount, valueUnit) } : undefined;
                 const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...(overrides ? [...callArgs, overrides] : callArgs));
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
                 if(receipt){
@@ -54,7 +56,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         } finally {
             setIsResponseLoading(false);
         }
-    }, [args, contract, frag, isPayable, isStateModifying, value]);
+    }, [args, contract, frag, isPayable, isStateModifying, valueAmount, valueUnit]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -81,10 +83,13 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                             />
                         ))}
                         {isPayable && (
-                            <FormControl fullWidth>
-                                <InputLabel>Value in wei</InputLabel>
-                                <Input value={value} onChange={(e) => setValue(e.target.value)} />
-                            </FormControl>
+                            <TransactionValueInput
+                                amount={valueAmount}
+                                unit={valueUnit}
+                                onAmountChange={setValueAmount}
+                                onUnitChange={setValueUnit}
+                                label="Transaction value"
+                            />
                         )}
                         <Button
                             variant="contained"
