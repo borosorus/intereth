@@ -2,12 +2,17 @@ import { FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography
 import { ethers } from "ethers";
 
 export const VALUE_UNITS = [
-    { label: "ETH", value: "ether" },
-    { label: "gwei", value: "gwei" },
     { label: "wei", value: "wei" },
+    { label: "gwei", value: "gwei" },
+    { label: "ETH", value: "ether" },
 ] as const;
 
-type ValueUnit = (typeof VALUE_UNITS)[number]["value"];
+export type ValueUnit = (typeof VALUE_UNITS)[number]["value"];
+
+export interface NumericValue {
+    amount: string;
+    unit: ValueUnit;
+}
 
 interface TransactionValueInputProps {
     amount: string;
@@ -16,6 +21,18 @@ interface TransactionValueInputProps {
     onUnitChange: (unit: ValueUnit) => void;
     label?: string;
     helperText?: string;
+}
+
+export function createNumericValue(): NumericValue {
+    return { amount: "", unit: "wei" };
+}
+
+export function serializeNumericValue(value: NumericValue, emptyAsZero = false) {
+    const trimmed = value.amount.trim();
+    if (trimmed === "") {
+        return emptyAsZero ? ethers.parseUnits("0", value.unit) : ethers.parseUnits("", value.unit);
+    }
+    return ethers.parseUnits(trimmed, value.unit);
 }
 
 export function toWeiValue(amount: string, unit: ValueUnit) {

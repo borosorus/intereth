@@ -2,8 +2,9 @@ import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from "@m
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { ethers } from "ethers";
+import TransactionValueInput, { createNumericValue, NumericValue, serializeNumericValue, toWeiValue } from "./TransactionValueInput";
 
-export type ParamValue = string | ParamValue[];
+export type ParamValue = string | NumericValue | ParamValue[];
 
 interface ParamInputProps {
     param: ethers.ParamType;
@@ -24,10 +25,19 @@ export function createEmptyParamValue(param: ethers.ParamType): ParamValue {
         return Array.from({length: initialLength}, () => createEmptyParamValue(child as ethers.ParamType));
     }
 
+    if (/^uint\d*$/.test(param.type)) {
+        return createNumericValue();
+    }
+
     return "";
 }
 
 export function buildParamValue(param: ethers.ParamType, value: ParamValue): unknown {
+    if (/^uint\d*$/.test(param.type)) {
+        const numericValue = isNumericValue(value) ? value : createNumericValue();
+        return serializeNumericValue(numericValue, false);
+    }
+
     if (param.baseType === "tuple") {
         const children = Array.isArray(value) ? value : [];
         return (param.components ?? []).map((component, index) => buildParamValue(component, children[index] ?? createEmptyParamValue(component)));
@@ -52,6 +62,28 @@ function formatFieldLabel(param: ethers.ParamType, fallback: string) {
 
 function isCompositeValue(value: ParamValue): value is ParamValue[] {
     return Array.isArray(value);
+}
+
+function isNumericValue(value: ParamValue): value is NumericValue {
+    return typeof value === "object" && value !== null && !Array.isArray(value) && "amount" in value && "unit" in value;
+}
+
+function getUintPreview(value: NumericValue, paramType: string) {
+    try {
+        const weiValue = toWeiValue(value.amount, value.unit);
+        if (weiValue < BigInt(0)) {
+            return {value: "", error: "Unsigned integers cannot be negative."};
+        }
+
+        const bitWidth = Number(paramType.slice(4) || "256");
+        if (weiValue >= BigInt(1) << BigInt(bitWidth)) {
+            return {value: "", error: `Value exceeds the ${paramType} limit.`};
+        }
+
+        return {value: weiValue.toString(), error: ""};
+    } catch {
+        return {value: "", error: "Enter a valid amount for the selected unit."};
+    }
 }
 
 export default function ParamInput({param, value, onChange, depth = 0, label}: ParamInputProps) {
@@ -100,6 +132,73 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
                             />
                         ))}
                     </Stack>
+                </Stack>
+            </Paper>
+        );
+    }
+
+    if (/^uint\d*$/.test(param.type)) {
+        const currentValue = isNumericValue(value) ? value : createNumericValue();
+        const preview = getUintPreview(currentValue, param.type);
+
+        return (
+            <Paper
+                variant="outlined"
+                sx={{
+                    p: 2,
+                    pl: 2 + indent,
+                    borderRadius: 2,
+                    borderLeft: "4px solid",
+                    borderColor: "primary.main",
+                    backgroundColor: "rgba(255,255,255,0.7)",
+                }}
+            >
+                <Stack spacing={1.25}>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{fontWeight: 700}}>
+                            {groupLabel}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {param.format("full")}
+                        </Typography>
+                    </Box>
+                    <TransactionValueInput
+                        amount={currentValue.amount}
+                        unit={currentValue.unit}
+                        onAmountChange={(amount) => onChange({ ...currentValue, amount })}
+                        onUnitChange={(unit) => onChange({ ...currentValue, unit })}
+                        label="Amount"
+                        helperText="Default format is wei. Change the unit only if the value is easier to read in ETH or gwei."
+                    />
+                    <Box
+                        sx={{
+                            px: 1.5,
+                            py: 1.25,
+                            borderRadius: 1.5,
+                            border: "1px solid",
+                            borderColor: preview.error ? "error.light" : "divider",
+                            backgroundColor: preview.error ? "rgba(211, 47, 47, 0.04)" : "rgba(15, 23, 42, 0.035)",
+                        }}
+                    >
+                        <Typography
+                            variant="caption"
+                            color={preview.error ? "error.main" : "text.secondary"}
+                            sx={{display: "block", mb: 0.35, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase"}}
+                        >
+                            Final uint value
+                        </Typography>
+                        <Typography
+                            variant="body2"
+                            color={preview.error ? "error.main" : "text.primary"}
+                            sx={{
+                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                fontWeight: 600,
+                                overflowWrap: "anywhere",
+                            }}
+                        >
+                            {preview.error || `${preview.value} wei`}
+                        </Typography>
+                    </Box>
                 </Stack>
             </Paper>
         );

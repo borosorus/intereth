@@ -20,7 +20,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
     const [valueAmount, setValueAmount] = useState('');
-    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("ether");
+    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("wei");
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";

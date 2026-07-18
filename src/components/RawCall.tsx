@@ -11,7 +11,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
-    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("ether");
+    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("wei");
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
     const actionLabel = staticCall ? "Run call" : "Send transaction";
 
