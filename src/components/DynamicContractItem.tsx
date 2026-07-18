@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Button, CircularProgress, FormControl, Grid, IconButton, Input, InputLabel, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -18,9 +18,12 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
+    const [value, setValue] = useState('');
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
+    const isPayable = frag.stateMutability === "payable";
+    const buttonLabel = isStateModifying ? "Send transaction" : "Run call";
 
     useEffect(() => {
         if(!expanded && isStateModifying){
@@ -35,7 +38,8 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             setResponse('');
             const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
             if(isStateModifying){
-                const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...callArgs);
+                const overrides = isPayable ? { value: value.trim() === "" ? "0" : value.trim() } : undefined;
+                const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...(overrides ? [...callArgs, overrides] : callArgs));
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
                 if(receipt){
                     setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
@@ -50,7 +54,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         } finally {
             setIsResponseLoading(false);
         }
-    }, [args, contract, frag, isStateModifying]);
+    }, [args, contract, frag, isPayable, isStateModifying, value]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -76,6 +80,12 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                                 label={input.name || `Input ${index + 1}`}
                             />
                         ))}
+                        {isPayable && (
+                            <FormControl fullWidth>
+                                <InputLabel>Value in wei</InputLabel>
+                                <Input value={value} onChange={(e) => setValue(e.target.value)} />
+                            </FormControl>
+                        )}
                         <Button
                             variant="contained"
                             color="secondary"
@@ -84,7 +94,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                             onClick={() => call()}
                             sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                         >
-                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : 'Call function'}
+                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : buttonLabel}
                         </Button>
                     </Stack>
                 </Paper>
