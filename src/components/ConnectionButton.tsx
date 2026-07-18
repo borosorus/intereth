@@ -11,7 +11,15 @@ export default function ConnectionButton() {
           variant="contained"
           color="secondary"
           onClick={() => connect()}
-          sx={{minWidth: 132, borderRadius: 999, textTransform: 'none', fontWeight: 700}}
+          sx={{
+            minWidth: {xs: 108, sm: 132},
+            px: {xs: 1.5, sm: 2},
+            borderRadius: 999,
+            textTransform: 'none',
+            fontSize: {xs: '0.75rem', sm: '0.875rem'},
+            fontWeight: 700,
+            flex: '0 0 auto',
+          }}
         >
             {connecting ? <CircularProgress size={18} color="inherit" /> : (address ? shortenizeAddr(address) : "Connect Wallet")}
         </Button>);

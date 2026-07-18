@@ -4,7 +4,6 @@ import { ethers } from 'ethers';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
-import Title from './components/Title';
 import { ProviderDetails } from './presets';
 
 export interface DynamicContract {
@@ -36,7 +35,6 @@ export default function App(){
       <Box sx={{px: {xs: 2, sm: 3}, pb: 6}}>
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Stack spacing={3}>
-            <Title />
             <Paper
               elevation={0}
               sx={{

@@ -42,6 +42,43 @@ interface ContractManagerProps {
     showExamples: boolean;
 }
 
+const formSectionSx = {
+    p: {xs: 1.5, sm: 2},
+    border: "1px solid",
+    borderColor: "divider",
+    borderRadius: 2.5,
+    backgroundColor: "rgba(248, 250, 252, 0.58)",
+};
+
+const inputSurfaceSx = {
+    "& .MuiOutlinedInput-root": {
+        backgroundColor: "#fff",
+        transition: "border-color 160ms ease, box-shadow 160ms ease",
+        "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "rgba(69, 90, 100, 0.3)",
+        },
+        "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "primary.main",
+        },
+        "&.Mui-focused": {
+            boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
+        },
+    },
+};
+
+const selectSurfaceSx = {
+    backgroundColor: "#fff",
+    "& .MuiOutlinedInput-notchedOutline": {
+        borderColor: "rgba(69, 90, 100, 0.3)",
+    },
+    "&:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: "primary.main",
+    },
+    "&.Mui-focused": {
+        boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
+    },
+};
+
 function renderCustomRpcProgress(state: CustomRpcState) {
     switch (state) {
         case CustomRpcState.failed:
@@ -266,42 +303,56 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
     return (
         <Stack spacing={2.5}>
-            <TextField
-                inputRef={addressInputRef}
-                label="Contract address"
-                value={address}
-                onChange={(event) => setAddress(event.target.value.trim())}
-                error={address !== '' && !isAddressValid}
-                helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
-                fullWidth
-            />
+            <Box sx={formSectionSx}>
+                <Stack spacing={1.25}>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract</Typography>
+                        <Typography variant="caption" color="text.secondary">Choose the contract you want to inspect.</Typography>
+                    </Box>
+                    <TextField
+                        inputRef={addressInputRef}
+                        label="Contract address"
+                        value={address}
+                        onChange={(event) => setAddress(event.target.value.trim())}
+                        error={address !== '' && !isAddressValid}
+                        helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
+                        fullWidth
+                        sx={inputSurfaceSx}
+                    />
+                </Stack>
+            </Box>
 
-            <Grid container spacing={1.5} alignItems="stretch">
-                <Grid item xs={12} md={4}>
-                    <FormControl fullWidth>
-                        <InputLabel id="abi-preset-label">ABI preset</InputLabel>
-                        <Select
-                            labelId="abi-preset-label"
-                            value={abiPreset}
-                            label="ABI preset"
-                            onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
-                            renderValue={(selection) => selection === "custom"
-                                ? "Custom ABI"
-                                : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
-                        >
-                            <MenuItem value="custom">Custom ABI</MenuItem>
-                            {ABI_PRESETS.map((preset) => (
-                                <MenuItem key={preset.id} value={preset.id}>
-                                    <Stack spacing={0.15}>
-                                        <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
-                                        <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
-                                    </Stack>
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Grid>
-                <Grid item xs={12} md={8}>
+            <Box sx={formSectionSx}>
+                <Stack spacing={1.25}>
+                    <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
+                        <Box>
+                            <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
+                            <Typography variant="caption" color="text.secondary">Paste an ABI, use a preset, or leave it empty for raw calls.</Typography>
+                        </Box>
+                        <FormControl size="small" sx={{width: {xs: "100%", sm: 180}, flex: "0 0 auto"}}>
+                            <InputLabel id="abi-preset-label">Preset</InputLabel>
+                            <Select
+                                labelId="abi-preset-label"
+                                value={abiPreset}
+                                label="Preset"
+                                onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
+                                renderValue={(selection) => selection === "custom"
+                                    ? "Custom ABI"
+                                    : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
+                                sx={selectSurfaceSx}
+                            >
+                                <MenuItem value="custom">Custom ABI</MenuItem>
+                                {ABI_PRESETS.map((preset) => (
+                                    <MenuItem key={preset.id} value={preset.id}>
+                                        <Stack spacing={0.15}>
+                                            <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
+                                        </Stack>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Box>
                     <TextField
                         label="Contract ABI"
                         multiline
@@ -314,11 +365,18 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         error={Boolean(abiError)}
                         helperText={abiError || "Optional. Leave empty to use the raw-call fallback."}
                         fullWidth
+                        sx={inputSurfaceSx}
                     />
-                </Grid>
-            </Grid>
+                </Stack>
+            </Box>
 
-            <Grid container spacing={2} alignItems="center">
+            <Box sx={formSectionSx}>
+                <Stack spacing={1.25}>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Connection</Typography>
+                        <Typography variant="caption" color="text.secondary">Select an RPC for read-only access or use your browser wallet.</Typography>
+                    </Box>
+                    <Grid container spacing={2} alignItems="center">
                 {!useBrowserWallet && (
                     <Grid item xs={12} md={7}>
                         <FormControl fullWidth>
@@ -329,6 +387,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 value={providerIndex}
                                 label="RPC Provider"
                                 onChange={(event) => setProviderIndex(event.target.value as number)}
+                                sx={selectSurfaceSx}
                             >
                                 {chains.map((chain, index) => <MenuItem key={chain.id} value={index}>{chain.label}</MenuItem>)}
                                 <MenuItem value={-1}>Custom</MenuItem>
@@ -359,6 +418,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     </InputAdornment>
                                 ),
                             }}
+                            sx={inputSurfaceSx}
                         />
                     </Grid>
                 )}
@@ -372,7 +432,9 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         </Box>
                     </Grid>
                 )}
-            </Grid>
+                    </Grid>
+                </Stack>
+            </Box>
 
             <Box sx={{display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between', flexWrap: 'wrap'}}>
                 <Typography variant="body2" color="text.secondary">
