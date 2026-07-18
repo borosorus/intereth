@@ -6,6 +6,7 @@ import {
     Divider,
     FormControl,
     FormControlLabel,
+    FormHelperText,
     Grid,
     InputAdornment,
     InputLabel,
@@ -119,6 +120,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [customRpc, setCustomRpc] = useState('');
     const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
     const [customRpcChainId, setCustomRpcChainId] = useState('');
+    const [predefinedRpcState, setPredefinedRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
     const addressInputRef = useRef<HTMLInputElement>(null);
@@ -138,6 +140,49 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             setUseBrowserWallet(false);
         }
     }, [signer, useBrowserWallet]);
+
+    useEffect(() => {
+        if (providerIndex === -1 || useBrowserWallet) {
+            setPredefinedRpcState(CustomRpcState.disabled);
+            return;
+        }
+
+        const chain = chains[providerIndex];
+        if (!chain?.rpcUrl) {
+            setPredefinedRpcState(CustomRpcState.failed);
+            return;
+        }
+
+        let cancelled = false;
+        let provider: ethers.JsonRpcProvider | null = new ethers.JsonRpcProvider(chain.rpcUrl);
+        const activeProvider = provider;
+        setPredefinedRpcState(CustomRpcState.connecting);
+
+        activeProvider.getNetwork()
+            .then((network) => {
+                if (!cancelled) {
+                    setPredefinedRpcState(network.chainId.toString() === chain.id
+                        ? CustomRpcState.connected
+                        : CustomRpcState.failed);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setPredefinedRpcState(CustomRpcState.failed);
+                }
+            })
+            .finally(() => {
+                provider?.destroy();
+                provider = null;
+            });
+
+        return () => {
+            cancelled = true;
+            const pendingProvider = provider;
+            provider = null;
+            pendingProvider?.destroy();
+        };
+    }, [providerIndex, useBrowserWallet]);
 
     useEffect(() => {
         if (providerIndex !== -1) {
@@ -204,8 +249,10 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         }
 
         const chain = chains[providerIndex];
-        return chain ? {label: chain.label, url: chain.rpcUrl, chainId: chain.id} : null;
-    }, [customRpcChainId, customRpcState, providerIndex, selectedRpcUrl]);
+        return chain && predefinedRpcState === CustomRpcState.connected
+            ? {label: chain.label, url: chain.rpcUrl, chainId: chain.id}
+            : null;
+    }, [customRpcChainId, customRpcState, predefinedRpcState, providerIndex, selectedRpcUrl]);
 
     const abiError = useMemo(() => {
         if (!abi.trim()) {
@@ -379,7 +426,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     <Grid container spacing={2} alignItems="center">
                 {!useBrowserWallet && (
                     <Grid item xs={12} md={7}>
-                        <FormControl fullWidth>
+                        <FormControl fullWidth error={predefinedRpcState === CustomRpcState.failed}>
                             <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
                             <Select
                                 labelId="rpc-provider-label"
@@ -392,6 +439,12 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 {chains.map((chain, index) => <MenuItem key={chain.id} value={index}>{chain.label}</MenuItem>)}
                                 <MenuItem value={-1}>Custom</MenuItem>
                             </Select>
+                            {predefinedRpcState === CustomRpcState.connecting && (
+                                <FormHelperText>Checking RPC endpoint...</FormHelperText>
+                            )}
+                            {predefinedRpcState === CustomRpcState.failed && (
+                                <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
+                            )}
                         </FormControl>
                     </Grid>
                 )}

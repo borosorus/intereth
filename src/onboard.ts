@@ -7,7 +7,7 @@ export const chains = [
         id: '1',
         token: 'ETH',
         label: 'Ethereum Mainnet',
-        rpcUrl: 'https://eth.llamarpc.com'
+        rpcUrl: 'https://ethereum-rpc.publicnode.com'
       },
       {
         id: '42161',
