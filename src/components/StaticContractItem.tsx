@@ -3,7 +3,7 @@ import { JsonRpcProvider, ethers } from "ethers";
 import { useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ParamInput from "./ParamInput";
+import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 
@@ -17,13 +17,14 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
 
-    const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
+    const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
 
     const call = async () => {
         try{
-            const resp = await contract.getFunction(frag)(...args);
+            const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
+            const resp = await contract.getFunction(frag)(...callArgs);
             setResponse(resp.toString());
         }
         catch(error){
@@ -31,14 +32,17 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
         }
     }
 
-    const handleInputChange = (ind: number, value: string) => {
-        setArgs((current) => current.map((el, index) => (ind === index) ? value : el));
-    }
-
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 600}}>{frag.format("full")}</Typography>
+                <Stack spacing={0.25}>
+                    <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700}}>
+                        {frag.name || frag.format("sighash")}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {frag.format("full")}
+                    </Typography>
+                </Stack>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
                 {isDisabled ? (
@@ -46,8 +50,28 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
                 )
                 : (
                     <>
-                        {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
-                        <Button variant="contained" color="secondary" sx={{alignSelf: 'flex-start'}} onClick={() => call()}>Call</Button>
+                        <Stack spacing={1.5}>
+                            {frag.inputs.map((input, index) => (
+                                <ParamInput
+                                    key={`${input.name || input.type}-${index}`}
+                                    param={input}
+                                    value={args[index] ?? createEmptyParamValue(input)}
+                                    onChange={(value) => {
+                                        setArgs((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                                    }}
+                                    label={input.name || `Input ${index + 1}`}
+                                />
+                            ))}
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                fullWidth
+                                onClick={() => call()}
+                                sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                            >
+                                Call function
+                            </Button>
+                        </Stack>
                         <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>
                     </>
                 )}

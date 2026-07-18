@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
-import ParamInput from "./ParamInput";
+import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "./ParamInput";
 import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
@@ -19,7 +19,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [response, setResponse] = useState('');
     const [error, setError] = useState('');
 
-    const [args, setArgs] = useState<Array<string>>(frag.inputs.map(() => ''));
+    const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
 
     useEffect(() => {
@@ -33,14 +33,15 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         try{
             setIsResponseLoading(true);
             setResponse('');
+            const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
             if(isStateModifying){
-                const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...args);
+                const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...callArgs);
                 const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
                 if(receipt){
                     setResponse(`Transaction ${receipt.status ? "succeeded" : "failed"} hash: ${receipt.hash}`);
                 }
             }else{
-                const resp = await contract.getFunction(frag).staticCall(...args);
+                const resp = await contract.getFunction(frag).staticCall(...callArgs);
                 setResponse(resp.toString());
             }
         }
@@ -51,20 +52,40 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         }
     }, [args, contract, frag, isStateModifying]);
 
-    const handleInputChange = (ind: number, value: string) => {
-        setArgs((current) => current.map((el, index) => (ind === index) ? value : el));
-    }
-
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Typography sx={{fontWeight: 600}}>{frag.format("full")}</Typography>
+                <Stack spacing={0.25}>
+                    <Typography sx={{fontWeight: 700}}>{frag.name || frag.format("sighash")}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {frag.format("full")}
+                    </Typography>
+                </Stack>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                 <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
-                    <Stack spacing={1}>
-                        {frag.inputs.map((input, index) => <ParamInput key={input.format("full")} id={index} param={input} setValue={handleInputChange} args={args}/>)}
-                        <Button variant="contained" color="secondary" sx={{alignSelf: 'flex-start'}} onClick={() => call()}>Call</Button>
+                    <Stack spacing={1.5}>
+                        {frag.inputs.map((input, index) => (
+                            <ParamInput
+                                key={`${input.name || input.type}-${index}`}
+                                param={input}
+                                value={args[index] ?? createEmptyParamValue(input)}
+                                onChange={(value) => {
+                                    setArgs((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                                }}
+                                label={input.name || `Input ${index + 1}`}
+                            />
+                        ))}
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            fullWidth
+                            disabled={isResponseLoading}
+                            onClick={() => call()}
+                            sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                        >
+                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : 'Call function'}
+                        </Button>
                     </Stack>
                 </Paper>
                 {isResponseLoading ? <CircularProgress size={24} /> : <Typography sx={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{response}</Typography>}
