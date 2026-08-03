@@ -76,6 +76,12 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
     } else if (code === "INVALID_ARGUMENT") {
         title = "Invalid input";
         displayMessage = shortMessage || message || "One or more call arguments are invalid.";
+    } else if (code === "NO_CONTRACT_CODE") {
+        title = "No contract on this network";
+        displayMessage = shortMessage || "The selected address has no deployed bytecode on the selected RPC network.";
+    } else if (code === "BAD_DATA") {
+        title = "Result could not be decoded";
+        displayMessage = "The RPC returned data that does not match this function's ABI. Check that the contract address, selected network, and ABI belong together.";
     }
 
     const details = typeof candidate.stack === "string"

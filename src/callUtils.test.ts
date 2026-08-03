@@ -32,8 +32,15 @@ describe("error normalization", () => {
         ["NETWORK_ERROR", "Network request failed"],
         ["TIMEOUT", "Confirmation timed out"],
         ["INVALID_ARGUMENT", "Invalid input"],
+        ["NO_CONTRACT_CODE", "No contract on this network"],
+        ["BAD_DATA", "Result could not be decoded"],
     ])("maps %s to a useful title", (code, title) => {
         expect(normalizeError({code, shortMessage: "technical message"}).title).toBe(title);
+    });
+
+    it("explains ABI decode failures in terms of the target configuration", () => {
+        expect(normalizeError({code: "BAD_DATA", shortMessage: "could not decode result data"}).message)
+            .toContain("contract address, selected network, and ABI");
     });
 
     it("supports plain and unknown errors", () => {

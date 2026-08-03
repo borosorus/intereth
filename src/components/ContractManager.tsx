@@ -126,6 +126,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
     const [managerError, setManagerError] = useState<NormalizedError | null>(null);
+    const [isAddingInstance, setIsAddingInstance] = useState(false);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
     const [{wallet}, connect] = useConnectWallet();
@@ -307,12 +308,13 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         ? new ethers.Interface(abi)
         : new ethers.Interface(["fallback(bytes calldata data) external view"]);
 
-    const handleAddContract = () => {
+    const handleAddContract = async () => {
         if (!canAddInstance) {
             return;
         }
 
         try {
+            setIsAddingInstance(true);
             setManagerError(null);
             if (useBrowserWallet && signer) {
                 addContract({
@@ -328,14 +330,32 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             }
 
             const provider = new ethers.JsonRpcProvider(selectedProviderDetails.url);
-            addContract({
-                id: crypto.randomUUID(),
-                contract: new ethers.BaseContract(address, getInterface(), provider),
-                isStatic: true,
-                providerDetails: selectedProviderDetails,
-            });
+            try {
+                const code = await provider.getCode(address);
+                if (code === "0x") {
+                    throw Object.assign(
+                        new Error(`No contract bytecode was found at ${address} on chain ${selectedProviderDetails.chainId}.`),
+                        {
+                            code: "NO_CONTRACT_CODE",
+                            shortMessage: `No contract bytecode was found at this address on ${selectedProviderDetails.label} (chain ${selectedProviderDetails.chainId}).`,
+                        },
+                    );
+                }
+
+                addContract({
+                    id: crypto.randomUUID(),
+                    contract: new ethers.BaseContract(address, getInterface(), provider),
+                    isStatic: true,
+                    providerDetails: selectedProviderDetails,
+                });
+            } catch (error) {
+                provider.destroy();
+                throw error;
+            }
         } catch (error) {
             setManagerError(normalizeError(error, "Unable to add contract"));
+        } finally {
+            setIsAddingInstance(false);
         }
     };
 
@@ -516,11 +536,11 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 <Button
                     variant="contained"
                     color="secondary"
-                    disabled={!canAddInstance}
+                    disabled={!canAddInstance || isAddingInstance}
                     onClick={handleAddContract}
                     sx={{px: 3, py: 1.1, borderRadius: 2, textTransform: "none", fontWeight: 700}}
                 >
-                    Add instance
+                    {isAddingInstance ? <CircularProgress size={20} color="inherit" /> : "Add instance"}
                 </Button>
             </Box>
 
