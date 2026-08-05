@@ -39,4 +39,14 @@ export const web3Onboard = init({
     // This javascript object is unordered meaning props do not require a certain order
     wallets: [injected],
     chains: chains,
+    accountCenter: {
+      desktop: {
+        enabled: true,
+        position: 'bottomLeft'
+      },
+      mobile: {
+        enabled: true,
+        position: 'bottomLeft'
+      }
+    }
   })
