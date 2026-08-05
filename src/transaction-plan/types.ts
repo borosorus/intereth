@@ -1,13 +1,6 @@
+import { ParamValue } from "../calls/parameters";
+
 export const TRANSACTION_PLAN_STORAGE_VERSION = 1 as const;
-
-export type NumericUnit = "ether" | "gwei" | "wei";
-
-export interface SerializedNumericValue {
-    amount: string;
-    unit: NumericUnit;
-}
-
-export type SerializedParamValue = string | SerializedNumericValue | SerializedParamValue[];
 
 export interface PlanContext {
     account: string;
@@ -24,7 +17,7 @@ export type CallEditorMetadata =
     | {
         kind: "abi";
         functionFragment: string;
-        arguments: SerializedParamValue[];
+        arguments: ParamValue[];
     }
     | {
         kind: "raw";

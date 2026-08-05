@@ -1,18 +1,14 @@
 import { FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
-import { ethers } from "ethers";
+import { createNumericValue, NumericValue, serializeNumericValue, toWeiValue, ValueUnit } from "../calls/parameters";
+
+export {createNumericValue, serializeNumericValue, toWeiValue};
+export type {NumericValue, ValueUnit};
 
 export const VALUE_UNITS = [
     { label: "wei", value: "wei" },
     { label: "gwei", value: "gwei" },
     { label: "ETH", value: "ether" },
 ] as const;
-
-export type ValueUnit = (typeof VALUE_UNITS)[number]["value"];
-
-export interface NumericValue {
-    amount: string;
-    unit: ValueUnit;
-}
 
 interface TransactionValueInputProps {
     amount: string;
@@ -21,26 +17,6 @@ interface TransactionValueInputProps {
     onUnitChange: (unit: ValueUnit) => void;
     label?: string;
     helperText?: string;
-}
-
-export function createNumericValue(): NumericValue {
-    return { amount: "", unit: "wei" };
-}
-
-export function serializeNumericValue(value: NumericValue, emptyAsZero = false) {
-    const trimmed = value.amount.trim();
-    if (trimmed === "") {
-        return emptyAsZero ? ethers.parseUnits("0", value.unit) : ethers.parseUnits("", value.unit);
-    }
-    return ethers.parseUnits(trimmed, value.unit);
-}
-
-export function toWeiValue(amount: string, unit: ValueUnit) {
-    const trimmed = amount.trim();
-    if (trimmed === "") {
-        return ethers.parseUnits("0", unit);
-    }
-    return ethers.parseUnits(trimmed, unit);
 }
 
 export default function TransactionValueInput({

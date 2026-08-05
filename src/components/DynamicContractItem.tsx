@@ -1,39 +1,44 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
-import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
-import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
+import { buildParamValues, createEmptyParamValue, ParamValue, ValueUnit } from "../calls/parameters";
+import { prepareAbiCall } from "../calls/prepareCall";
+import { useTransactionPlan } from "../transaction-plan/context";
+import FunctionCallEditor from "./FunctionCallEditor";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
 }
 
-function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
+export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
     const [expanded, setExpanded] = useState(false);
     const [isResponseLoading, setIsResponseLoading] = useState(false);
+    const [isQueueing, setIsQueueing] = useState(false);
+    const [queued, setQueued] = useState(false);
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
     const [valueAmount, setValueAmount] = useState('');
-    const [valueUnit, setValueUnit] = useState<"ether" | "gwei" | "wei">("wei");
+    const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
+    const wallet = useWalletSession();
+    const transactionPlan = useTransactionPlan();
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const isPayable = frag.stateMutability === "payable";
-    const buttonLabel = isStateModifying ? "Send transaction" : "Run call";
 
     useEffect(() => {
         if(!expanded && isStateModifying){
             setResult(null);
             setIsResponseLoading(false);
+            setQueued(false);
         }
     }, [expanded, isStateModifying]);
 
@@ -42,12 +47,26 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             setIsResponseLoading(true);
             setResult(null);
             setError(null);
-            const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
             if (isStateModifying) {
-                const overrides = isPayable ? { value: toWeiValue(valueAmount, valueUnit) } : undefined;
-                const resp: ethers.ContractTransactionResponse = await contract.getFunction(frag)(...(overrides ? [...callArgs, overrides] : callArgs));
+                if (!wallet.account || !wallet.chainId || typeof contract.runner?.sendTransaction !== "function") {
+                    throw Object.assign(new Error("The connected wallet is not ready to send this transaction."), {code: "WALLET_DISCONNECTED"});
+                }
+                const prepared = prepareAbiCall({
+                    fragment: frag,
+                    target: await contract.getAddress(),
+                    account: wallet.account,
+                    chainId: wallet.chainId,
+                    argumentValues: args,
+                    valueAmount,
+                    valueUnit,
+                });
+                const resp: ethers.TransactionResponse = await contract.runner.sendTransaction({
+                    to: prepared.to,
+                    data: prepared.data,
+                    value: prepared.value,
+                });
                 setResult({kind: "transaction", status: "submitted", hash: resp.hash});
-                const receipt: ethers.ContractTransactionReceipt | null = await resp.wait(1, 60000);
+                const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
                 setResult(receipt ? {
                     kind: "transaction",
                     status: receipt.status === 1 ? "confirmed" : "failed",
@@ -56,6 +75,7 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                     gasUsed: receipt.gasUsed.toString(),
                 } : {kind: "transaction", status: "pending", hash: resp.hash});
             } else {
+                const callArgs = buildParamValues(frag.inputs, args);
                 const resp = await contract.getFunction(frag).staticCall(...callArgs);
                 setResult({kind: "function", outputs: frag.outputs, value: resp});
             }
@@ -68,7 +88,33 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
         } finally {
             setIsResponseLoading(false);
         }
-    }, [args, contract, frag, isPayable, isStateModifying, valueAmount, valueUnit]);
+    }, [args, contract, frag, isStateModifying, valueAmount, valueUnit, wallet.account, wallet.chainId]);
+
+    const addToQueue = useCallback(async () => {
+        try {
+            setIsQueueing(true);
+            setQueued(false);
+            setError(null);
+            if (!wallet.account || !wallet.chainId) {
+                throw Object.assign(new Error("Connect a wallet before adding calls to the plan."), {code: "WALLET_DISCONNECTED"});
+            }
+            const prepared = prepareAbiCall({
+                fragment: frag,
+                target: await contract.getAddress(),
+                account: wallet.account,
+                chainId: wallet.chainId,
+                argumentValues: args,
+                valueAmount,
+                valueUnit,
+            });
+            transactionPlan.dispatch({type: "ADD_CALL", call: prepared});
+            setQueued(true);
+        } catch (queueError) {
+            setError(normalizeError(queueError, "Could not add call"));
+        } finally {
+            setIsQueueing(false);
+        }
+    }, [args, contract, frag, transactionPlan, valueAmount, valueUnit, wallet.account, wallet.chainId]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -83,36 +129,51 @@ function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                 <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
                     <Stack spacing={1.5}>
-                        {frag.inputs.map((input, index) => (
-                            <ParamInput
-                                key={`${input.name || input.type}-${index}`}
-                                param={input}
-                                value={args[index] ?? createEmptyParamValue(input)}
-                                onChange={(value) => {
-                                    setArgs((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
-                                }}
-                                label={input.name || `Input ${index + 1}`}
-                            />
-                        ))}
-                        {isPayable && (
-                            <TransactionValueInput
-                                amount={valueAmount}
-                                unit={valueUnit}
-                                onAmountChange={setValueAmount}
-                                onUnitChange={setValueUnit}
-                                label="Transaction value"
-                            />
+                        <FunctionCallEditor
+                            fragment={frag}
+                            arguments={args}
+                            onArgumentsChange={setArgs}
+                            valueAmount={valueAmount}
+                            valueUnit={valueUnit}
+                            onValueAmountChange={setValueAmount}
+                            onValueUnitChange={setValueUnit}
+                        />
+                        {isStateModifying ? (
+                            <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                                <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    fullWidth
+                                    disabled={isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                                    onClick={addToQueue}
+                                    sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                                >
+                                    {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
+                                </Button>
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    fullWidth
+                                    disabled={isResponseLoading || isQueueing}
+                                    onClick={() => call()}
+                                    sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                                >
+                                    {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
+                                </Button>
+                            </Stack>
+                        ) : (
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                fullWidth
+                                disabled={isResponseLoading}
+                                onClick={() => call()}
+                                sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                            >
+                                {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Run call"}
+                            </Button>
                         )}
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            fullWidth
-                            disabled={isResponseLoading}
-                            onClick={() => call()}
-                            sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                        >
-                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : buttonLabel}
-                        </Button>
+                        {queued && <Alert severity="success">Added to transaction queue.</Alert>}
                     </Stack>
                 </Paper>
                 <CallResult result={result} />

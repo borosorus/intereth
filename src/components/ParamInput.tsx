@@ -2,9 +2,11 @@ import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from "@m
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { ethers } from "ethers";
-import TransactionValueInput, { createNumericValue, NumericValue, serializeNumericValue, toWeiValue } from "./TransactionValueInput";
+import TransactionValueInput from "./TransactionValueInput";
+import { createEmptyParamValue, createNumericValue, isNumericValue, NumericValue, ParamValue, toWeiValue } from "../calls/parameters";
 
-export type ParamValue = string | NumericValue | ParamValue[];
+export {buildParamValue, createEmptyParamValue} from "../calls/parameters";
+export type {ParamValue} from "../calls/parameters";
 
 interface ParamInputProps {
     param: ethers.ParamType;
@@ -12,44 +14,6 @@ interface ParamInputProps {
     onChange: (value: ParamValue) => void;
     depth?: number;
     label?: string;
-}
-
-export function createEmptyParamValue(param: ethers.ParamType): ParamValue {
-    if (param.baseType === "tuple") {
-        return (param.components ?? []).map((component) => createEmptyParamValue(component));
-    }
-
-    if (param.baseType === "array") {
-        const child = param.arrayChildren;
-        const initialLength = param.arrayLength && param.arrayLength > 0 ? param.arrayLength : 1;
-        return Array.from({length: initialLength}, () => createEmptyParamValue(child as ethers.ParamType));
-    }
-
-    if (/^uint\d*$/.test(param.type)) {
-        return createNumericValue();
-    }
-
-    return "";
-}
-
-export function buildParamValue(param: ethers.ParamType, value: ParamValue): unknown {
-    if (/^uint\d*$/.test(param.type)) {
-        const numericValue = isNumericValue(value) ? value : createNumericValue();
-        return serializeNumericValue(numericValue, false);
-    }
-
-    if (param.baseType === "tuple") {
-        const children = Array.isArray(value) ? value : [];
-        return (param.components ?? []).map((component, index) => buildParamValue(component, children[index] ?? createEmptyParamValue(component)));
-    }
-
-    if (param.baseType === "array") {
-        const child = param.arrayChildren as ethers.ParamType;
-        const children = Array.isArray(value) ? value : [];
-        return children.map((childValue) => buildParamValue(child, childValue ?? createEmptyParamValue(child)));
-    }
-
-    return typeof value === "string" ? value : "";
 }
 
 function formatFieldLabel(param: ethers.ParamType, fallback: string) {
@@ -62,10 +26,6 @@ function formatFieldLabel(param: ethers.ParamType, fallback: string) {
 
 function isCompositeValue(value: ParamValue): value is ParamValue[] {
     return Array.isArray(value);
-}
-
-function isNumericValue(value: ParamValue): value is NumericValue {
-    return typeof value === "object" && value !== null && !Array.isArray(value) && "amount" in value && "unit" in value;
 }
 
 function getUintPreview(value: NumericValue, paramType: string) {
