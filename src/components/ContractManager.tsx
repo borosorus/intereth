@@ -22,7 +22,6 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DynamicContract } from "../App";
@@ -30,6 +29,7 @@ import { chains } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import ErrorDialog from "./ErrorDialog";
 import { NormalizedError, normalizeError } from "../callUtils";
+import { useWalletSession } from "../wallet/WalletSessionContext";
 
 enum CustomRpcState {
     disabled,
@@ -124,31 +124,17 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [customRpcChainId, setCustomRpcChainId] = useState('');
     const [predefinedRpcState, setPredefinedRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
     const [useBrowserWallet, setUseBrowserWallet] = useState(false);
-    const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
     const [managerError, setManagerError] = useState<NormalizedError | null>(null);
     const [isAddingInstance, setIsAddingInstance] = useState(false);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
-    const [{wallet}, connect] = useConnectWallet();
+    const {signer, status: walletStatus, connectWallet, error: walletError, clearError: clearWalletError} = useWalletSession();
 
     useEffect(() => {
-        if (wallet?.provider) {
-            (new ethers.BrowserProvider(wallet.provider)).getSigner()
-                .then((nextSigner) => setSigner(nextSigner))
-                .catch((error) => {
-                    setSigner(null);
-                    setManagerError(normalizeError(error, "Wallet connection failed"));
-                });
-        } else {
-            setSigner(null);
-        }
-    }, [wallet]);
-
-    useEffect(() => {
-        if (!signer && useBrowserWallet) {
+        if (walletStatus === "disconnected" && useBrowserWallet) {
             setUseBrowserWallet(false);
         }
-    }, [signer, useBrowserWallet]);
+    }, [useBrowserWallet, walletStatus]);
 
     useEffect(() => {
         if (providerIndex === -1 || useBrowserWallet) {
@@ -293,10 +279,8 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 return;
             }
 
-            const walletState = await connect();
-            if (walletState[0]) {
-                const nextSigner = await (new ethers.BrowserProvider(walletState[0].provider)).getSigner();
-                setSigner(nextSigner);
+            const nextSigner = await connectWallet();
+            if (nextSigner) {
                 setUseBrowserWallet(true);
             }
         } catch (error) {
@@ -602,7 +586,10 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     </Box>
                 </>
             )}
-            <ErrorDialog error={managerError} onClose={() => setManagerError(null)} />
+            <ErrorDialog error={managerError ?? walletError} onClose={() => {
+                setManagerError(null);
+                clearWalletError();
+            }} />
         </Stack>
     );
 }

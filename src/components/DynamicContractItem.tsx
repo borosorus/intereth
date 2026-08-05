@@ -4,13 +4,13 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
 import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "./ParamInput";
-import { useConnectWallet } from "@web3-onboard/react";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import TransactionValueInput, { toWeiValue } from "./TransactionValueInput";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
+import { useWalletSession } from "../wallet/WalletSessionContext";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -128,25 +128,10 @@ interface DynamicContractItemProps {
 }
 
 export default function DynamicContractItem({contract, del}: DynamicContractItemProps){
-    const [{wallet}] = useConnectWallet();
+    const {signer, chainId: walletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
     const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
-    const [chainId, setChainId] = useState<string>('');
-    const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
-
-    useEffect(() => {
-        if(wallet?.provider){
-            (new ethers.BrowserProvider(wallet.provider)).getSigner()
-                .then((nextSigner) => setSigner(nextSigner))
-                .catch((error) => {
-                    setSigner(null);
-                    setMetadataError(normalizeError(error, "Wallet connection failed"));
-                });
-        }else {
-            setSigner(null);
-        }
-     }, [wallet]);
 
     useEffect(() => {
         contract.getAddress()
@@ -156,19 +141,6 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                 setMetadataError(normalizeError(error, "Contract details unavailable"));
             });
     }, [contract]);
-
-    useEffect(() => {
-        if(signer) {
-            signer.provider?.getNetwork()
-                .then((network) => setChainId(network.chainId.toString()))
-                .catch((error) => {
-                    setChainId('');
-                    setMetadataError(normalizeError(error, "Network details unavailable"));
-                });
-        } else {
-            setChainId('');
-        }
-    }, [signer]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -184,7 +156,7 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                         <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
                     </Grid>
                     <Grid item xs={10} md={2}>
-                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {chainId}</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {walletChainId ?? ''}</Typography>
                     </Grid>
                     <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
                         <IconButton
@@ -214,6 +186,9 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
             )}
             <RawCall contract={contract}/>
             </AccordionDetails>
-            <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
+            <ErrorDialog error={metadataError ?? walletError} onClose={() => {
+                setMetadataError(null);
+                clearWalletError();
+            }} />
       </Accordion>);
 }

@@ -7,6 +7,8 @@ import { web3Onboard } from './onboard';
 import App from './App';
 import { ThemeProvider, createTheme, responsiveFontSizes, GlobalStyles } from '@mui/material';
 import { blueGrey, deepOrange } from '@mui/material/colors';
+import { WalletSessionProvider } from './wallet/WalletSessionContext';
+import { TransactionPlanProvider } from './transaction-plan/context';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -51,8 +53,12 @@ root.render(
         }}
       />
       <Web3OnboardProvider web3Onboard={web3Onboard}>
-        <Bar/>
-        <App/>
+        <WalletSessionProvider>
+          <TransactionPlanProvider>
+            <Bar/>
+            <App/>
+          </TransactionPlanProvider>
+        </WalletSessionProvider>
       </Web3OnboardProvider>
     </ThemeProvider>
   </React.StrictMode>
