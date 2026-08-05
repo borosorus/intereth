@@ -29,6 +29,10 @@ function callMatchesPlan(state: TransactionPlanState, call: QueuedCall) {
     return !context || (context.chainId === call.chainId && context.account.toLowerCase() === call.from.toLowerCase());
 }
 
+function hasCallId(state: TransactionPlanState, callId: string) {
+    return state.plan.calls.some((call) => call.id === callId);
+}
+
 function canMutate(state: TransactionPlanState) {
     return state.execution.status === "idle" && !state.plan.requiresResume;
 }
@@ -48,7 +52,7 @@ function establishPlan(state: TransactionPlanState, call: QueuedCall): Transacti
 export function transactionPlanReducer(state: TransactionPlanState, action: TransactionPlanAction): TransactionPlanState {
     switch (action.type) {
         case "ADD_CALL":
-            if (!canMutate(state) || !callMatchesPlan(state, action.call)) {
+            if (!canMutate(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             return {...state, plan: establishPlan(state, action.call)};
@@ -80,7 +84,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "DUPLICATE_CALL": {
-            if (!canMutate(state) || !callMatchesPlan(state, action.call)) {
+            if (!canMutate(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             const index = state.plan.calls.findIndex((call) => call.id === action.afterCallId);

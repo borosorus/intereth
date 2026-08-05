@@ -122,7 +122,8 @@ function parseLog(value: unknown): BatchLog | null {
         || !ethers.isAddress(value.address)
         || !isHexData(value.data)
         || !Array.isArray(value.topics)
-        || !value.topics.every(isHexData)) {
+        || value.topics.length > 4
+        || !value.topics.every(isHash)) {
         return null;
     }
     return {
@@ -254,6 +255,16 @@ export class Eip5792BatchExecutor implements AtomicBatchExecutor {
                 return invalidStatus(validBatchId, "The wallet returned malformed batch receipts.", walletStatus);
             }
             receipts = parsedReceipts as BatchReceipt[];
+        }
+
+        if (walletStatus === 200 && receipts?.some((receipt) => receipt.status !== "0x1")) {
+            return invalidStatus(validBatchId, "The wallet reported a confirmed batch with a reverted receipt.", walletStatus);
+        }
+        if (walletStatus === 500 && receipts?.some((receipt) => receipt.status !== "0x0")) {
+            return invalidStatus(validBatchId, "The wallet reported a completely reverted batch with a successful receipt.", walletStatus);
+        }
+        if ((walletStatus === 100 || walletStatus === 400) && receipts?.length) {
+            return invalidStatus(validBatchId, "The wallet returned on-chain receipts for a batch that was not included.", walletStatus);
         }
 
         const statusByCode: Partial<Record<number, BatchExecutionState["status"]>> = {

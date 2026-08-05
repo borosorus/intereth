@@ -79,6 +79,12 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
     } else if (code === "-32601") {
         title = "Wallet method unsupported";
         displayMessage = "This wallet does not support the requested batching method.";
+    } else if (code === "-32602") {
+        title = "Invalid wallet request";
+        displayMessage = message || "The wallet rejected malformed batch parameters.";
+    } else if (code === "4100") {
+        title = "Wallet authorization required";
+        displayMessage = "Reconnect or unlock the plan account before using wallet batching.";
     } else if (code === "5750") {
         title = "Smart account upgrade rejected";
         displayMessage = "The wallet could not or would not upgrade this account for atomic execution. No batch was sent.";
@@ -88,6 +94,12 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
     } else if (code === "5710") {
         title = "Network not supported";
         displayMessage = "The wallet does not support this batch on the plan network.";
+    } else if (code === "5720") {
+        title = "Duplicate batch identifier";
+        displayMessage = "The wallet reports that this batch identifier has already been used.";
+    } else if (code === "5730") {
+        title = "Batch not found";
+        displayMessage = "The wallet no longer recognizes this batch identifier. The plan was not resubmitted.";
     } else if (code === "5740") {
         title = "Batch is too large";
         displayMessage = "The wallet cannot accept this many calls in one batch.";

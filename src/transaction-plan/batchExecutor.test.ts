@@ -145,12 +145,54 @@ describe("Eip5792BatchExecutor status", () => {
         });
     });
 
+    it("does not accept a reverted receipt as a confirmed atomic batch", async () => {
+        const receipt = {
+            logs: [],
+            status: "0x0",
+            blockHash: BLOCK_HASH,
+            blockNumber: "0xa",
+            gasUsed: "0x5208",
+            transactionHash: TX_HASH,
+        };
+        const {executor} = executorWith(statusResponse(200, {receipts: [receipt]}));
+        await expect(executor.getStatus(BATCH_ID, "1")).resolves.toMatchObject({
+            status: "invalid",
+            error: {code: "INVALID_BATCH_RESPONSE"},
+        });
+    });
+
+    it("rejects receipts that contradict pending, off-chain failure, or complete-revert status", async () => {
+        const successfulReceipt = {
+            logs: [],
+            status: "0x1",
+            blockHash: BLOCK_HASH,
+            blockNumber: "0xa",
+            gasUsed: "0x5208",
+            transactionHash: TX_HASH,
+        };
+        for (const status of [100, 400, 500]) {
+            const {executor} = executorWith(statusResponse(status, {receipts: [successfulReceipt]}));
+            await expect(executor.getStatus(BATCH_ID, "1")).resolves.toMatchObject({
+                status: "invalid",
+                error: {code: "INVALID_BATCH_RESPONSE"},
+            });
+        }
+    });
+
     it.each([
         ["non-atomic", statusResponse(200, {atomic: false})],
         ["wrong ID", statusResponse(200, {id: `0x${"44".repeat(32)}`})],
         ["wrong chain", statusResponse(200, {chainId: "0xa"})],
         ["unknown status", statusResponse(299)],
         ["malformed receipts", statusResponse(200, {receipts: [{status: "0x1"}]})],
+        ["short log topic", statusResponse(200, {receipts: [{
+            logs: [{address: TARGET, data: "0x", topics: ["0x12"]}],
+            status: "0x1",
+            blockHash: BLOCK_HASH,
+            blockNumber: "0xa",
+            gasUsed: "0x5208",
+            transactionHash: TX_HASH,
+        }]})],
     ])("marks %s status responses invalid", async (_name, response) => {
         const {executor} = executorWith(response);
         await expect(executor.getStatus(BATCH_ID, "1")).resolves.toMatchObject({

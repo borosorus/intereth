@@ -49,6 +49,19 @@ describe("transactionPlanReducer", () => {
         expect(otherChain).toBe(state);
     });
 
+    it("rejects duplicate call identifiers", () => {
+        const state = addCalls(call());
+        expect(transactionPlanReducer(state, {
+            type: "ADD_CALL",
+            call: call({data: "0xabcd"}),
+        })).toBe(state);
+        expect(transactionPlanReducer(state, {
+            type: "DUPLICATE_CALL",
+            afterCallId: "call-1",
+            call: call(),
+        })).toBe(state);
+    });
+
     it("duplicates, moves, removes, and resets the context when empty", () => {
         const first = call();
         const second = call({id: "call-2", data: "0xabcd"});

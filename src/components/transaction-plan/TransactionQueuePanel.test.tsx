@@ -155,8 +155,27 @@ describe("TransactionQueuePanel", () => {
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
         expect(screen.getByText(/plan belongs to chain 1/)).toBeInTheDocument();
         expect(screen.getAllByRole("button", {name: /Edit/})[0]).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Check wallet batching"})).toBeDisabled();
         fireEvent.click(screen.getByRole("button", {name: "Switch network"}));
         await waitFor(() => expect(switchChain).toHaveBeenCalledWith("1"));
+    });
+
+    it("disables status RPC controls when a submitted batch has a session mismatch", () => {
+        const send = jest.fn();
+        mockRpcWallet(send, "10");
+        mockedTransactionPlan.mockReturnValue({
+            state: stateWithExecution({status: "pending", batchId: "0x1234"}),
+            dispatch: jest.fn(),
+            sessionStatus: "chain_mismatch",
+            canEdit: false,
+            resumePlan: jest.fn(),
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        expect(screen.getByRole("button", {name: "Refresh status"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "View in wallet"})).toBeDisabled();
+        expect(send).not.toHaveBeenCalled();
     });
 
     it("shows the original account and a reconnect action on account mismatch", async () => {

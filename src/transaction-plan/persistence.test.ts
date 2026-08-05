@@ -57,6 +57,36 @@ describe("transaction plan persistence", () => {
             ...valid,
             plan: {...valid.plan, context: {...valid.plan.context!, chainId: "10"}},
         }))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({
+            ...valid,
+            plan: {...valid.plan, calls: [queuedCall, queuedCall]},
+        }))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({
+            ...valid,
+            plan: {
+                ...valid.plan,
+                calls: [{...queuedCall, display: {...queuedCall.display, arguments: {length: 1}}}],
+            },
+        }))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({
+            ...valid,
+            plan: {
+                ...valid.plan,
+                calls: [{...queuedCall, display: {...queuedCall.display, kind: "abi"}, editor: {kind: "abi", functionFragment: "not a function", arguments: []}}],
+            },
+        }))).toBeNull();
+    });
+
+    it("rejects inconsistent persisted execution records", () => {
+        const valid = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});
+        const candidate = (execution: unknown) => JSON.stringify({...valid, execution});
+
+        expect(parseTransactionPlan(candidate({status: "idle", batchId: "0x1234"}))).toBeNull();
+        expect(parseTransactionPlan(candidate({status: "confirmed", batchId: "0x1234", walletStatus: 500, atomic: true}))).toBeNull();
+        expect(parseTransactionPlan(candidate({status: "confirmed", batchId: "0x1234", walletStatus: 200, atomic: false}))).toBeNull();
+        expect(parseTransactionPlan(candidate({status: "pending", batchId: "0x1234", walletStatus: 200, atomic: true}))).toBeNull();
+        expect(parseTransactionPlan(candidate({status: "pending", batchId: "0x1234", walletStatus: 100, atomic: true}))).not.toBeNull();
+        expect(parseTransactionPlan(candidate({status: "confirmed", batchId: "0x1234", walletStatus: 200, atomic: true}))).not.toBeNull();
     });
 
     it("migrates a saved v1 draft without losing calls", () => {

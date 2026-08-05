@@ -33,6 +33,7 @@ type CapabilityState = AtomicCapabilityProbe | {status: "unchecked" | "checking"
 export interface AtomicBatchController {
     capability: CapabilityState;
     execution: BatchExecutionState;
+    walletReady: boolean;
     isRefreshing: boolean;
     error: NormalizedError | null;
     checkCapability: () => Promise<void>;
@@ -156,6 +157,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
     return {
         capability,
         execution: state.execution,
+        walletReady: Boolean(executor && sessionStatus === "ready"),
         isRefreshing,
         error,
         checkCapability,
@@ -196,7 +198,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
             <Button
                 variant="outlined"
                 fullWidth
-                disabled={capability.status === "checking"}
+                disabled={!controller.walletReady || capability.status === "checking"}
                 onClick={() => void controller.checkCapability()}
             >
                 {capability.status === "checking" ? <CircularProgress size={20} /> : "Check wallet batching"}
@@ -208,7 +210,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
         return (
             <Stack spacing={1}>
                 <Alert severity="success">This wallet supports atomic transaction batches on the plan network.</Alert>
-                <Button variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
+                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
                     Send atomic batch
                 </Button>
             </Stack>
@@ -221,7 +223,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
                 <Alert severity="warning">
                     The wallet can enable atomic execution, potentially by installing a persistent EIP-7702 delegation on this account. Review the wallet request carefully.
                 </Alert>
-                <Button variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
+                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
                     Enable smart account and send
                 </Button>
             </Stack>
@@ -237,7 +239,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
                         ? "Atomic batching is unavailable in this wallet. Use Send immediately from individual function or raw-call forms."
                         : ("error" in capability ? capability.error?.message : undefined) ?? "The wallet capability response could not be read."}
             </Alert>
-            <Button variant="outlined" fullWidth startIcon={<RefreshIcon />} onClick={() => void controller.checkCapability()}>
+            <Button disabled={!controller.walletReady} variant="outlined" fullWidth startIcon={<RefreshIcon />} onClick={() => void controller.checkCapability()}>
                 Check again
             </Button>
         </Stack>
@@ -321,12 +323,12 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
                     variant="outlined"
                     fullWidth
                     startIcon={controller.isRefreshing ? <CircularProgress size={18} /> : <RefreshIcon />}
-                    disabled={controller.isRefreshing}
+                    disabled={!controller.walletReady || controller.isRefreshing}
                     onClick={() => void controller.refresh()}
                 >
                     Refresh status
                 </Button>
-                <Button variant="outlined" fullWidth startIcon={<OpenInNewIcon />} onClick={() => void controller.showInWallet()}>
+                <Button disabled={!controller.walletReady} variant="outlined" fullWidth startIcon={<OpenInNewIcon />} onClick={() => void controller.showInWallet()}>
                     View in wallet
                 </Button>
             </Stack>
