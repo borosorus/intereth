@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ethers } from "ethers";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
@@ -53,6 +53,18 @@ function mockWallet(chainId = "1") {
         connectWallet: jest.fn(),
         switchChain: jest.fn(),
     });
+}
+
+function mockRpcWallet(send: jest.Mock, chainId = "1") {
+    mockWallet(chainId);
+    mockedWalletSession.mockReturnValue({
+        ...mockedWalletSession(),
+        provider: {send} as unknown as ethers.BrowserProvider,
+    });
+}
+
+function stateWithExecution(execution: ReturnType<typeof queuedState>["execution"]) {
+    return {...queuedState(), execution};
 }
 
 describe("TransactionQueuePanel", () => {
@@ -168,5 +180,131 @@ describe("TransactionQueuePanel", () => {
         expect(screen.getByText(/plan belongs to 0x000000…000001/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Reconnect account"}));
         await waitFor(() => expect(connectWallet).toHaveBeenCalled());
+    });
+
+    it("checks atomic capability lazily and submits the queue with wallet_sendCalls", async () => {
+        const dispatch = jest.fn();
+        const send = jest.fn(async (method: string) => {
+            if (method === "wallet_getCapabilities") {
+                return {"0x1": {atomic: {status: "supported"}}};
+            }
+            if (method === "wallet_sendCalls") {
+                return {id: "0x1234"};
+            }
+            throw new Error(`Unexpected method ${method}`);
+        });
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({
+            state: queuedState(),
+            dispatch,
+            sessionStatus: "ready",
+            canEdit: true,
+            resumePlan: jest.fn(),
+        });
+
+        render(<TransactionQueuePanel />);
+        expect(send).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        expect(await screen.findByText(/supports atomic transaction batches/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Send atomic batch"}));
+        await waitFor(() => expect(send).toHaveBeenCalledWith("wallet_sendCalls", [expect.objectContaining({
+            version: "2.0.0",
+            chainId: "0x1",
+            atomicRequired: true,
+            calls: expect.arrayContaining([expect.objectContaining({to: ethers.getAddress(TARGET)})]),
+        })]));
+        expect(dispatch).toHaveBeenCalledWith({type: "START_BATCH_SUBMISSION"});
+        expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "BATCH_SUBMITTED", batchId: "0x1234"}));
+    });
+
+    it("warns before a wallet-managed smart-account upgrade", async () => {
+        const send = jest.fn().mockResolvedValue({"0x1": {atomic: {status: "ready"}}});
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({
+            state: queuedState(),
+            dispatch: jest.fn(),
+            sessionStatus: "ready",
+            canEdit: true,
+            resumePlan: jest.fn(),
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        expect(await screen.findByText(/persistent EIP-7702 delegation/)).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Enable smart account and send"})).toBeInTheDocument();
+    });
+
+    it("keeps manual sending as the fallback when wallet batching is unavailable", async () => {
+        const send = jest.fn().mockRejectedValue({code: -32601, message: "method not found"});
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({
+            state: queuedState(),
+            dispatch: jest.fn(),
+            sessionStatus: "ready",
+            canEdit: true,
+            resumePlan: jest.fn(),
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        expect(await screen.findByText(/Atomic batching is unavailable/)).toBeInTheDocument();
+        expect(screen.getByText(/Use Send immediately from individual function or raw-call forms/)).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: /send atomic batch/i})).not.toBeInTheDocument();
+    });
+
+    it("polls a restored pending batch while the review drawer is closed", async () => {
+        jest.useFakeTimers();
+        try {
+            const dispatch = jest.fn();
+            const send = jest.fn().mockResolvedValue({
+                version: "2.0.0",
+                id: "0x1234",
+                chainId: "0x1",
+                status: 200,
+                atomic: true,
+                receipts: [],
+            });
+            mockRpcWallet(send);
+            mockedTransactionPlan.mockReturnValue({
+                state: stateWithExecution({status: "pending", batchId: "0x1234", submittedAt: 10}),
+                dispatch,
+                sessionStatus: "ready",
+                canEdit: false,
+                resumePlan: jest.fn(),
+            });
+
+            render(<TransactionQueuePanel />);
+            await act(async () => {
+                jest.advanceTimersByTime(5000);
+                await Promise.resolve();
+            });
+            expect(send).toHaveBeenCalledWith("wallet_getCallsStatus", ["0x1234"]);
+            expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+                type: "BATCH_STATUS_UPDATED",
+                execution: expect.objectContaining({status: "confirmed", atomic: true}),
+            }));
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it("requires confirmation before turning a failed batch back into a draft", () => {
+        mockWallet();
+        const dispatch = jest.fn();
+        mockedTransactionPlan.mockReturnValue({
+            state: stateWithExecution({status: "reverted", batchId: "0x1234", walletStatus: 500, atomic: true}),
+            dispatch,
+            sessionStatus: "ready",
+            canEdit: false,
+            resumePlan: jest.fn(),
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        fireEvent.click(screen.getByRole("button", {name: "Create retry draft"}));
+        const dialog = screen.getByRole("dialog", {name: "Create a retry draft?"});
+        fireEvent.click(within(dialog).getByRole("button", {name: "Create draft"}));
+        expect(dispatch).toHaveBeenCalledWith({type: "RESET_FAILED_BATCH"});
     });
 });

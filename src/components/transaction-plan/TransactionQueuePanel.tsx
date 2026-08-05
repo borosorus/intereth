@@ -33,6 +33,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
+import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExecution";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -357,6 +358,7 @@ export default function TransactionQueuePanel() {
     const {state, dispatch} = useTransactionPlan();
     const [open, setOpen] = useState(false);
     const [confirmClear, setConfirmClear] = useState(false);
+    const batchController = useAtomicBatchExecution(open);
     const calls = state.plan.calls;
     const context = state.plan.context;
 
@@ -405,6 +407,7 @@ export default function TransactionQueuePanel() {
                             {calls.map((call, index) => (
                                 <QueuedCallItem key={call.id} call={call} index={index} total={calls.length} />
                             ))}
+                            <AtomicBatchExecution controller={batchController} />
                         </Stack>
                     </Box>
                     <Divider />

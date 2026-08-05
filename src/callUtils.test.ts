@@ -34,6 +34,14 @@ describe("error normalization", () => {
         ["INVALID_ARGUMENT", "Invalid input"],
         ["NO_CONTRACT_CODE", "No contract on this network"],
         ["BAD_DATA", "Result could not be decoded"],
+        [4001, "Request rejected"],
+        [-32601, "Wallet method unsupported"],
+        [5750, "Smart account upgrade rejected"],
+        [5760, "Atomic batching unavailable"],
+        [5710, "Network not supported"],
+        [5740, "Batch is too large"],
+        ["PLAN_CONTEXT_MISMATCH", "Session changed"],
+        ["INVALID_BATCH_RESPONSE", "Invalid wallet response"],
     ])("maps %s to a useful title", (code, title) => {
         expect(normalizeError({code, shortMessage: "technical message"}).title).toBe(title);
     });
@@ -46,5 +54,14 @@ describe("error normalization", () => {
     it("supports plain and unknown errors", () => {
         expect(normalizeError(new Error("plain failure")).message).toBe("plain failure");
         expect(normalizeError(42).message).toBe("An unexpected error occurred.");
+    });
+
+    it("uses nested EIP-1193 errors wrapped by ethers", () => {
+        const result = normalizeError({
+            code: "UNKNOWN_ERROR",
+            info: {error: {code: 5760, message: "atomic execution unavailable"}},
+        });
+        expect(result.code).toBe("5760");
+        expect(result.title).toBe("Atomic batching unavailable");
     });
 });

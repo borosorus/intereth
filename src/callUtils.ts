@@ -25,6 +25,7 @@ type ErrorLike = {
     reason?: unknown;
     stack?: unknown;
     info?: unknown;
+    error?: unknown;
 };
 
 function asErrorLike(error: unknown): ErrorLike {
@@ -53,17 +54,49 @@ function safeStringify(value: unknown) {
 
 export function normalizeError(error: unknown, fallbackTitle = "Call failed"): NormalizedError {
     const candidate = asErrorLike(error);
-    const code = typeof candidate.code === "string" ? candidate.code : undefined;
-    const reason = typeof candidate.reason === "string" ? candidate.reason : undefined;
-    const shortMessage = typeof candidate.shortMessage === "string" ? candidate.shortMessage : undefined;
-    const message = typeof candidate.message === "string" ? candidate.message : undefined;
+    const info = asErrorLike(candidate.info);
+    const nested = Object.keys(asErrorLike(candidate.error)).length > 0
+        ? asErrorLike(candidate.error)
+        : asErrorLike(info.error);
+    const rawCode = nested.code ?? candidate.code;
+    const code = typeof rawCode === "string" || typeof rawCode === "number" ? String(rawCode) : undefined;
+    const reason = typeof candidate.reason === "string"
+        ? candidate.reason
+        : typeof nested.reason === "string" ? nested.reason : undefined;
+    const shortMessage = typeof candidate.shortMessage === "string"
+        ? candidate.shortMessage
+        : typeof nested.shortMessage === "string" ? nested.shortMessage : undefined;
+    const message = typeof nested.message === "string"
+        ? nested.message
+        : typeof candidate.message === "string" ? candidate.message : undefined;
 
     let title = fallbackTitle;
     let displayMessage = reason || shortMessage || message || (typeof error === "string" ? error : "An unexpected error occurred.");
 
-    if (code === "ACTION_REJECTED") {
+    if (code === "ACTION_REJECTED" || code === "4001") {
         title = "Request rejected";
         displayMessage = "The wallet request was rejected. No transaction was sent.";
+    } else if (code === "-32601") {
+        title = "Wallet method unsupported";
+        displayMessage = "This wallet does not support the requested batching method.";
+    } else if (code === "5750") {
+        title = "Smart account upgrade rejected";
+        displayMessage = "The wallet could not or would not upgrade this account for atomic execution. No batch was sent.";
+    } else if (code === "5760" || code === "5700") {
+        title = "Atomic batching unavailable";
+        displayMessage = "This wallet cannot execute the requested calls as an atomic batch.";
+    } else if (code === "5710") {
+        title = "Network not supported";
+        displayMessage = "The wallet does not support this batch on the plan network.";
+    } else if (code === "5740") {
+        title = "Batch is too large";
+        displayMessage = "The wallet cannot accept this many calls in one batch.";
+    } else if (code === "PLAN_CONTEXT_MISMATCH") {
+        title = "Session changed";
+        displayMessage = "The connected account or network no longer matches this transaction plan.";
+    } else if (code === "INVALID_BATCH_RESPONSE") {
+        title = "Invalid wallet response";
+        displayMessage = message || "The wallet returned invalid batch data.";
     } else if (code === "TIMEOUT") {
         title = "Confirmation timed out";
         displayMessage = "The transaction was submitted, but confirmation was not received before the timeout.";
