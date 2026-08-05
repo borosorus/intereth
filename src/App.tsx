@@ -5,6 +5,7 @@ import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
 import { ProviderDetails } from './presets';
+import TransactionQueuePanel from './components/transaction-plan/TransactionQueuePanel';
 
 export interface DynamicContract {
   id: string;
@@ -60,6 +61,7 @@ export default function App(){
             )}
           </Stack>
         </Container>
+        <TransactionQueuePanel />
       </Box>
     );
 }
