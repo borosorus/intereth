@@ -70,25 +70,71 @@ describe("transactionPlanReducer", () => {
         expect(state.plan.context).toBeNull();
     });
 
-    it("locks mutations and clearing during execution", () => {
+    it("locks mutations and clearing while a batch is in flight", () => {
         const draft = addCalls(call());
-        const executing: TransactionPlanState = {
+        const submitting: TransactionPlanState = {
             ...draft,
-            execution: {status: "executing", resultsByCallId: {}},
+            execution: {status: "submitting"},
         };
 
-        expect(transactionPlanReducer(executing, {type: "REMOVE_CALL", callId: "call-1"})).toBe(executing);
-        expect(transactionPlanReducer(executing, {type: "CLEAR_PLAN"})).toBe(executing);
+        expect(transactionPlanReducer(submitting, {type: "REMOVE_CALL", callId: "call-1"})).toBe(submitting);
+        expect(transactionPlanReducer(submitting, {type: "CLEAR_PLAN"})).toBe(submitting);
+
+        const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};
+        expect(transactionPlanReducer(pending, {type: "CLEAR_PLAN"})).toBe(pending);
     });
 
-    it("restores non-empty plans as read-only and halts interrupted execution", () => {
-        const saved: TransactionPlanState = {
-            ...addCalls(call()),
-            execution: {status: "executing", resultsByCallId: {}},
-        };
-        const restored = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: saved});
+    it("tracks submission, batch status, and retryable terminal failures", () => {
+        const draft = addCalls(call());
+        const submitting = transactionPlanReducer(draft, {type: "START_BATCH_SUBMISSION"});
+        expect(submitting.execution.status).toBe("submitting");
 
-        expect(restored.plan.requiresResume).toBe(true);
-        expect(restored.execution.status).toBe("halted");
+        const pending = transactionPlanReducer(submitting, {type: "BATCH_SUBMITTED", batchId: "0x1234", submittedAt: 10});
+        expect(pending.execution).toMatchObject({status: "pending", batchId: "0x1234", submittedAt: 10});
+        expect(transactionPlanReducer(pending, {type: "REMOVE_CALL", callId: "call-1"})).toBe(pending);
+
+        const reverted = transactionPlanReducer(pending, {
+            type: "BATCH_STATUS_UPDATED",
+            execution: {status: "reverted", batchId: "0x1234", walletStatus: 500, atomic: true},
+            updatedAt: 20,
+        });
+        expect(reverted.execution).toMatchObject({status: "reverted", submittedAt: 10, updatedAt: 20});
+        expect(transactionPlanReducer(reverted, {
+            type: "BATCH_STATUS_UPDATED",
+            execution: {status: "pending", batchId: "0x1234"},
+            updatedAt: 30,
+        })).toBe(reverted);
+        expect(transactionPlanReducer(reverted, {type: "RESET_FAILED_BATCH"}).execution).toEqual({status: "idle"});
+
+        const partial: TransactionPlanState = {...pending, execution: {status: "partially_reverted", batchId: "0x1234"}};
+        expect(transactionPlanReducer(partial, {type: "RESET_FAILED_BATCH"})).toBe(partial);
+    });
+
+    it("keeps a draft editable when submission fails before returning an ID", () => {
+        const submitting = transactionPlanReducer(addCalls(call()), {type: "START_BATCH_SUBMISSION"});
+        const failed = transactionPlanReducer(submitting, {
+            type: "BATCH_SUBMISSION_FAILED",
+            error: {code: 4001, message: "Rejected"},
+        });
+
+        expect(failed.execution).toEqual({status: "idle", error: {code: 4001, message: "Rejected"}});
+        expect(transactionPlanReducer(failed, {type: "REMOVE_CALL", callId: "call-1"}).plan.calls).toEqual([]);
+    });
+
+    it("restores drafts read-only, preserves submitted batches, and recovers interrupted submission", () => {
+        const draft = addCalls(call());
+        const restoredDraft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: draft});
+        expect(restoredDraft.plan.requiresResume).toBe(true);
+
+        const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};
+        const restoredPending = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: pending});
+        expect(restoredPending.plan.requiresResume).toBe(false);
+        expect(restoredPending.execution).toEqual(pending.execution);
+
+        const submitting: TransactionPlanState = {...draft, execution: {status: "submitting"}};
+        const interrupted = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: submitting});
+
+        expect(interrupted.plan.requiresResume).toBe(true);
+        expect(interrupted.execution).toMatchObject({status: "idle", error: {code: "SUBMISSION_INTERRUPTED"}});
     });
 });

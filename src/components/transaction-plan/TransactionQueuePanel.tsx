@@ -413,7 +413,7 @@ export default function TransactionQueuePanel() {
                             color="error"
                             variant="outlined"
                             fullWidth
-                            disabled={state.execution.status === "executing"}
+                            disabled={state.execution.status === "submitting" || state.execution.status === "pending"}
                             onClick={() => setConfirmClear(true)}
                         >
                             Clear plan

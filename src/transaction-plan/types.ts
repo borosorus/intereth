@@ -1,6 +1,6 @@
 import { ParamValue } from "../calls/parameters";
 
-export const TRANSACTION_PLAN_STORAGE_VERSION = 1 as const;
+export const TRANSACTION_PLAN_STORAGE_VERSION = 2 as const;
 
 export interface PlanContext {
     account: string;
@@ -41,23 +41,46 @@ export interface QueuedCall {
     createdAt: number;
 }
 
-export type ExecutionCallStatus =
-    | "not_started"
-    | "awaiting_wallet"
-    | "submitted"
-    | "confirmed"
-    | "failed"
-    | "skipped";
-
-export interface ExecutionCallResult {
-    status: ExecutionCallStatus;
-    hash?: string;
-    blockNumber?: number;
-    gasUsed?: string;
-    error?: string;
+export interface BatchExecutionError {
+    code?: string | number;
+    message: string;
 }
 
-export type ExecutionStatus = "idle" | "executing" | "halted" | "complete";
+export interface BatchLog {
+    address: string;
+    data: string;
+    topics: string[];
+}
+
+export interface BatchReceipt {
+    logs: BatchLog[];
+    status: string;
+    blockHash: string;
+    blockNumber: string;
+    gasUsed: string;
+    transactionHash: string;
+}
+
+export type BatchExecutionStatus =
+    | "idle"
+    | "submitting"
+    | "pending"
+    | "confirmed"
+    | "offchain_failed"
+    | "reverted"
+    | "partially_reverted"
+    | "invalid";
+
+export interface BatchExecutionState {
+    status: BatchExecutionStatus;
+    batchId?: string;
+    walletStatus?: number;
+    atomic?: boolean;
+    receipts?: BatchReceipt[];
+    submittedAt?: number;
+    updatedAt?: number;
+    error?: BatchExecutionError;
+}
 
 export interface TransactionPlanState {
     version: typeof TRANSACTION_PLAN_STORAGE_VERSION;
@@ -66,10 +89,7 @@ export interface TransactionPlanState {
         calls: QueuedCall[];
         requiresResume: boolean;
     };
-    execution: {
-        status: ExecutionStatus;
-        resultsByCallId: Record<string, ExecutionCallResult>;
-    };
+    execution: BatchExecutionState;
 }
 
 export type TransactionPlanAction =
@@ -81,4 +101,8 @@ export type TransactionPlanAction =
     | {type: "CLEAR_PLAN"}
     | {type: "RESUME_PLAN"}
     | {type: "RESTORE_PLAN"; state: TransactionPlanState}
-    | {type: "SET_EXECUTION"; execution: TransactionPlanState["execution"]};
+    | {type: "START_BATCH_SUBMISSION"}
+    | {type: "BATCH_SUBMITTED"; batchId: string; submittedAt: number}
+    | {type: "BATCH_SUBMISSION_FAILED"; error: BatchExecutionError}
+    | {type: "BATCH_STATUS_UPDATED"; execution: BatchExecutionState; updatedAt: number}
+    | {type: "RESET_FAILED_BATCH"};

@@ -16,7 +16,6 @@ export function createEmptyTransactionPlanState(): TransactionPlanState {
         },
         execution: {
             status: "idle",
-            resultsByCallId: {},
         },
     };
 }
@@ -32,6 +31,10 @@ function callMatchesPlan(state: TransactionPlanState, call: QueuedCall) {
 
 function canMutate(state: TransactionPlanState) {
     return state.execution.status === "idle" && !state.plan.requiresResume;
+}
+
+function isBatchInFlight(state: TransactionPlanState) {
+    return state.execution.status === "submitting" || state.execution.status === "pending";
 }
 
 function establishPlan(state: TransactionPlanState, call: QueuedCall): TransactionPlanState["plan"] {
@@ -102,20 +105,64 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return {...state, plan: {...state.plan, calls}};
         }
         case "CLEAR_PLAN":
-            return state.execution.status === "executing" ? state : createEmptyTransactionPlanState();
+            return isBatchInFlight(state) ? state : createEmptyTransactionPlanState();
         case "RESUME_PLAN":
             return {...state, plan: {...state.plan, requiresResume: false}};
         case "RESTORE_PLAN":
+            if (action.state.execution.status === "submitting") {
+                return {
+                    ...action.state,
+                    plan: {...action.state.plan, requiresResume: action.state.plan.calls.length > 0},
+                    execution: {
+                        status: "idle",
+                        error: {code: "SUBMISSION_INTERRUPTED", message: "Batch submission was interrupted before a batch ID was saved."},
+                    },
+                };
+            }
             return {
                 ...action.state,
-                plan: {...action.state.plan, requiresResume: action.state.plan.calls.length > 0},
-                execution: {
-                    ...action.state.execution,
-                    status: action.state.execution.status === "executing" ? "halted" : action.state.execution.status,
+                plan: {
+                    ...action.state.plan,
+                    requiresResume: action.state.execution.status === "idle" && action.state.plan.calls.length > 0,
                 },
             };
-        case "SET_EXECUTION":
-            return {...state, execution: action.execution};
+        case "START_BATCH_SUBMISSION":
+            return canMutate(state) && state.plan.calls.length > 0
+                ? {...state, execution: {status: "submitting"}}
+                : state;
+        case "BATCH_SUBMITTED":
+            return state.execution.status === "submitting"
+                ? {
+                    ...state,
+                    execution: {
+                        status: "pending",
+                        batchId: action.batchId,
+                        submittedAt: action.submittedAt,
+                        updatedAt: action.submittedAt,
+                    },
+                }
+                : state;
+        case "BATCH_SUBMISSION_FAILED":
+            return state.execution.status === "submitting"
+                ? {...state, execution: {status: "idle", error: action.error}}
+                : state;
+        case "BATCH_STATUS_UPDATED":
+            return (state.execution.status === "pending" || state.execution.status === "invalid")
+                && state.execution.batchId
+                && action.execution.batchId === state.execution.batchId
+                ? {
+                    ...state,
+                    execution: {
+                        ...action.execution,
+                        submittedAt: state.execution.submittedAt,
+                        updatedAt: action.updatedAt,
+                    },
+                }
+                : state;
+        case "RESET_FAILED_BATCH":
+            return state.execution.status === "offchain_failed" || state.execution.status === "reverted"
+                ? {...state, execution: {status: "idle"}}
+                : state;
         default:
             return state;
     }
