@@ -1,6 +1,6 @@
 import { ParamValue } from "../calls/parameters";
 
-export const TRANSACTION_PLAN_STORAGE_VERSION = 2 as const;
+export const TRANSACTION_PLAN_STORAGE_VERSION = 3 as const;
 
 export interface PlanContext {
     account: string;
@@ -87,7 +87,6 @@ export interface TransactionPlanState {
     plan: {
         context: PlanContext | null;
         calls: QueuedCall[];
-        requiresResume: boolean;
     };
     execution: BatchExecutionState;
 }
@@ -99,7 +98,7 @@ export type TransactionPlanAction =
     | {type: "DUPLICATE_CALL"; call: QueuedCall; afterCallId: string}
     | {type: "MOVE_CALL"; callId: string; direction: "up" | "down"}
     | {type: "CLEAR_PLAN"}
-    | {type: "RESUME_PLAN"}
+    | {type: "FORGET_TRACKED_PLAN"}
     | {type: "RESTORE_PLAN"; state: TransactionPlanState}
     | {type: "START_BATCH_SUBMISSION"}
     | {type: "BATCH_SUBMITTED"; batchId: string; submittedAt: number}

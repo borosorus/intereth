@@ -28,6 +28,7 @@ import { ParamValue, ValueUnit } from "../../calls/parameters";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { normalizeError, NormalizedError } from "../../callUtils";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import { selectCanForgetTrackedPlan } from "../../transaction-plan/selectors";
 import { QueuedCall } from "../../transaction-plan/types";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ErrorDialog from "../ErrorDialog";
@@ -201,31 +202,42 @@ function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (
 }
 
 function SessionNotice() {
-    const {state, sessionStatus, resumePlan} = useTransactionPlan();
+    const {state, dispatch, sessionStatus} = useTransactionPlan();
     const wallet = useWalletSession();
     const [error, setError] = useState<NormalizedError | null>(null);
+    const [confirmForget, setConfirmForget] = useState(false);
     const context = state.plan.context;
     if (!context || sessionStatus === "ready" || sessionStatus === "empty") {
         return null;
     }
 
-    if (sessionStatus === "requires_resume") {
-        return (
-            <Alert
-                severity="warning"
-                action={<Button color="inherit" size="small" onClick={resumePlan}>Resume plan</Button>}
-            >
-                This restored plan is read-only until you explicitly resume it.
-            </Alert>
-        );
-    }
+    const canForget = selectCanForgetTrackedPlan(state);
+    const forgetButton = canForget ? (
+        <Button color="inherit" size="small" onClick={() => setConfirmForget(true)}>
+            Forget tracking
+        </Button>
+    ) : null;
+    const forgetDialog = (
+        <Dialog open={confirmForget} onClose={() => setConfirmForget(false)}>
+            <DialogTitle>Forget batch tracking?</DialogTitle>
+            <DialogContent>
+                <Typography>
+                    This removes the local transaction plan and batch ID. It does not cancel, reverse, or change anything in the wallet or on-chain.
+                </Typography>
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={() => setConfirmForget(false)}>Cancel</Button>
+                <Button color="error" onClick={() => dispatch({type: "FORGET_TRACKED_PLAN"})}>Forget tracking</Button>
+            </DialogActions>
+        </Dialog>
+    );
 
     if (sessionStatus === "chain_mismatch") {
         return (
             <>
                 <Alert
                     severity="error"
-                    action={(
+                    action={<Stack direction="row" spacing={0.5}>
                         <Button
                             color="inherit"
                             size="small"
@@ -235,10 +247,12 @@ function SessionNotice() {
                         >
                             Switch network
                         </Button>
-                    )}
+                        {forgetButton}
+                    </Stack>}
                 >
-                    This plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
+                    This transaction plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
                 </Alert>
+                {forgetDialog}
                 <ErrorDialog error={error} onClose={() => setError(null)} />
             </>
         );
@@ -249,7 +263,7 @@ function SessionNotice() {
             <>
                 <Alert
                     severity="error"
-                    action={(
+                    action={<Stack direction="row" spacing={0.5}>
                         <Button
                             color="inherit"
                             size="small"
@@ -259,10 +273,12 @@ function SessionNotice() {
                         >
                             Reconnect account
                         </Button>
-                    )}
+                        {forgetButton}
+                    </Stack>}
                 >
-                    This plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected. Reconnect the original account or clear the plan.
+                    This transaction plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected.
                 </Alert>
+                {forgetDialog}
                 <ErrorDialog error={error} onClose={() => setError(null)} />
             </>
         );

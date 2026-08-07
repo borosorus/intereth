@@ -32,7 +32,6 @@ describe("RawCall queueing", () => {
             dispatch,
             sessionStatus: "empty",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
         const contract = {
             runner: {sendTransaction, call: jest.fn()},

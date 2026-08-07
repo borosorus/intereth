@@ -15,7 +15,7 @@ const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWa
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
-function queuedState(requiresResume = false) {
+function queuedState() {
     const fragment = new ethers.Interface(["function pause()"]).getFunction("pause")!;
     const abiCall = prepareAbiCall({
         fragment,
@@ -38,7 +38,7 @@ function queuedState(requiresResume = false) {
     });
     let state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: abiCall});
     state = transactionPlanReducer(state, {type: "ADD_CALL", call: rawCall});
-    return {...state, plan: {...state.plan, requiresResume}};
+    return state;
 }
 
 function mockWallet(chainId = "1") {
@@ -76,7 +76,6 @@ describe("TransactionQueuePanel", () => {
             dispatch,
             sessionStatus: "ready",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -114,24 +113,19 @@ describe("TransactionQueuePanel", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "REMOVE_CALL", callId: "abi-call"});
     });
 
-    it("requires explicit resume and confirms clearing", () => {
+    it("makes a restored matching draft immediately editable and confirms clearing", () => {
         const dispatch = jest.fn();
-        const resumePlan = jest.fn(() => true);
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
-            state: queuedState(true),
+            state: queuedState(),
             dispatch,
-            sessionStatus: "requires_resume",
-            canEdit: false,
-            resumePlan,
+            sessionStatus: "ready",
+            canEdit: true,
         });
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
-        expect(screen.getByText(/restored plan is read-only/)).toBeInTheDocument();
-        expect(screen.getAllByRole("button", {name: /Edit/})[0]).toBeDisabled();
-        fireEvent.click(screen.getByRole("button", {name: "Resume plan"}));
-        expect(resumePlan).toHaveBeenCalled();
+        expect(screen.getAllByRole("button", {name: /Edit/})[0]).toBeEnabled();
 
         fireEvent.click(screen.getByRole("button", {name: "Clear plan"}));
         const dialog = screen.getByRole("dialog", {name: "Clear transaction plan?"});
@@ -148,7 +142,6 @@ describe("TransactionQueuePanel", () => {
             dispatch: jest.fn(),
             sessionStatus: "chain_mismatch",
             canEdit: false,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -162,13 +155,13 @@ describe("TransactionQueuePanel", () => {
 
     it("disables status RPC controls when a submitted batch has a session mismatch", () => {
         const send = jest.fn();
+        const dispatch = jest.fn();
         mockRpcWallet(send, "10");
         mockedTransactionPlan.mockReturnValue({
             state: stateWithExecution({status: "pending", batchId: "0x1234"}),
-            dispatch: jest.fn(),
+            dispatch,
             sessionStatus: "chain_mismatch",
             canEdit: false,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -176,6 +169,12 @@ describe("TransactionQueuePanel", () => {
         expect(screen.getByRole("button", {name: "Refresh status"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "View in wallet"})).toBeDisabled();
         expect(send).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole("button", {name: "Forget tracking"}));
+        const dialog = screen.getByRole("dialog", {name: "Forget batch tracking?"});
+        expect(within(dialog).getByText(/does not cancel, reverse, or change anything/)).toBeInTheDocument();
+        fireEvent.click(within(dialog).getByRole("button", {name: "Forget tracking"}));
+        expect(dispatch).toHaveBeenCalledWith({type: "FORGET_TRACKED_PLAN"});
     });
 
     it("shows the original account and a reconnect action on account mismatch", async () => {
@@ -191,7 +190,6 @@ describe("TransactionQueuePanel", () => {
             dispatch: jest.fn(),
             sessionStatus: "account_mismatch",
             canEdit: false,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -218,7 +216,6 @@ describe("TransactionQueuePanel", () => {
             dispatch,
             sessionStatus: "ready",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -245,7 +242,6 @@ describe("TransactionQueuePanel", () => {
             dispatch: jest.fn(),
             sessionStatus: "ready",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -262,7 +258,6 @@ describe("TransactionQueuePanel", () => {
             dispatch: jest.fn(),
             sessionStatus: "ready",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);
@@ -290,7 +285,6 @@ describe("TransactionQueuePanel", () => {
                 dispatch,
                 sessionStatus: "ready",
                 canEdit: false,
-                resumePlan: jest.fn(),
             });
 
             render(<TransactionQueuePanel />);
@@ -316,7 +310,6 @@ describe("TransactionQueuePanel", () => {
             dispatch,
             sessionStatus: "ready",
             canEdit: false,
-            resumePlan: jest.fn(),
         });
 
         render(<TransactionQueuePanel />);

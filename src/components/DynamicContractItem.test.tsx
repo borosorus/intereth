@@ -32,7 +32,6 @@ describe("DynamicFunctionItem queueing", () => {
             dispatch,
             sessionStatus: "empty",
             canEdit: true,
-            resumePlan: jest.fn(),
         });
         const fragment = new ethers.Interface(["function pause()"]).getFunction("pause")!;
         const contract = {

@@ -12,7 +12,6 @@ export function createEmptyTransactionPlanState(): TransactionPlanState {
         plan: {
             context: null,
             calls: [],
-            requiresResume: false,
         },
         execution: {
             status: "idle",
@@ -34,11 +33,17 @@ function hasCallId(state: TransactionPlanState, callId: string) {
 }
 
 function canMutate(state: TransactionPlanState) {
-    return state.execution.status === "idle" && !state.plan.requiresResume;
+    return state.execution.status === "idle";
 }
 
 function isBatchInFlight(state: TransactionPlanState) {
     return state.execution.status === "submitting" || state.execution.status === "pending";
+}
+
+function canForgetTrackedPlan(state: TransactionPlanState) {
+    return state.execution.status === "pending"
+        || state.execution.status === "invalid"
+        || state.execution.status === "partially_reverted";
 }
 
 function establishPlan(state: TransactionPlanState, call: QueuedCall): TransactionPlanState["plan"] {
@@ -110,26 +115,19 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
         }
         case "CLEAR_PLAN":
             return isBatchInFlight(state) ? state : createEmptyTransactionPlanState();
-        case "RESUME_PLAN":
-            return {...state, plan: {...state.plan, requiresResume: false}};
+        case "FORGET_TRACKED_PLAN":
+            return canForgetTrackedPlan(state) ? createEmptyTransactionPlanState() : state;
         case "RESTORE_PLAN":
             if (action.state.execution.status === "submitting") {
                 return {
                     ...action.state,
-                    plan: {...action.state.plan, requiresResume: action.state.plan.calls.length > 0},
                     execution: {
                         status: "idle",
                         error: {code: "SUBMISSION_INTERRUPTED", message: "Batch submission was interrupted before a batch ID was saved."},
                     },
                 };
             }
-            return {
-                ...action.state,
-                plan: {
-                    ...action.state.plan,
-                    requiresResume: action.state.execution.status === "idle" && action.state.plan.calls.length > 0,
-                },
-            };
+            return action.state;
         case "START_BATCH_SUBMISSION":
             return canMutate(state) && state.plan.calls.length > 0
                 ? {...state, execution: {status: "submitting"}}

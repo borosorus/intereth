@@ -9,7 +9,8 @@ import {
     TransactionPlanState,
 } from "./types";
 
-export const TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v2";
+export const TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v3";
+export const LEGACY_V2_TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v2";
 export const LEGACY_TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v1";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -220,10 +221,9 @@ function parsePlan(value: unknown): TransactionPlanState["plan"] | null {
         return {
             context: {account: ethers.getAddress(account), chainId},
             calls: value.calls,
-            requiresResume: Boolean(value.requiresResume),
         };
     }
-    return context === null ? {context: null, calls: [], requiresResume: false} : null;
+    return context === null ? {context: null, calls: []} : null;
 }
 
 export function parseTransactionPlan(serialized: string): TransactionPlanState | null {
@@ -231,6 +231,25 @@ export function parseTransactionPlan(serialized: string): TransactionPlanState |
         const candidate: unknown = JSON.parse(serialized);
         if (!isRecord(candidate)
             || candidate.version !== TRANSACTION_PLAN_STORAGE_VERSION
+            || !isRecord(candidate.plan)
+            || !isExecution(candidate.execution)) {
+            return null;
+        }
+        const plan = parsePlan(candidate.plan);
+        if (!plan || (plan.calls.length === 0 && candidate.execution.status !== "idle")) {
+            return null;
+        }
+        return {version: TRANSACTION_PLAN_STORAGE_VERSION, plan, execution: candidate.execution};
+    } catch {
+        return null;
+    }
+}
+
+export function migrateV2TransactionPlan(serialized: string): TransactionPlanState | null {
+    try {
+        const candidate: unknown = JSON.parse(serialized);
+        if (!isRecord(candidate)
+            || candidate.version !== 2
             || !isRecord(candidate.plan)
             || !isExecution(candidate.execution)) {
             return null;
@@ -254,7 +273,7 @@ export function migrateLegacyTransactionPlan(serialized: string): TransactionPla
         const plan = parsePlan(candidate.plan);
         return plan ? {
             version: TRANSACTION_PLAN_STORAGE_VERSION,
-            plan: {...plan, requiresResume: plan.calls.length > 0},
+            plan,
             execution: {status: "idle"},
         } : null;
     } catch {
@@ -274,6 +293,10 @@ export function loadTransactionPlan(storage: ReadStorage | null = typeof window 
         if (serialized) {
             return parseTransactionPlan(serialized) ?? createEmptyTransactionPlanState();
         }
+        const legacyV2 = storage.getItem(LEGACY_V2_TRANSACTION_PLAN_STORAGE_KEY);
+        if (legacyV2) {
+            return migrateV2TransactionPlan(legacyV2) ?? createEmptyTransactionPlanState();
+        }
         const legacy = storage.getItem(LEGACY_TRANSACTION_PLAN_STORAGE_KEY);
         return legacy ? migrateLegacyTransactionPlan(legacy) ?? createEmptyTransactionPlanState() : createEmptyTransactionPlanState();
     } catch {
@@ -288,10 +311,12 @@ export function saveTransactionPlan(state: TransactionPlanState, storage: WriteS
     try {
         if (state.plan.calls.length === 0) {
             storage.removeItem(TRANSACTION_PLAN_STORAGE_KEY);
+            storage.removeItem(LEGACY_V2_TRANSACTION_PLAN_STORAGE_KEY);
             storage.removeItem(LEGACY_TRANSACTION_PLAN_STORAGE_KEY);
             return;
         }
         storage.setItem(TRANSACTION_PLAN_STORAGE_KEY, JSON.stringify(state));
+        storage.removeItem(LEGACY_V2_TRANSACTION_PLAN_STORAGE_KEY);
         storage.removeItem(LEGACY_TRANSACTION_PLAN_STORAGE_KEY);
     } catch {
         // A storage quota or privacy-mode failure must not make the in-memory plan unusable.

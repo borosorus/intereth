@@ -1,8 +1,8 @@
-import { createContext, Dispatch, ReactNode, useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import { createContext, Dispatch, ReactNode, useContext, useEffect, useMemo, useReducer } from "react";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { loadTransactionPlan, saveTransactionPlan } from "./persistence";
 import { transactionPlanReducer } from "./reducer";
-import { PlanSessionStatus, selectCanEditPlan, selectPlanSessionStatus } from "./selectors";
+import { PlanSessionStatus, selectCanEditPlan, selectPlanSessionStatus, selectShouldClearForSession } from "./selectors";
 import { TransactionPlanAction, TransactionPlanState } from "./types";
 
 interface TransactionPlanContextValue {
@@ -10,7 +10,6 @@ interface TransactionPlanContextValue {
     dispatch: Dispatch<TransactionPlanAction>;
     sessionStatus: PlanSessionStatus;
     canEdit: boolean;
-    resumePlan: () => boolean;
 }
 
 const TransactionPlanContext = createContext<TransactionPlanContextValue | null>(null);
@@ -35,12 +34,10 @@ export function TransactionPlanProvider({children}: {children: ReactNode}) {
         saveTransactionPlan(state);
     }, [state]);
 
-    const resumePlan = useCallback(() => {
-        if (selectPlanSessionStatus(state, walletIdentity) !== "requires_resume") {
-            return false;
+    useEffect(() => {
+        if (selectShouldClearForSession(state, walletIdentity)) {
+            dispatch({type: "CLEAR_PLAN"});
         }
-        dispatch({type: "RESUME_PLAN"});
-        return true;
     }, [state, walletIdentity]);
 
     const value = useMemo<TransactionPlanContextValue>(() => ({
@@ -48,8 +45,7 @@ export function TransactionPlanProvider({children}: {children: ReactNode}) {
         dispatch,
         sessionStatus,
         canEdit,
-        resumePlan,
-    }), [canEdit, resumePlan, sessionStatus, state]);
+    }), [canEdit, sessionStatus, state]);
 
     return <TransactionPlanContext.Provider value={value}>{children}</TransactionPlanContext.Provider>;
 }

@@ -134,20 +134,32 @@ describe("transactionPlanReducer", () => {
         expect(transactionPlanReducer(failed, {type: "REMOVE_CALL", callId: "call-1"}).plan.calls).toEqual([]);
     });
 
-    it("restores drafts read-only, preserves submitted batches, and recovers interrupted submission", () => {
+    it("restores drafts and submitted batches, and recovers interrupted submission", () => {
         const draft = addCalls(call());
         const restoredDraft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: draft});
-        expect(restoredDraft.plan.requiresResume).toBe(true);
+        expect(restoredDraft).toEqual(draft);
 
         const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};
         const restoredPending = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: pending});
-        expect(restoredPending.plan.requiresResume).toBe(false);
         expect(restoredPending.execution).toEqual(pending.execution);
 
         const submitting: TransactionPlanState = {...draft, execution: {status: "submitting"}};
         const interrupted = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: submitting});
 
-        expect(interrupted.plan.requiresResume).toBe(true);
         expect(interrupted.execution).toMatchObject({status: "idle", error: {code: "SUBMISSION_INTERRUPTED"}});
+    });
+
+    it("only forgets unresolved batches with a saved identifier", () => {
+        const draft = addCalls(call());
+        const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};
+        const invalid: TransactionPlanState = {...draft, execution: {status: "invalid", batchId: "0x1234"}};
+        const partial: TransactionPlanState = {...draft, execution: {status: "partially_reverted", batchId: "0x1234"}};
+        const submitting: TransactionPlanState = {...draft, execution: {status: "submitting"}};
+
+        expect(transactionPlanReducer(pending, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
+        expect(transactionPlanReducer(invalid, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
+        expect(transactionPlanReducer(partial, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
+        expect(transactionPlanReducer(submitting, {type: "FORGET_TRACKED_PLAN"})).toBe(submitting);
+        expect(transactionPlanReducer(draft, {type: "FORGET_TRACKED_PLAN"})).toBe(draft);
     });
 });

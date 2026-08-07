@@ -5,7 +5,6 @@ export type PlanSessionStatus =
     | "disconnected"
     | "account_mismatch"
     | "chain_mismatch"
-    | "requires_resume"
     | "ready";
 
 export interface ActiveWalletIdentity {
@@ -27,13 +26,27 @@ export function selectPlanSessionStatus(state: TransactionPlanState, wallet: Act
     if (wallet.account.toLowerCase() !== context.account.toLowerCase()) {
         return "account_mismatch";
     }
-    if (state.plan.requiresResume) {
-        return "requires_resume";
-    }
     return "ready";
 }
 
 export function selectCanEditPlan(state: TransactionPlanState, wallet: ActiveWalletIdentity) {
     const sessionStatus = selectPlanSessionStatus(state, wallet);
     return (sessionStatus === "empty" || sessionStatus === "ready") && state.execution.status === "idle";
+}
+
+export function selectShouldClearForSession(state: TransactionPlanState, wallet: ActiveWalletIdentity) {
+    const sessionStatus = selectPlanSessionStatus(state, wallet);
+    if (sessionStatus !== "account_mismatch" && sessionStatus !== "chain_mismatch") {
+        return false;
+    }
+    return state.execution.status === "idle"
+        || state.execution.status === "confirmed"
+        || state.execution.status === "offchain_failed"
+        || state.execution.status === "reverted";
+}
+
+export function selectCanForgetTrackedPlan(state: TransactionPlanState) {
+    return state.execution.status === "pending"
+        || state.execution.status === "invalid"
+        || state.execution.status === "partially_reverted";
 }
