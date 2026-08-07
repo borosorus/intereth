@@ -8,7 +8,7 @@ import { ProviderDetails } from './presets';
 import TransactionQueuePanel from './components/transaction-plan/TransactionQueuePanel';
 import { useWalletSession } from './wallet/WalletSessionContext';
 import { useTransactionPlan } from './transaction-plan/context';
-import { selectShouldClearForSession } from './transaction-plan/selectors';
+import { reconcileWalletWorkspace, WalletIdentity } from './wallet/workspaceLifecycle';
 
 interface ContractInstanceBase {
   id: string;
@@ -28,7 +28,7 @@ export default function App(){
     const transactionPlan = useTransactionPlan();
     const contractsRef = useRef(contracts);
     const planStateRef = useRef(transactionPlan.state);
-    const previousIdentity = useRef<{account: string; chainId: string} | null>(null);
+    const previousIdentity = useRef<WalletIdentity | null>(null);
     contractsRef.current = contracts;
     planStateRef.current = transactionPlan.state;
 
@@ -39,36 +39,16 @@ export default function App(){
 
       const nextIdentity = {account: wallet.account, chainId: wallet.chainId};
       const previous = previousIdentity.current;
-      const accountChanged = Boolean(previous && previous.account.toLowerCase() !== nextIdentity.account.toLowerCase());
-      const chainChanged = Boolean(previous && previous.chainId !== nextIdentity.chainId);
-      const mismatchedWalletContracts = contractsRef.current.filter((item) => (
-        !item.isStatic && item.walletChainId !== nextIdentity.chainId
-      ));
-      const planWillClear = selectShouldClearForSession(planStateRef.current, nextIdentity);
+      const transition = reconcileWalletWorkspace(contractsRef.current, planStateRef.current, previous, nextIdentity);
 
-      if (mismatchedWalletContracts.length > 0) {
-        setContracts((current) => current.filter((item) => item.isStatic || item.walletChainId === nextIdentity.chainId));
+      if (transition.removedCount > 0) {
+        setContracts(transition.remainingContracts);
       }
-      if (!interactionAccount || accountChanged) {
+      if (!interactionAccount || transition.accountChanged) {
         setInteractionAccount(nextIdentity.account);
       }
-
-      if (chainChanged || mismatchedWalletContracts.length > 0) {
-        const removed = mismatchedWalletContracts.length === 1
-          ? "1 wallet contract instance was cleared."
-          : `${mismatchedWalletContracts.length} wallet contract instances were cleared.`;
-        setWorkspaceNotice([
-          "Wallet network changed.",
-          planWillClear ? "The transaction plan was cleared." : "",
-          mismatchedWalletContracts.length > 0 ? removed : "",
-          "Read-only RPC contracts were kept.",
-        ].filter(Boolean).join(" "));
-      } else if (accountChanged) {
-        setWorkspaceNotice(planWillClear
-          ? "Wallet account changed. The transaction plan was cleared and wallet contract inputs were reset."
-          : "Wallet account changed. Wallet contract inputs were reset.");
-      } else if (!previous && planWillClear) {
-        setWorkspaceNotice("The saved transaction plan was cleared because it belongs to another wallet account or network.");
+      if (transition.notice) {
+        setWorkspaceNotice(transition.notice);
       }
 
       previousIdentity.current = nextIdentity;

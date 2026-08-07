@@ -22,7 +22,9 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 3. Select an RPC provider for read-only calls, or enable the browser wallet for state-changing calls.
 4. Add the instance, expand a function, complete its inputs, and run the call.
 
-State-changing ABI functions and raw calls provide two actions: **Add to queue** and **Send immediately**. The queue is bound to the wallet account and chain that created it. Account or network changes preserve the plan but make it read-only until the original session is restored. A draft restored after a page refresh also requires explicit confirmation before it becomes editable or executable.
+State-changing ABI functions and raw calls provide two actions: **Add to queue** and **Send immediately**. The queue is bound to the wallet account and chain that created it. A matching draft restored after refresh is immediately usable. Changing account or network clears unsubmitted drafts; submitted or otherwise unresolved batches remain locked until their original wallet session returns or the user explicitly forgets their tracking state.
+
+Changing accounts on the same network keeps wallet-backed contract cards, rebinds them to the new signer, and resets their interaction forms. Changing networks removes wallet-backed cards from the previous network. Explicit read-only RPC contract cards stay pinned to their configured network in both cases. Disconnecting pauses wallet interactions without clearing their forms.
 
 ## Atomic transaction plans
 
