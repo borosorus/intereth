@@ -1,5 +1,5 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
@@ -17,9 +17,10 @@ import FunctionCallEditor from "./FunctionCallEditor";
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
+    disabled?: boolean;
 }
 
-export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
+export function DynamicFunctionItem({contract, frag, disabled = false}: DynamicFunctionItemProps){
     const [expanded, setExpanded] = useState(false);
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
@@ -144,7 +145,7 @@ export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                                     variant="contained"
                                     color="secondary"
                                     fullWidth
-                                    disabled={isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                                    disabled={disabled || isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
                                     onClick={addToQueue}
                                     sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                                 >
@@ -154,7 +155,7 @@ export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                                     variant="outlined"
                                     color="secondary"
                                     fullWidth
-                                    disabled={isResponseLoading || isQueueing}
+                                    disabled={disabled || isResponseLoading || isQueueing}
                                     onClick={() => call()}
                                     sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                                 >
@@ -166,7 +167,7 @@ export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
                                 variant="contained"
                                 color="secondary"
                                 fullWidth
-                                disabled={isResponseLoading}
+                                disabled={disabled || isResponseLoading}
                                 onClick={() => call()}
                                 sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                             >
@@ -185,14 +186,20 @@ export function DynamicFunctionItem({contract, frag}: DynamicFunctionItemProps){
 
 interface DynamicContractItemProps {
     contract: ethers.BaseContract; 
+    walletChainId: string;
     del: () => void;
 }
 
-export default function DynamicContractItem({contract, del}: DynamicContractItemProps){
-    const {signer, chainId: walletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
+export default function DynamicContractItem({contract, walletChainId: contractChainId, del}: DynamicContractItemProps){
+    const {signer, chainId: activeWalletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
     const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
+    const walletReady = Boolean(signer && activeWalletChainId === contractChainId);
+    const activeContract = useMemo(
+        () => contract.connect(walletReady ? signer : null),
+        [contract, signer, walletReady],
+    );
 
     useEffect(() => {
         contract.getAddress()
@@ -217,7 +224,7 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                         <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
                     </Grid>
                     <Grid item xs={10} md={2}>
-                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {walletChainId ?? ''}</Typography>
+                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {contractChainId}</Typography>
                     </Grid>
                     <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
                         <IconButton
@@ -234,18 +241,24 @@ export default function DynamicContractItem({contract, del}: DynamicContractItem
                 </Grid>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-            {signer ? (
-              <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
-                <Stack spacing={1.5}>
-                  {contract.interface.fragments
-                      .filter((f) => f.type === "function")
-                      .map((f)=> <DynamicFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract.connect(signer)}/>)}
-                </Stack>
-              </Paper>
-            ) : (
-                <Typography color="text.secondary">Please connect your browser wallet to interact.</Typography>
+            {!walletReady && (
+                <Alert severity="info">Connect a browser wallet on chain {contractChainId} to interact with this contract.</Alert>
             )}
-            <RawCall contract={contract}/>
+            <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+              <Stack spacing={1.5}>
+                {contract.interface.fragments
+                    .filter((f) => f.type === "function")
+                    .map((f)=> (
+                        <DynamicFunctionItem
+                            key={f.format("minimal")}
+                            frag={f as ethers.FunctionFragment}
+                            contract={activeContract}
+                            disabled={!walletReady}
+                        />
+                    ))}
+              </Stack>
+            </Paper>
+            <RawCall contract={activeContract} disabled={!walletReady}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {
                 setMetadataError(null);

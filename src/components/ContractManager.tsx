@@ -128,7 +128,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [isAddingInstance, setIsAddingInstance] = useState(false);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
-    const {signer, status: walletStatus, connectWallet, error: walletError, clearError: clearWalletError} = useWalletSession();
+    const {signer, chainId: walletChainId, status: walletStatus, connectWallet, error: walletError, clearError: clearWalletError} = useWalletSession();
 
     useEffect(() => {
         if (walletStatus === "disconnected" && useBrowserWallet) {
@@ -263,7 +263,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
     const isAddressValid = ethers.isAddress(address);
     const canAddInstance = !abiError && (useBrowserWallet
-        ? Boolean(signer && isAddressValid)
+        ? Boolean(signer && walletChainId && isAddressValid)
         : Boolean(isAddressValid && selectedProviderDetails));
 
     const tryChangeUseBrowserWallet = async () => {
@@ -300,11 +300,12 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         try {
             setIsAddingInstance(true);
             setManagerError(null);
-            if (useBrowserWallet && signer) {
+            if (useBrowserWallet && signer && walletChainId) {
                 addContract({
                     id: crypto.randomUUID(),
                     contract: new ethers.BaseContract(address, getInterface(), signer),
                     isStatic: false,
+                    walletChainId,
                 });
                 return;
             }

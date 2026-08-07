@@ -1,21 +1,78 @@
 import ContractManager from './components/ContractManager';
-import { Box, Container, Paper, Stack } from '@mui/material';
+import { Alert, Box, Container, Paper, Snackbar, Stack } from '@mui/material';
 import { ethers } from 'ethers';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
 import { ProviderDetails } from './presets';
 import TransactionQueuePanel from './components/transaction-plan/TransactionQueuePanel';
+import { useWalletSession } from './wallet/WalletSessionContext';
+import { useTransactionPlan } from './transaction-plan/context';
+import { selectShouldClearForSession } from './transaction-plan/selectors';
 
-export interface DynamicContract {
+interface ContractInstanceBase {
   id: string;
   contract: ethers.BaseContract;
-  isStatic: boolean;
-  providerDetails?: ProviderDetails;
 }
+
+export type DynamicContract = ContractInstanceBase & (
+  | {isStatic: true; providerDetails?: ProviderDetails}
+  | {isStatic: false; walletChainId: string}
+);
 
 export default function App(){
     const [contracts, setContracts] = useState<DynamicContract[]>([]);
+    const [interactionAccount, setInteractionAccount] = useState<string | null>(null);
+    const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
+    const wallet = useWalletSession();
+    const transactionPlan = useTransactionPlan();
+    const contractsRef = useRef(contracts);
+    const planStateRef = useRef(transactionPlan.state);
+    const previousIdentity = useRef<{account: string; chainId: string} | null>(null);
+    contractsRef.current = contracts;
+    planStateRef.current = transactionPlan.state;
+
+    useLayoutEffect(() => {
+      if (!wallet.account || !wallet.chainId) {
+        return;
+      }
+
+      const nextIdentity = {account: wallet.account, chainId: wallet.chainId};
+      const previous = previousIdentity.current;
+      const accountChanged = Boolean(previous && previous.account.toLowerCase() !== nextIdentity.account.toLowerCase());
+      const chainChanged = Boolean(previous && previous.chainId !== nextIdentity.chainId);
+      const mismatchedWalletContracts = contractsRef.current.filter((item) => (
+        !item.isStatic && item.walletChainId !== nextIdentity.chainId
+      ));
+      const planWillClear = selectShouldClearForSession(planStateRef.current, nextIdentity);
+
+      if (mismatchedWalletContracts.length > 0) {
+        setContracts((current) => current.filter((item) => item.isStatic || item.walletChainId === nextIdentity.chainId));
+      }
+      if (!interactionAccount || accountChanged) {
+        setInteractionAccount(nextIdentity.account);
+      }
+
+      if (chainChanged || mismatchedWalletContracts.length > 0) {
+        const removed = mismatchedWalletContracts.length === 1
+          ? "1 wallet contract instance was cleared."
+          : `${mismatchedWalletContracts.length} wallet contract instances were cleared.`;
+        setWorkspaceNotice([
+          "Wallet network changed.",
+          planWillClear ? "The transaction plan was cleared." : "",
+          mismatchedWalletContracts.length > 0 ? removed : "",
+          "Read-only RPC contracts were kept.",
+        ].filter(Boolean).join(" "));
+      } else if (accountChanged) {
+        setWorkspaceNotice(planWillClear
+          ? "Wallet account changed. The transaction plan was cleared and wallet contract inputs were reset."
+          : "Wallet account changed. Wallet contract inputs were reset.");
+      } else if (!previous && planWillClear) {
+        setWorkspaceNotice("The saved transaction plan was cleared because it belongs to another wallet account or network.");
+      }
+
+      previousIdentity.current = nextIdentity;
+    }, [interactionAccount, wallet.account, wallet.chainId]);
 
     const addContract = (contract: DynamicContract) => {
       setContracts((current) => current.concat([contract]));
@@ -55,13 +112,28 @@ export default function App(){
                   {contracts.map((contract) => 
                     (contract.isStatic ? 
                       <StaticContractItem key={contract.id} contract={contract.contract} providerDetails={contract.providerDetails} del={() => deleteContract(contract.id)}/> :
-                      <DynamicContractItem key={contract.id} contract={contract.contract} del={() => deleteContract(contract.id)}/>))}
+                      <DynamicContractItem
+                        key={`${contract.id}:${interactionAccount ?? "disconnected"}`}
+                        contract={contract.contract}
+                        walletChainId={contract.walletChainId}
+                        del={() => deleteContract(contract.id)}
+                      />))}
                 </Stack>
               </Box>
             )}
           </Stack>
         </Container>
         <TransactionQueuePanel />
+        <Snackbar
+          open={Boolean(workspaceNotice)}
+          autoHideDuration={7000}
+          onClose={(_, reason) => {
+            if (reason !== "clickaway") setWorkspaceNotice(null);
+          }}
+          anchorOrigin={{vertical: "bottom", horizontal: "center"}}
+        >
+          <Alert severity="info" variant="filled" onClose={() => setWorkspaceNotice(null)}>{workspaceNotice}</Alert>
+        </Snackbar>
       </Box>
     );
 }

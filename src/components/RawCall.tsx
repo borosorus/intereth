@@ -10,7 +10,7 @@ import { prepareRawCall } from "../calls/prepareCall";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
 
-export default function RawCall({contract, isStaticOnly}: {contract: ethers.BaseContract, isStaticOnly?: boolean}){
+export default function RawCall({contract, isStaticOnly, disabled = false}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
     const [queued, setQueued] = useState(false);
@@ -148,7 +148,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
                     variant="contained"
                     color="secondary"
                     fullWidth
-                    disabled={isResponseLoading}
+                    disabled={disabled || isResponseLoading}
                     onClick={() => call()}
                     sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                 >
@@ -160,7 +160,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
                         variant="contained"
                         color="secondary"
                         fullWidth
-                        disabled={isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                        disabled={disabled || isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
                         onClick={addToQueue}
                         sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                     >
@@ -170,7 +170,7 @@ export default function RawCall({contract, isStaticOnly}: {contract: ethers.Base
                         variant="outlined"
                         color="secondary"
                         fullWidth
-                        disabled={isResponseLoading || isQueueing}
+                        disabled={disabled || isResponseLoading || isQueueing}
                         onClick={() => call()}
                         sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
                     >
