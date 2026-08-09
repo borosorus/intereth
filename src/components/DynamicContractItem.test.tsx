@@ -5,14 +5,37 @@ import DynamicContractItem, { DynamicFunctionItem } from "./DynamicContractItem"
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
+import { useSimulation } from "../simulation/context";
 
 jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
 
 const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
+const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+
+function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
+    mockedSimulation.mockReturnValue({
+        enabled: false,
+        status: "disabled",
+        chainId: null,
+        error: null,
+        revision: "disabled",
+        queuedCallCount: 0,
+        configured: false,
+        canEnable: false,
+        enable: jest.fn(),
+        disable: jest.fn(),
+        retry: jest.fn(),
+        canSimulateChain: jest.fn().mockReturnValue(false),
+        simulateRead: jest.fn(),
+        ...overrides,
+    });
+}
 
 describe("DynamicFunctionItem queueing", () => {
+    beforeEach(mockSimulation);
     it("queues encoded ABI calls without invoking the transaction runner", async () => {
         const sendTransaction = jest.fn();
         const dispatch = jest.fn();
@@ -47,9 +70,61 @@ describe("DynamicFunctionItem queueing", () => {
         expect(sendTransaction).not.toHaveBeenCalled();
         expect(screen.getByText("Added to transaction queue.")).toBeInTheDocument();
     });
+
+    it("decodes a simulated read without requiring a wallet runner", async () => {
+        const simulateRead = jest.fn().mockResolvedValue({
+            returnData: ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [BigInt(42)]),
+            gasUsed: "0x100",
+        });
+        mockSimulation({
+            enabled: true,
+            status: "ready",
+            chainId: "1",
+            revision: "ready:1",
+            queuedCallCount: 2,
+            canSimulateChain: jest.fn().mockReturnValue(true),
+            simulateRead,
+        });
+        mockedWalletSession.mockReturnValue({
+            status: "disconnected",
+            provider: null,
+            signer: null,
+            account: null,
+            chainId: null,
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockedTransactionPlan.mockReturnValue({
+            state: createEmptyTransactionPlanState(),
+            dispatch: jest.fn(),
+            sessionStatus: "disconnected",
+            canEdit: false,
+        });
+        const fragment = new ethers.Interface(["function count() view returns (uint256)"]).getFunction("count")!;
+        const contract = {
+            runner: null,
+            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+        } as unknown as ethers.BaseContract;
+
+        render(<DynamicFunctionItem contract={contract} frag={fragment} chainId="1" disabled />);
+        fireEvent.click(screen.getByRole("button", {name: /count function count/}));
+        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeDisabled();
+        fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
+
+        await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {
+            to: "0x0000000000000000000000000000000000000010",
+            data: fragment.selector,
+        }));
+        expect(await screen.findByText("42")).toBeInTheDocument();
+        expect(screen.getByText("Simulated")).toBeInTheDocument();
+        expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
+    });
 });
 
 describe("DynamicContractItem wallet lifecycle", () => {
+    beforeEach(mockSimulation);
     it("rebinds raw calls to the active signer and preserves the form while disconnected", async () => {
         const oldSendTransaction = jest.fn();
         const sendTransaction = jest.fn().mockResolvedValue({

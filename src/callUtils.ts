@@ -7,9 +7,13 @@ export interface NormalizedError {
     details: string;
 }
 
+export type ReadResultSource =
+    | {kind: "onchain"}
+    | {kind: "simulated"; queuedCallCount: number};
+
 export type CallResultData =
-    | {kind: "function"; outputs: readonly ethers.ParamType[]; value: unknown}
-    | {kind: "raw"; data: string}
+    | {kind: "function"; outputs: readonly ethers.ParamType[]; value: unknown; source: ReadResultSource}
+    | {kind: "raw"; data: string; source: ReadResultSource}
     | {
         kind: "transaction";
         status: "submitted" | "confirmed" | "failed" | "pending";

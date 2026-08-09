@@ -77,6 +77,8 @@ describe("TransactionQueuePanel", () => {
             status: "disabled",
             chainId: null,
             error: null,
+            revision: "disabled",
+            queuedCallCount: 0,
             configured: false,
             canEnable: false,
             enable: jest.fn(),

@@ -1,6 +1,6 @@
 import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress, Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import TransactionValueInput from "./TransactionValueInput";
 import CallResult from "./CallResult";
@@ -9,13 +9,17 @@ import { ValueUnit } from "../calls/parameters";
 import { prepareRawCall } from "../calls/prepareCall";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
+import { useSimulation } from "../simulation/context";
+import { normalizeReadData } from "../calls/readCall";
+import ReadActions, { ReadLoadingMode } from "./ReadActions";
 
-export default function RawCall({contract, isStaticOnly, disabled = false}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean}){
+export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
     const [queued, setQueued] = useState(false);
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
+    const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
@@ -23,6 +27,20 @@ export default function RawCall({contract, isStaticOnly, disabled = false}: {con
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
+    const simulation = useSimulation();
+    const simulationRequest = useRef(0);
+    const simulationLoading = useRef(false);
+    const simulationAvailable = staticCall && Boolean(chainId && simulation.canSimulateChain(chainId));
+
+    useEffect(() => {
+        simulationRequest.current += 1;
+        if (simulationLoading.current) {
+            simulationLoading.current = false;
+            setIsResponseLoading(false);
+            setReadLoading(null);
+        }
+        setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
+    }, [simulation.revision]);
 
     const call = useCallback(async () => {
         const runner = contract.runner;
@@ -66,14 +84,10 @@ export default function RawCall({contract, isStaticOnly, disabled = false}: {con
                     gasUsed: receipt.gasUsed.toString(),
                 } : {kind: "transaction", status: "pending", hash: resp.hash});
             } else {
-                const callData = data.trim() || "0x";
-                try {
-                    ethers.dataLength(callData);
-                } catch {
-                    throw Object.assign(new Error("Calldata must be a valid even-length hexadecimal value prefixed with 0x."), {code: "INVALID_ARGUMENT"});
-                }
+                setReadLoading("onchain");
+                const callData = normalizeReadData(data);
                 const resp = await runner!.call!({to: contractAddress, data: callData});
-                setResult({kind: "raw", data: resp});
+                setResult({kind: "raw", data: resp, source: {kind: "onchain"}});
             }
         } catch (error) {
             const normalized = normalizeError(error, staticCall ? "Raw call failed" : "Transaction failed");
@@ -83,8 +97,42 @@ export default function RawCall({contract, isStaticOnly, disabled = false}: {con
             setError(normalized);
         } finally {
             setIsResponseLoading(false);
+            setReadLoading(null);
         }
     }, [contract, data, staticCall, valueAmount, valueUnit, wallet.account, wallet.chainId]);
+
+    const runSimulated = useCallback(async () => {
+        if (!chainId) return;
+        const request = ++simulationRequest.current;
+        try {
+            simulationLoading.current = true;
+            setIsResponseLoading(true);
+            setReadLoading("simulated");
+            setQueued(false);
+            setResult(null);
+            setError(null);
+            const response = await simulation.simulateRead(chainId, {
+                to: await contract.getAddress(),
+                data: normalizeReadData(data),
+            });
+            if (request !== simulationRequest.current) return;
+            setResult({
+                kind: "raw",
+                data: response.returnData,
+                source: {kind: "simulated", queuedCallCount: simulation.queuedCallCount},
+            });
+        } catch (simulationError) {
+            if (request === simulationRequest.current) {
+                setError(normalizeError(simulationError, "Simulated raw call failed"));
+            }
+        } finally {
+            if (request === simulationRequest.current) {
+                simulationLoading.current = false;
+                setIsResponseLoading(false);
+                setReadLoading(null);
+            }
+        }
+    }, [chainId, contract, data, simulation]);
 
     const addToQueue = useCallback(async () => {
         try {
@@ -123,7 +171,11 @@ export default function RawCall({contract, isStaticOnly, disabled = false}: {con
                 </Box>
                 {!isStaticOnly && (
                     <FormControlLabel
-                        control={<Switch checked={staticCall} onChange={() => setStatic(!staticCall)} />}
+                        control={<Switch checked={staticCall} onChange={() => {
+                            setStatic(!staticCall);
+                            setResult(null);
+                            setError(null);
+                        }} />}
                         label="Static call"
                     />
                 )}
@@ -144,16 +196,14 @@ export default function RawCall({contract, isStaticOnly, disabled = false}: {con
                 )}
             </Stack>
             {staticCall ? (
-                <Button
-                    variant="contained"
-                    color="secondary"
-                    fullWidth
-                    disabled={disabled || isResponseLoading}
-                    onClick={() => call()}
-                    sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                >
-                    {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Run call"}
-                </Button>
+                <ReadActions
+                    simulationEnabled={simulation.enabled}
+                    simulationAvailable={simulationAvailable}
+                    onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
+                    loading={isResponseLoading ? readLoading : null}
+                    onSimulated={() => void runSimulated()}
+                    onOnChain={() => void call()}
+                />
             ) : (
                 <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
                     <Button

@@ -16,6 +16,8 @@ interface SimulationState {
 }
 
 interface SimulationContextValue extends SimulationState {
+    revision: string;
+    queuedCallCount: number;
     configured: boolean;
     canEnable: boolean;
     enable: () => Promise<void>;
@@ -69,6 +71,13 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     );
     const configured = rpcUrl.length > 0;
     const canEnable = planAvailable && configured;
+    const revision = useMemo(() => [
+        state.enabled,
+        state.status,
+        state.chainId,
+        context?.chainId,
+        ...transactionPlan.state.plan.calls.map((call) => `${call.id}:${call.to}:${call.data}:${call.value}`),
+    ].join("|"), [context?.chainId, state.chainId, state.enabled, state.status, transactionPlan.state.plan.calls]);
 
     const disable = useCallback(() => {
         requestIdRef.current += 1;
@@ -149,6 +158,8 @@ export function SimulationProvider({children}: {children: ReactNode}) {
 
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,
+        revision,
+        queuedCallCount: transactionPlan.state.plan.calls.length,
         configured,
         canEnable,
         enable,
@@ -156,7 +167,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         retry: enable,
         canSimulateChain,
         simulateRead,
-    }), [canEnable, canSimulateChain, configured, disable, enable, simulateRead, state]);
+    }), [canEnable, canSimulateChain, configured, disable, enable, revision, simulateRead, state, transactionPlan.state.plan.calls.length]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }

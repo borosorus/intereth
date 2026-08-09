@@ -1,0 +1,54 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { ethers } from "ethers";
+import { useSimulation } from "../simulation/context";
+import { StaticFunctionItem } from "./StaticContractItem";
+
+jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
+jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
+jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+
+const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+
+describe("StaticFunctionItem simulated reads", () => {
+    it("uses queued-state simulation as the primary action", async () => {
+        const simulateRead = jest.fn().mockResolvedValue({
+            returnData: ethers.AbiCoder.defaultAbiCoder().encode(["bool"], [true]),
+            gasUsed: "0x30",
+        });
+        mockedSimulation.mockReturnValue({
+            enabled: true,
+            status: "ready",
+            chainId: "1",
+            error: null,
+            revision: "ready:1",
+            queuedCallCount: 3,
+            configured: true,
+            canEnable: true,
+            enable: jest.fn(),
+            disable: jest.fn(),
+            retry: jest.fn(),
+            canSimulateChain: jest.fn().mockReturnValue(true),
+            simulateRead,
+        });
+        const fragment = new ethers.Interface(["function active() view returns (bool)"]).getFunction("active")!;
+        const onChainCall = jest.fn();
+        const contract = {
+            runner: {call: onChainCall},
+            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getFunction: jest.fn(),
+        } as unknown as ethers.BaseContract;
+
+        render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
+        fireEvent.click(screen.getByRole("button", {name: /active function active/}));
+        fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
+
+        await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {
+            to: "0x0000000000000000000000000000000000000010",
+            data: fragment.selector,
+        }));
+        expect(await screen.findByText("true")).toBeInTheDocument();
+        expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
+        expect(onChainCall).not.toHaveBeenCalled();
+    });
+});

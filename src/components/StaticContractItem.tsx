@@ -1,9 +1,9 @@
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, CircularProgress, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ParamInput, { buildParamValue, createEmptyParamValue, ParamValue } from "./ParamInput";
+import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -11,36 +11,84 @@ import { ProviderDetails } from "../presets";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
+import { useSimulation } from "../simulation/context";
+import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
+import ReadActions, { ReadLoadingMode } from "./ReadActions";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
     frag: ethers.FunctionFragment;
+    chainId: string;
 }
 
-function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
+export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItemProps){
     const [expanded, setExpanded] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const [loading, setLoading] = useState<ReadLoadingMode>(null);
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
+    const simulation = useSimulation();
+    const simulationRequest = useRef(0);
+    const simulationLoading = useRef(false);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
+    const simulationAvailable = !isDisabled && simulation.canSimulateChain(chainId);
 
-    const call = async () => {
+    useEffect(() => {
+        simulationRequest.current += 1;
+        if (simulationLoading.current) {
+            simulationLoading.current = false;
+            setLoading(null);
+        }
+        setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
+    }, [simulation.revision]);
+
+    const call = useCallback(async () => {
         try {
-            setIsLoading(true);
+            setLoading("onchain");
             setResult(null);
             setError(null);
-            const callArgs = frag.inputs.map((input, index) => buildParamValue(input, args[index] ?? createEmptyParamValue(input)));
-            const resp = await contract.getFunction(frag)(...callArgs);
-            setResult({kind: "function", outputs: frag.outputs, value: resp});
+            const encoded = encodeFunctionRead(frag, args);
+            const resp = await contract.getFunction(frag)(...encoded.args);
+            setResult({kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}});
         } catch (error) {
             setError(normalizeError(error));
         } finally {
-            setIsLoading(false);
+            setLoading(null);
         }
-    };
+    }, [args, contract, frag]);
+
+    const runSimulated = useCallback(async () => {
+        const request = ++simulationRequest.current;
+        try {
+            simulationLoading.current = true;
+            setLoading("simulated");
+            setResult(null);
+            setError(null);
+            const encoded = encodeFunctionRead(frag, args);
+            const response = await simulation.simulateRead(chainId, {
+                to: await contract.getAddress(),
+                data: encoded.data,
+            });
+            if (request !== simulationRequest.current) return;
+            setResult({
+                kind: "function",
+                outputs: frag.outputs,
+                value: decodeFunctionRead(frag, response.returnData),
+                source: {kind: "simulated", queuedCallCount: simulation.queuedCallCount},
+            });
+        } catch (simulationError) {
+            if (request === simulationRequest.current) {
+                setError(normalizeError(simulationError, "Simulated read failed"));
+            }
+        } finally {
+            if (request === simulationRequest.current) {
+                simulationLoading.current = false;
+                setLoading(null);
+            }
+        }
+    }, [args, chainId, contract, frag, simulation]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -72,16 +120,14 @@ function StaticFunctionItem({contract, frag}: StaticFunctionItemProps){
                                     label={input.name || `Input ${index + 1}`}
                                 />
                             ))}
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                fullWidth
-                                disabled={isLoading}
-                                onClick={call}
-                                sx={{mt: 1, py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                            >
-                                {isLoading ? <CircularProgress size={20} color="inherit" /> : "Call function"}
-                            </Button>
+                            <ReadActions
+                                simulationEnabled={simulation.enabled}
+                                simulationAvailable={simulationAvailable}
+                                onChainAvailable={typeof contract.runner?.call === "function"}
+                                loading={loading}
+                                onSimulated={() => void runSimulated()}
+                                onOnChain={() => void call()}
+                            />
                         </Stack>
                         <CallResult result={result} />
                     </>
@@ -103,6 +149,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
     const [address, setAddress] = useState('loading...');
     const [detectedChainId, setDetectedChainId] = useState<string>('');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
+    const simulation = useSimulation();
 
     useEffect(() => {
         contract.getAddress()
@@ -178,14 +225,17 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                 </Grid>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            {simulation.enabled && simulation.status === "ready" && chainId && simulation.chainId !== chainId && (
+                <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
+            )}
             <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
               <Stack spacing={1.5}>
                 {contract.interface.fragments
                     .filter((f) => f.type === "function")
-                    .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract}/>)}
+                    .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract} chainId={chainId}/>)}
               </Stack>
             </Paper>
-            <RawCall contract={contract} isStaticOnly={true}/>
+            <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
       </Accordion>);

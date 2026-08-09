@@ -90,7 +90,20 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                             color={result.status === "failed" ? "error" : result.status === "confirmed" ? "success" : "default"}
                         />
                     )}
+                    {result.kind !== "transaction" && (
+                        <Chip
+                            size="small"
+                            label={result.source.kind === "simulated" ? "Simulated" : "On-chain"}
+                            color={result.source.kind === "simulated" ? "secondary" : "default"}
+                            variant={result.source.kind === "simulated" ? "filled" : "outlined"}
+                        />
+                    )}
                 </Box>
+                {result.kind !== "transaction" && result.source.kind === "simulated" && (
+                    <Typography variant="caption" color="text.secondary">
+                        Computed after {result.source.queuedCallCount} queued {result.source.queuedCallCount === 1 ? "call" : "calls"} using the latest state when run.
+                    </Typography>
+                )}
                 {result.kind === "function" && <FunctionResult result={result} />}
                 {result.kind === "raw" && (
                     <Box sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>

@@ -8,28 +8,28 @@ export const chains = [
         token: 'ETH',
         label: 'Ethereum Mainnet',
         rpcUrl: 'https://ethereum-rpc.publicnode.com',
-        simulationRpcUrl: ''
+        simulationRpcUrl: 'https://ethereum-rpc.publicnode.com'
       },
       {
         id: '42161',
         token: 'ARB-ETH',
         label: 'Arbitrum One',
         rpcUrl: 'https://arbitrum.drpc.org',
-        simulationRpcUrl: ''
+        simulationRpcUrl: 'https://arbitrum-one-rpc.publicnode.com'
       },
       {
         id: '8453',
         token: 'ETH',
         label: 'Base',
         rpcUrl: 'https://base-rpc.publicnode.com',
-        simulationRpcUrl: ''
+        simulationRpcUrl: 'https://base-rpc.publicnode.com'
       },
       {
         id: '10',
         token: 'OETH',
         label: 'Optimism',
         rpcUrl: 'https://1rpc.io/op',
-        simulationRpcUrl: ''
+        simulationRpcUrl: 'https://optimism-rpc.publicnode.com'
       }
 ]
 export const chainsById = new Map(chains.map((chain) => [chain.id, chain]));
