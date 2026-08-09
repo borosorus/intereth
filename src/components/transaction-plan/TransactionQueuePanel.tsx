@@ -35,6 +35,7 @@ import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
 import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExecution";
+import SimulationControls from "./SimulationControls";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -423,6 +424,7 @@ export default function TransactionQueuePanel() {
                             {calls.map((call, index) => (
                                 <QueuedCallItem key={call.id} call={call} index={index} total={calls.length} />
                             ))}
+                            <SimulationControls />
                             <AtomicBatchExecution controller={batchController} />
                         </Stack>
                     </Box>

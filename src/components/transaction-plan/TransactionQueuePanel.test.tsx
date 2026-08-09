@@ -5,13 +5,16 @@ import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../transaction-plan/reducer";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
+import { useSimulation } from "../../simulation/context";
 import TransactionQueuePanel from "./TransactionQueuePanel";
 
 jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
+jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
 
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
 const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
+const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
@@ -68,6 +71,22 @@ function stateWithExecution(execution: ReturnType<typeof queuedState>["execution
 }
 
 describe("TransactionQueuePanel", () => {
+    beforeEach(() => {
+        mockedSimulation.mockReturnValue({
+            enabled: false,
+            status: "disabled",
+            chainId: null,
+            error: null,
+            configured: false,
+            canEnable: false,
+            enable: jest.fn(),
+            disable: jest.fn(),
+            retry: jest.fn(),
+            canSimulateChain: jest.fn().mockReturnValue(false),
+            simulateRead: jest.fn(),
+        });
+    });
+
     it("reviews, reorders, duplicates, and edits ABI and raw calls", async () => {
         const dispatch = jest.fn();
         mockWallet();
@@ -131,6 +150,28 @@ describe("TransactionQueuePanel", () => {
         const dialog = screen.getByRole("dialog", {name: "Clear transaction plan?"});
         fireEvent.click(within(dialog).getByRole("button", {name: "Clear plan"}));
         expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
+    });
+
+    it("enables queued-state simulation from the plan drawer", () => {
+        const enable = jest.fn().mockResolvedValue(undefined);
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            configured: true,
+            canEnable: true,
+            enable,
+        });
+        mockWallet();
+        mockedTransactionPlan.mockReturnValue({
+            state: queuedState(),
+            dispatch: jest.fn(),
+            sessionStatus: "ready",
+            canEdit: true,
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        fireEvent.click(screen.getByRole("checkbox", {name: "Enable queued-state simulation"}));
+        expect(enable).toHaveBeenCalled();
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {
