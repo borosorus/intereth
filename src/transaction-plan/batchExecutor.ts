@@ -2,11 +2,11 @@ import { ethers } from "ethers";
 import {
     BatchExecutionError,
     BatchExecutionState,
-    BatchLog,
     BatchReceipt,
     PlanContext,
     QueuedCall,
 } from "./types";
+import { isHexData, isRecord, parseBatchReceipt, UnknownRecord } from "./rpcValidation";
 
 export interface WalletRpcTransport {
     send(method: string, params: unknown[]): Promise<unknown>;
@@ -24,12 +24,6 @@ export interface AtomicBatchExecutor {
     submit(context: PlanContext, calls: QueuedCall[]): Promise<{batchId: string}>;
     getStatus(batchId: string, expectedChainId: string): Promise<BatchExecutionState>;
     showStatus(batchId: string): Promise<void>;
-}
-
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function asError(error: unknown, fallback: string): BatchExecutionError {
@@ -78,83 +72,10 @@ function parseAtomicCapability(value: unknown): {status?: "supported" | "ready" 
 }
 
 function validateBatchId(value: unknown): string {
-    if (typeof value !== "string" || value === "0x" || value.length > 8194) {
-        throw Object.assign(new Error("The wallet returned an invalid batch identifier."), {code: "INVALID_BATCH_RESPONSE"});
-    }
-    try {
-        ethers.dataLength(value);
-    } catch {
+    if (!isHexData(value) || value === "0x" || value.length > 8194) {
         throw Object.assign(new Error("The wallet returned an invalid batch identifier."), {code: "INVALID_BATCH_RESPONSE"});
     }
     return value;
-}
-
-function isHexData(value: unknown): value is string {
-    if (typeof value !== "string") {
-        return false;
-    }
-    try {
-        ethers.dataLength(value);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function isHexQuantity(value: unknown): value is string {
-    if (typeof value !== "string") {
-        return false;
-    }
-    try {
-        return ethers.toQuantity(ethers.getBigInt(value)).toLowerCase() === value.toLowerCase();
-    } catch {
-        return false;
-    }
-}
-
-function isHash(value: unknown): value is string {
-    return isHexData(value) && ethers.dataLength(value) === 32;
-}
-
-function parseLog(value: unknown): BatchLog | null {
-    if (!isRecord(value)
-        || typeof value.address !== "string"
-        || !ethers.isAddress(value.address)
-        || !isHexData(value.data)
-        || !Array.isArray(value.topics)
-        || value.topics.length > 4
-        || !value.topics.every(isHash)) {
-        return null;
-    }
-    return {
-        address: ethers.getAddress(value.address),
-        data: value.data,
-        topics: value.topics,
-    };
-}
-
-function parseReceipt(value: unknown): BatchReceipt | null {
-    if (!isRecord(value)
-        || !Array.isArray(value.logs)
-        || (value.status !== "0x0" && value.status !== "0x1")
-        || !isHash(value.blockHash)
-        || !isHexQuantity(value.blockNumber)
-        || !isHexQuantity(value.gasUsed)
-        || !isHash(value.transactionHash)) {
-        return null;
-    }
-    const logs = value.logs.map(parseLog);
-    if (logs.some((log) => log === null)) {
-        return null;
-    }
-    return {
-        logs: logs as BatchLog[],
-        status: value.status,
-        blockHash: value.blockHash,
-        blockNumber: value.blockNumber,
-        gasUsed: value.gasUsed,
-        transactionHash: value.transactionHash,
-    };
 }
 
 function invalidStatus(batchId: string, message: string, walletStatus?: number): BatchExecutionState {
@@ -250,7 +171,7 @@ export class Eip5792BatchExecutor implements AtomicBatchExecutor {
             if (!Array.isArray(response.receipts)) {
                 return invalidStatus(validBatchId, "The wallet returned malformed batch receipts.", walletStatus);
             }
-            const parsedReceipts = response.receipts.map(parseReceipt);
+            const parsedReceipts = response.receipts.map(parseBatchReceipt);
             if (parsedReceipts.some((receipt) => receipt === null)) {
                 return invalidStatus(validBatchId, "The wallet returned malformed batch receipts.", walletStatus);
             }

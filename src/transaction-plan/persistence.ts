@@ -3,47 +3,16 @@ import type { ParamValue } from "../calls/parameters";
 import { createEmptyTransactionPlanState } from "./reducer";
 import {
     BatchExecutionState,
-    BatchReceipt,
     QueuedCall,
     TRANSACTION_PLAN_STORAGE_VERSION,
     TransactionPlanState,
 } from "./types";
+import { isHexData, isRecord, parseBatchReceipt } from "./rpcValidation";
 
 export const TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v3";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isDecimal(value: unknown): value is string {
     return typeof value === "string" && /^\d+$/.test(value);
-}
-
-function isHexData(value: unknown): value is string {
-    if (typeof value !== "string") {
-        return false;
-    }
-    try {
-        ethers.dataLength(value);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function isHexQuantity(value: unknown): value is string {
-    if (typeof value !== "string") {
-        return false;
-    }
-    try {
-        return ethers.toQuantity(ethers.getBigInt(value)).toLowerCase() === value.toLowerCase();
-    } catch {
-        return false;
-    }
-}
-
-function isHash(value: unknown): value is string {
-    return isHexData(value) && ethers.dataLength(value) === 32;
 }
 
 function isParamValue(value: unknown, depth = 0): value is ParamValue {
@@ -115,23 +84,6 @@ function isQueuedCall(value: unknown): value is QueuedCall {
         && value.display.kind === value.editor.kind;
 }
 
-function isReceipt(value: unknown): value is BatchReceipt {
-    return isRecord(value)
-        && Array.isArray(value.logs)
-        && value.logs.every((log) => isRecord(log)
-            && typeof log.address === "string"
-            && ethers.isAddress(log.address)
-            && isHexData(log.data)
-            && Array.isArray(log.topics)
-            && log.topics.length <= 4
-            && log.topics.every(isHash))
-        && (value.status === "0x0" || value.status === "0x1")
-        && isHash(value.blockHash)
-        && isHexQuantity(value.blockNumber)
-        && isHexQuantity(value.gasUsed)
-        && isHash(value.transactionHash);
-}
-
 const EXECUTION_STATUSES: BatchExecutionState["status"][] = [
     "idle",
     "submitting",
@@ -156,7 +108,7 @@ function isExecution(value: unknown): value is BatchExecutionState {
     if (value.atomic !== undefined && typeof value.atomic !== "boolean") {
         return false;
     }
-    if (value.receipts !== undefined && (!Array.isArray(value.receipts) || !value.receipts.every(isReceipt))) {
+    if (value.receipts !== undefined && (!Array.isArray(value.receipts) || !value.receipts.every((receipt) => parseBatchReceipt(receipt) !== null))) {
         return false;
     }
     if (value.submittedAt !== undefined && (typeof value.submittedAt !== "number" || !Number.isFinite(value.submittedAt) || value.submittedAt < 0)) {
