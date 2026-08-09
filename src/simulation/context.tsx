@@ -36,8 +36,8 @@ const disabledState: SimulationState = {
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
 
-function simulationRpcUrl(chainId: string | undefined) {
-    return chainId ? chainsById.get(chainId)?.simulationRpcUrl.trim() ?? "" : "";
+function chainRpcUrl(chainId: string | undefined) {
+    return chainId ? chainsById.get(chainId)?.rpcUrl.trim() ?? "" : "";
 }
 
 function errorCode(error: unknown) {
@@ -61,7 +61,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const clientRef = useRef<SimulationClient | null>(null);
     const requestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
-    const rpcUrl = simulationRpcUrl(context?.chainId);
+    const rpcUrl = chainRpcUrl(context?.chainId);
     const sessionAllowed = transactionPlan.sessionStatus === "ready" || transactionPlan.sessionStatus === "disconnected";
     const planAvailable = Boolean(
         context

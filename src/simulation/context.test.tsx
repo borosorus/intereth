@@ -8,7 +8,7 @@ import { SimulationProvider, useSimulation } from "./context";
 
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../onboard", () => ({
-    chainsById: new Map([["1", {id: "1", simulationRpcUrl: "https://simulate.example"}]]),
+    chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),
 }));
 
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
