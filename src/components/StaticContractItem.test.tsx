@@ -51,4 +51,38 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
     });
+
+    it("keeps an explicit ordinary on-chain action", async () => {
+        const simulateRead = jest.fn();
+        mockedSimulation.mockReturnValue({
+            enabled: true,
+            status: "ready",
+            chainId: "1",
+            error: null,
+            revision: "ready:1",
+            queuedCallCount: 1,
+            configured: true,
+            canEnable: true,
+            enable: jest.fn(),
+            disable: jest.fn(),
+            retry: jest.fn(),
+            canSimulateChain: jest.fn().mockReturnValue(true),
+            simulateRead,
+        });
+        const fragment = new ethers.Interface(["function active() view returns (bool)"]).getFunction("active")!;
+        const onChainRead = jest.fn().mockResolvedValue(false);
+        const contract = {
+            runner: {call: jest.fn()},
+            getFunction: jest.fn().mockReturnValue(onChainRead),
+        } as unknown as ethers.BaseContract;
+
+        render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
+        fireEvent.click(screen.getByRole("button", {name: /active function active/}));
+        fireEvent.click(screen.getByRole("button", {name: "Run on-chain"}));
+
+        await waitFor(() => expect(onChainRead).toHaveBeenCalledWith());
+        expect(await screen.findByText("false")).toBeInTheDocument();
+        expect(screen.getByText("On-chain")).toBeInTheDocument();
+        expect(simulateRead).not.toHaveBeenCalled();
+    });
 });

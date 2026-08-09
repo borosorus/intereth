@@ -1,6 +1,6 @@
 import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress, Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import TransactionValueInput from "./TransactionValueInput";
 import CallResult from "./CallResult";
@@ -9,9 +9,9 @@ import { ValueUnit } from "../calls/parameters";
 import { prepareRawCall } from "../calls/prepareCall";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
-import { useSimulation } from "../simulation/context";
 import { normalizeReadData } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
+import { useSimulatedRead } from "../simulation/useSimulatedRead";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -27,20 +27,12 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
-    const simulation = useSimulation();
-    const simulationRequest = useRef(0);
-    const simulationLoading = useRef(false);
-    const simulationAvailable = staticCall && Boolean(chainId && simulation.canSimulateChain(chainId));
+    const simulatedRead = useSimulatedRead(chainId);
+    const simulationAvailable = staticCall && simulatedRead.available;
 
     useEffect(() => {
-        simulationRequest.current += 1;
-        if (simulationLoading.current) {
-            simulationLoading.current = false;
-            setIsResponseLoading(false);
-            setReadLoading(null);
-        }
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulation.revision]);
+    }, [simulatedRead.revision]);
 
     const call = useCallback(async () => {
         const runner = contract.runner;
@@ -103,36 +95,24 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
 
     const runSimulated = useCallback(async () => {
         if (!chainId) return;
-        const request = ++simulationRequest.current;
         try {
-            simulationLoading.current = true;
-            setIsResponseLoading(true);
-            setReadLoading("simulated");
             setQueued(false);
             setResult(null);
             setError(null);
-            const response = await simulation.simulateRead(chainId, {
+            const completed = await simulatedRead.run({
                 to: await contract.getAddress(),
                 data: normalizeReadData(data),
             });
-            if (request !== simulationRequest.current) return;
+            if (!completed) return;
             setResult({
                 kind: "raw",
-                data: response.returnData,
-                source: {kind: "simulated", queuedCallCount: simulation.queuedCallCount},
+                data: completed.result.returnData,
+                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
             });
         } catch (simulationError) {
-            if (request === simulationRequest.current) {
-                setError(normalizeError(simulationError, "Simulated raw call failed"));
-            }
-        } finally {
-            if (request === simulationRequest.current) {
-                simulationLoading.current = false;
-                setIsResponseLoading(false);
-                setReadLoading(null);
-            }
+            setError(normalizeError(simulationError, "Simulated raw call failed"));
         }
-    }, [chainId, contract, data, simulation]);
+    }, [chainId, contract, data, simulatedRead]);
 
     const addToQueue = useCallback(async () => {
         try {
@@ -197,10 +177,10 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             </Stack>
             {staticCall ? (
                 <ReadActions
-                    simulationEnabled={simulation.enabled}
+                    simulationEnabled={simulatedRead.enabled}
                     simulationAvailable={simulationAvailable}
                     onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
-                    loading={isResponseLoading ? readLoading : null}
+                    loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
                     onSimulated={() => void runSimulated()}
                     onOnChain={() => void call()}
                 />

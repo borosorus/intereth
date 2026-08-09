@@ -14,6 +14,7 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Shows the active RPC URL and chain ID on read-only contract instances.
 - Builds an ordered, browser-persisted transaction plan without opening the wallet.
 - Sends compatible plans as atomic wallet batches through EIP-5792.
+- Runs ABI and raw reads against the speculative state produced by queued calls.
 
 ## Usage
 
@@ -25,6 +26,10 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 State-changing ABI functions and raw calls provide two actions: **Add to queue** and **Send immediately**. The queue is bound to the wallet account and chain that created it. A matching draft restored after refresh is immediately usable. Changing account or network clears unsubmitted drafts; submitted or otherwise unresolved batches remain locked until their original wallet session returns or the user explicitly forgets their tracking state.
 
 Changing accounts on the same network keeps wallet-backed contract cards, rebinds them to the new signer, and resets their interaction forms. Changing networks removes wallet-backed cards from the previous network. Explicit read-only RPC contract cards stay pinned to their configured network in both cases. Disconnecting pauses wallet interactions without clearing their forms.
+
+## Simulated reads
+
+Enable queued-state simulation from the transaction-plan drawer to make compatible contract reads run after the queued calls without sending anything on-chain. Simulated results are labeled separately, use the latest chain state when run, and keep an explicit **Run on-chain** alternative. The predefined chain `rpcUrl` endpoints are also the simulation endpoints and must support `eth_simulateV1`.
 
 ## Atomic transaction plans
 

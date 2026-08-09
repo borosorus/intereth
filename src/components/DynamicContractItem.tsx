@@ -1,5 +1,5 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
@@ -16,6 +16,7 @@ import FunctionCallEditor from "./FunctionCallEditor";
 import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
+import { useSimulatedRead } from "../simulation/useSimulatedRead";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -36,23 +37,15 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
-    const simulation = useSimulation();
-    const simulationRequest = useRef(0);
-    const simulationLoading = useRef(false);
+    const simulatedRead = useSimulatedRead(chainId);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const simulationAvailable = !isStateModifying && Boolean(chainId && simulation.canSimulateChain(chainId));
+    const simulationAvailable = !isStateModifying && simulatedRead.available;
 
     useEffect(() => {
-        simulationRequest.current += 1;
-        if (simulationLoading.current) {
-            simulationLoading.current = false;
-            setIsResponseLoading(false);
-            setReadLoading(null);
-        }
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulation.revision]);
+    }, [simulatedRead.revision]);
 
     useEffect(() => {
         if(!expanded && isStateModifying){
@@ -114,37 +107,25 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
 
     const runSimulated = useCallback(async () => {
         if (!chainId) return;
-        const request = ++simulationRequest.current;
         try {
-            simulationLoading.current = true;
-            setIsResponseLoading(true);
-            setReadLoading("simulated");
             setResult(null);
             setError(null);
             const encoded = encodeFunctionRead(frag, args);
-            const response = await simulation.simulateRead(chainId, {
+            const completed = await simulatedRead.run({
                 to: await contract.getAddress(),
                 data: encoded.data,
             });
-            if (request !== simulationRequest.current) return;
+            if (!completed) return;
             setResult({
                 kind: "function",
                 outputs: frag.outputs,
-                value: decodeFunctionRead(frag, response.returnData),
-                source: {kind: "simulated", queuedCallCount: simulation.queuedCallCount},
+                value: decodeFunctionRead(frag, completed.result.returnData),
+                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
             });
         } catch (simulationError) {
-            if (request === simulationRequest.current) {
-                setError(normalizeError(simulationError, "Simulated read failed"));
-            }
-        } finally {
-            if (request === simulationRequest.current) {
-                simulationLoading.current = false;
-                setIsResponseLoading(false);
-                setReadLoading(null);
-            }
+            setError(normalizeError(simulationError, "Simulated read failed"));
         }
-    }, [args, chainId, contract, frag, simulation]);
+    }, [args, chainId, contract, frag, simulatedRead]);
 
     const addToQueue = useCallback(async () => {
         try {
@@ -219,10 +200,10 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                             </Stack>
                         ) : (
                             <ReadActions
-                                simulationEnabled={simulation.enabled}
+                                simulationEnabled={simulatedRead.enabled}
                                 simulationAvailable={simulationAvailable}
                                 onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
-                                loading={isResponseLoading ? readLoading : null}
+                                loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
                                 onSimulated={() => void runSimulated()}
                                 onOnChain={() => void call()}
                             />

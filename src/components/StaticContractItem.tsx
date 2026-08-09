@@ -1,6 +1,6 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
@@ -14,6 +14,7 @@ import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
+import { useSimulatedRead } from "../simulation/useSimulatedRead";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -26,23 +27,16 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const [loading, setLoading] = useState<ReadLoadingMode>(null);
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
-    const simulation = useSimulation();
-    const simulationRequest = useRef(0);
-    const simulationLoading = useRef(false);
+    const simulatedRead = useSimulatedRead(chainId);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const simulationAvailable = !isDisabled && simulation.canSimulateChain(chainId);
+    const simulationAvailable = !isDisabled && simulatedRead.available;
 
     useEffect(() => {
-        simulationRequest.current += 1;
-        if (simulationLoading.current) {
-            simulationLoading.current = false;
-            setLoading(null);
-        }
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulation.revision]);
+    }, [simulatedRead.revision]);
 
     const call = useCallback(async () => {
         try {
@@ -60,35 +54,25 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     }, [args, contract, frag]);
 
     const runSimulated = useCallback(async () => {
-        const request = ++simulationRequest.current;
         try {
-            simulationLoading.current = true;
-            setLoading("simulated");
             setResult(null);
             setError(null);
             const encoded = encodeFunctionRead(frag, args);
-            const response = await simulation.simulateRead(chainId, {
+            const completed = await simulatedRead.run({
                 to: await contract.getAddress(),
                 data: encoded.data,
             });
-            if (request !== simulationRequest.current) return;
+            if (!completed) return;
             setResult({
                 kind: "function",
                 outputs: frag.outputs,
-                value: decodeFunctionRead(frag, response.returnData),
-                source: {kind: "simulated", queuedCallCount: simulation.queuedCallCount},
+                value: decodeFunctionRead(frag, completed.result.returnData),
+                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
             });
         } catch (simulationError) {
-            if (request === simulationRequest.current) {
-                setError(normalizeError(simulationError, "Simulated read failed"));
-            }
-        } finally {
-            if (request === simulationRequest.current) {
-                simulationLoading.current = false;
-                setLoading(null);
-            }
+            setError(normalizeError(simulationError, "Simulated read failed"));
         }
-    }, [args, chainId, contract, frag, simulation]);
+    }, [args, contract, frag, simulatedRead]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -121,10 +105,10 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 />
                             ))}
                             <ReadActions
-                                simulationEnabled={simulation.enabled}
+                                simulationEnabled={simulatedRead.enabled}
                                 simulationAvailable={simulationAvailable}
                                 onChainAvailable={typeof contract.runner?.call === "function"}
-                                loading={loading}
+                                loading={simulatedRead.loading ? "simulated" : loading}
                                 onSimulated={() => void runSimulated()}
                                 onOnChain={() => void call()}
                             />

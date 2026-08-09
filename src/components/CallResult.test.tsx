@@ -19,4 +19,10 @@ describe("CallResult", () => {
         render(<CallResult result={{kind: "function", outputs: [], value: undefined, source: {kind: "onchain"}}} />);
         expect(screen.getByText("Call completed with no return value.")).toBeInTheDocument();
     });
+
+    it("labels speculative results with their queue context", () => {
+        render(<CallResult result={{kind: "raw", data: "0x1234", source: {kind: "simulated", queuedCallCount: 2}}} />);
+        expect(screen.getByText("Simulated")).toBeInTheDocument();
+        expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
+    });
 });

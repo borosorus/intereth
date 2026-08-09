@@ -181,4 +181,46 @@ describe("DynamicContractItem wallet lifecycle", () => {
         expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "Send immediately"})).toBeDisabled();
     });
+
+    it("explains when queued-state simulation belongs to another chain", async () => {
+        mockSimulation({
+            enabled: true,
+            status: "ready",
+            chainId: "10",
+            revision: "ready:10",
+            queuedCallCount: 1,
+        });
+        const signer = {call: jest.fn(), sendTransaction: jest.fn()};
+        mockedWalletSession.mockReturnValue({
+            status: "ready",
+            provider: null,
+            signer: signer as unknown as ethers.JsonRpcSigner,
+            account: "0x0000000000000000000000000000000000000001",
+            chainId: "1",
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockedTransactionPlan.mockReturnValue({
+            state: createEmptyTransactionPlanState(),
+            dispatch: jest.fn(),
+            sessionStatus: "empty",
+            canEdit: true,
+        });
+        const activeContract = {
+            interface: new ethers.Interface([]),
+            runner: signer,
+            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+        };
+        const contract = {
+            ...activeContract,
+            connect: jest.fn().mockReturnValue(activeContract),
+        } as unknown as ethers.BaseContract;
+
+        render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
+        await screen.findByText("0x0000000000000000000000000000000000000010");
+        expect(screen.getByText(/simulation belongs to chain 10; this contract is on chain 1/)).toBeInTheDocument();
+    });
 });

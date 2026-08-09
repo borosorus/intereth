@@ -45,6 +45,12 @@ describe("error normalization", () => {
         [5730, "Batch not found"],
         [5740, "Batch is too large"],
         ["PLAN_CONTEXT_MISMATCH", "Session changed"],
+        ["SIMULATION_UNSUPPORTED", "Simulation unsupported"],
+        ["SIMULATION_RPC_UNAVAILABLE", "Simulation unavailable"],
+        ["SIMULATION_CHAIN_MISMATCH", "Wrong simulation network"],
+        ["SIMULATION_RESPONSE_INVALID", "Invalid simulation response"],
+        ["SIMULATION_QUEUED_CALL_REVERTED", "Queued call reverted"],
+        ["SIMULATION_READ_REVERTED", "Simulated read reverted"],
         ["INVALID_BATCH_RESPONSE", "Invalid wallet response"],
     ])("maps %s to a useful title", (code, title) => {
         expect(normalizeError({code, shortMessage: "technical message"}).title).toBe(title);
