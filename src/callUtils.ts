@@ -106,6 +106,27 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
     } else if (code === "PLAN_CONTEXT_MISMATCH") {
         title = "Session changed";
         displayMessage = "The connected account or network no longer matches this transaction plan.";
+    } else if (code === "SIMULATION_NOT_CONFIGURED") {
+        title = "Simulation unavailable";
+        displayMessage = "No simulation RPC is configured for this network.";
+    } else if (code === "SIMULATION_UNSUPPORTED") {
+        title = "Simulation unsupported";
+        displayMessage = "The configured RPC does not support eth_simulateV1.";
+    } else if (code === "SIMULATION_RPC_UNAVAILABLE") {
+        title = "Simulation unavailable";
+        displayMessage = message || "The simulation RPC could not complete the request.";
+    } else if (code === "SIMULATION_CHAIN_MISMATCH") {
+        title = "Wrong simulation network";
+        displayMessage = message || "The configured simulation RPC is connected to another network.";
+    } else if (code === "SIMULATION_RESPONSE_INVALID") {
+        title = "Invalid simulation response";
+        displayMessage = message || "The simulation RPC returned data Intereth could not validate.";
+    } else if (code === "SIMULATION_QUEUED_CALL_REVERTED") {
+        title = "Queued call reverted";
+        displayMessage = message || "A queued call reverted before the read could run.";
+    } else if (code === "SIMULATION_READ_REVERTED") {
+        title = "Simulated read reverted";
+        displayMessage = message || "The read reverted after applying the queued calls.";
     } else if (code === "INVALID_BATCH_RESPONSE") {
         title = "Invalid wallet response";
         displayMessage = message || "The wallet returned invalid batch data.";
