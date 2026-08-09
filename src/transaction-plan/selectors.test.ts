@@ -33,11 +33,10 @@ describe("transaction plan selectors", () => {
         expect(draft.plan.context).toEqual({account: call.from, chainId: "1"});
     });
 
-    it("makes a matching restored draft immediately editable", () => {
-        const restored = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: draft});
+    it("makes a matching draft immediately editable", () => {
         const wallet = {account: call.from, chainId: "1"};
-        expect(selectPlanSessionStatus(restored, wallet)).toBe("ready");
-        expect(selectCanEditPlan(restored, wallet)).toBe(true);
+        expect(selectPlanSessionStatus(draft, wallet)).toBe("ready");
+        expect(selectCanEditPlan(draft, wallet)).toBe(true);
     });
 
     it("clears safe records on identity mismatch but preserves unresolved batches", () => {

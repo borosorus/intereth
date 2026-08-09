@@ -99,7 +99,6 @@ export type TransactionPlanAction =
     | {type: "MOVE_CALL"; callId: string; direction: "up" | "down"}
     | {type: "CLEAR_PLAN"}
     | {type: "FORGET_TRACKED_PLAN"}
-    | {type: "RESTORE_PLAN"; state: TransactionPlanState}
     | {type: "START_BATCH_SUBMISSION"}
     | {type: "BATCH_SUBMITTED"; batchId: string; submittedAt: number}
     | {type: "BATCH_SUBMISSION_FAILED"; error: BatchExecutionError}

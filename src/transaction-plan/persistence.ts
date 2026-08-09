@@ -246,6 +246,19 @@ export function parseTransactionPlan(serialized: string): TransactionPlanState |
 type ReadStorage = Pick<Storage, "getItem">;
 type WriteStorage = Pick<Storage, "setItem" | "removeItem">;
 
+function recoverInterruptedSubmission(state: TransactionPlanState): TransactionPlanState {
+    if (state.execution.status !== "submitting") {
+        return state;
+    }
+    return {
+        ...state,
+        execution: {
+            status: "idle",
+            error: {code: "SUBMISSION_INTERRUPTED", message: "Batch submission was interrupted before a batch ID was saved."},
+        },
+    };
+}
+
 export function loadTransactionPlan(storage: ReadStorage | null = typeof window === "undefined" ? null : window.localStorage) {
     if (!storage) {
         return createEmptyTransactionPlanState();
@@ -253,7 +266,8 @@ export function loadTransactionPlan(storage: ReadStorage | null = typeof window 
     try {
         const serialized = storage.getItem(TRANSACTION_PLAN_STORAGE_KEY);
         if (serialized) {
-            return parseTransactionPlan(serialized) ?? createEmptyTransactionPlanState();
+            const parsed = parseTransactionPlan(serialized);
+            return parsed ? recoverInterruptedSubmission(parsed) : createEmptyTransactionPlanState();
         }
         return createEmptyTransactionPlanState();
     } catch {

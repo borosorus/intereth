@@ -104,17 +104,6 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return isExecutionInFlight(state.execution) ? state : createEmptyTransactionPlanState();
         case "FORGET_TRACKED_PLAN":
             return canForgetTrackedExecution(state.execution) ? createEmptyTransactionPlanState() : state;
-        case "RESTORE_PLAN":
-            if (action.state.execution.status === "submitting") {
-                return {
-                    ...action.state,
-                    execution: {
-                        status: "idle",
-                        error: {code: "SUBMISSION_INTERRUPTED", message: "Batch submission was interrupted before a batch ID was saved."},
-                    },
-                };
-            }
-            return action.state;
         case "START_BATCH_SUBMISSION":
             return isExecutionMutable(state.execution) && state.plan.calls.length > 0
                 ? {...state, execution: {status: "submitting"}}

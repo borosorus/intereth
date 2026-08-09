@@ -134,21 +134,6 @@ describe("transactionPlanReducer", () => {
         expect(transactionPlanReducer(failed, {type: "REMOVE_CALL", callId: "call-1"}).plan.calls).toEqual([]);
     });
 
-    it("restores drafts and submitted batches, and recovers interrupted submission", () => {
-        const draft = addCalls(call());
-        const restoredDraft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: draft});
-        expect(restoredDraft).toEqual(draft);
-
-        const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};
-        const restoredPending = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: pending});
-        expect(restoredPending.execution).toEqual(pending.execution);
-
-        const submitting: TransactionPlanState = {...draft, execution: {status: "submitting"}};
-        const interrupted = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "RESTORE_PLAN", state: submitting});
-
-        expect(interrupted.execution).toMatchObject({status: "idle", error: {code: "SUBMISSION_INTERRUPTED"}});
-    });
-
     it("only forgets unresolved batches with a saved identifier", () => {
         const draft = addCalls(call());
         const pending: TransactionPlanState = {...draft, execution: {status: "pending", batchId: "0x1234"}};

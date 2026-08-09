@@ -38,6 +38,28 @@ describe("transaction plan persistence", () => {
         expect(() => JSON.stringify(state)).not.toThrow();
     });
 
+    it("preserves tracked batches and recovers a submission interrupted before an ID was saved", () => {
+        const storage = memoryStorage();
+        const draft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});
+        const pending = {...draft, execution: {status: "pending" as const, batchId: "0x1234"}};
+        storage.setItem(TRANSACTION_PLAN_STORAGE_KEY, JSON.stringify(pending));
+        expect(loadTransactionPlan(storage)).toEqual(pending);
+
+        const submitting = transactionPlanReducer(draft, {type: "START_BATCH_SUBMISSION"});
+        storage.setItem(TRANSACTION_PLAN_STORAGE_KEY, JSON.stringify(submitting));
+
+        expect(loadTransactionPlan(storage)).toEqual({
+            ...draft,
+            execution: {
+                status: "idle",
+                error: {
+                    code: "SUBMISSION_INTERRUPTED",
+                    message: "Batch submission was interrupted before a batch ID was saved.",
+                },
+            },
+        });
+    });
+
     it("removes storage for an empty plan", () => {
         const storage = memoryStorage();
         storage.setItem(TRANSACTION_PLAN_STORAGE_KEY, "saved");

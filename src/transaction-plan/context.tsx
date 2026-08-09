@@ -19,12 +19,7 @@ export function TransactionPlanProvider({children}: {children: ReactNode}) {
     const [state, dispatch] = useReducer(
         transactionPlanReducer,
         undefined,
-        () => {
-            const restored = loadTransactionPlan();
-            return restored.plan.calls.length > 0
-                ? transactionPlanReducer(restored, {type: "RESTORE_PLAN", state: restored})
-                : restored;
-        },
+        () => loadTransactionPlan(),
     );
     const walletIdentity = useMemo(() => ({account: wallet.account, chainId: wallet.chainId}), [wallet.account, wallet.chainId]);
     const sessionStatus = selectPlanSessionStatus(state, walletIdentity);
