@@ -13,19 +13,13 @@ export const chains = [
         id: '42161',
         token: 'ARB-ETH',
         label: 'Arbitrum One',
-        rpcUrl: 'https://rpc.ankr.com/arbitrum'
-      },
-      {
-        id: '42170',
-        token: 'ARB',
-        label: 'Arbitrum Nova',
-        rpcUrl: 'https://nova.arbitrum.io/rpc'
+        rpcUrl: 'https://arbitrum.drpc.org'
       },
       {
         id: '8453',
         token: 'ETH',
         label: 'Base',
-        rpcUrl: 'https://mainnet.base.org'
+        rpcUrl: 'https://base-rpc.publicnode.com'
       },
       {
         id: '10',
