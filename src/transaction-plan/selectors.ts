@@ -1,4 +1,5 @@
 import { TransactionPlanState } from "./types";
+import { canForgetTrackedExecution, isExecutionAutoClearable, isExecutionMutable } from "./executionPolicy";
 
 export type PlanSessionStatus =
     | "empty"
@@ -31,7 +32,7 @@ export function selectPlanSessionStatus(state: TransactionPlanState, wallet: Act
 
 export function selectCanEditPlan(state: TransactionPlanState, wallet: ActiveWalletIdentity) {
     const sessionStatus = selectPlanSessionStatus(state, wallet);
-    return (sessionStatus === "empty" || sessionStatus === "ready") && state.execution.status === "idle";
+    return (sessionStatus === "empty" || sessionStatus === "ready") && isExecutionMutable(state.execution);
 }
 
 export function selectShouldClearForSession(state: TransactionPlanState, wallet: ActiveWalletIdentity) {
@@ -39,14 +40,9 @@ export function selectShouldClearForSession(state: TransactionPlanState, wallet:
     if (sessionStatus !== "account_mismatch" && sessionStatus !== "chain_mismatch") {
         return false;
     }
-    return state.execution.status === "idle"
-        || state.execution.status === "confirmed"
-        || state.execution.status === "offchain_failed"
-        || state.execution.status === "reverted";
+    return isExecutionAutoClearable(state.execution);
 }
 
 export function selectCanForgetTrackedPlan(state: TransactionPlanState) {
-    return state.execution.status === "pending"
-        || state.execution.status === "invalid"
-        || state.execution.status === "partially_reverted";
+    return canForgetTrackedExecution(state.execution);
 }

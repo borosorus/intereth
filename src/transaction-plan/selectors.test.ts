@@ -66,5 +66,6 @@ describe("transaction plan selectors", () => {
         expect(selectCanForgetTrackedPlan({...draft, execution: {status: "partially_reverted", batchId: "0x12"}})).toBe(true);
         expect(selectCanForgetTrackedPlan(draft)).toBe(false);
         expect(selectCanForgetTrackedPlan({...draft, execution: {status: "submitting"}})).toBe(false);
+        expect(selectCanForgetTrackedPlan({...draft, execution: {status: "invalid"}})).toBe(false);
     });
 });

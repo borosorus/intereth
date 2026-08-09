@@ -5,6 +5,7 @@ import {
     TransactionPlanAction,
     TransactionPlanState,
 } from "./types";
+import { canForgetTrackedExecution, isExecutionInFlight, isExecutionMutable } from "./executionPolicy";
 
 export function createEmptyTransactionPlanState(): TransactionPlanState {
     return {
@@ -32,20 +33,6 @@ function hasCallId(state: TransactionPlanState, callId: string) {
     return state.plan.calls.some((call) => call.id === callId);
 }
 
-function canMutate(state: TransactionPlanState) {
-    return state.execution.status === "idle";
-}
-
-function isBatchInFlight(state: TransactionPlanState) {
-    return state.execution.status === "submitting" || state.execution.status === "pending";
-}
-
-function canForgetTrackedPlan(state: TransactionPlanState) {
-    return state.execution.status === "pending"
-        || state.execution.status === "invalid"
-        || state.execution.status === "partially_reverted";
-}
-
 function establishPlan(state: TransactionPlanState, call: QueuedCall): TransactionPlanState["plan"] {
     return {
         ...state.plan,
@@ -57,12 +44,12 @@ function establishPlan(state: TransactionPlanState, call: QueuedCall): Transacti
 export function transactionPlanReducer(state: TransactionPlanState, action: TransactionPlanAction): TransactionPlanState {
     switch (action.type) {
         case "ADD_CALL":
-            if (!canMutate(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
+            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             return {...state, plan: establishPlan(state, action.call)};
         case "UPDATE_CALL": {
-            if (!canMutate(state) || !callMatchesPlan(state, action.call)) {
+            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call)) {
                 return state;
             }
             const previous = state.plan.calls.find((call) => call.id === action.call.id);
@@ -75,7 +62,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "REMOVE_CALL": {
-            if (!canMutate(state)) {
+            if (!isExecutionMutable(state.execution)) {
                 return state;
             }
             const calls = state.plan.calls.filter((call) => call.id !== action.callId);
@@ -89,7 +76,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "DUPLICATE_CALL": {
-            if (!canMutate(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
+            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             const index = state.plan.calls.findIndex((call) => call.id === action.afterCallId);
@@ -101,7 +88,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return {...state, plan: {...state.plan, calls}};
         }
         case "MOVE_CALL": {
-            if (!canMutate(state)) {
+            if (!isExecutionMutable(state.execution)) {
                 return state;
             }
             const index = state.plan.calls.findIndex((call) => call.id === action.callId);
@@ -114,9 +101,9 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return {...state, plan: {...state.plan, calls}};
         }
         case "CLEAR_PLAN":
-            return isBatchInFlight(state) ? state : createEmptyTransactionPlanState();
+            return isExecutionInFlight(state.execution) ? state : createEmptyTransactionPlanState();
         case "FORGET_TRACKED_PLAN":
-            return canForgetTrackedPlan(state) ? createEmptyTransactionPlanState() : state;
+            return canForgetTrackedExecution(state.execution) ? createEmptyTransactionPlanState() : state;
         case "RESTORE_PLAN":
             if (action.state.execution.status === "submitting") {
                 return {
@@ -129,7 +116,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             }
             return action.state;
         case "START_BATCH_SUBMISSION":
-            return canMutate(state) && state.plan.calls.length > 0
+            return isExecutionMutable(state.execution) && state.plan.calls.length > 0
                 ? {...state, execution: {status: "submitting"}}
                 : state;
         case "BATCH_SUBMITTED":

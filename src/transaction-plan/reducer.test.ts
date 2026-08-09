@@ -155,11 +155,13 @@ describe("transactionPlanReducer", () => {
         const invalid: TransactionPlanState = {...draft, execution: {status: "invalid", batchId: "0x1234"}};
         const partial: TransactionPlanState = {...draft, execution: {status: "partially_reverted", batchId: "0x1234"}};
         const submitting: TransactionPlanState = {...draft, execution: {status: "submitting"}};
+        const untrackedInvalid: TransactionPlanState = {...draft, execution: {status: "invalid"}};
 
         expect(transactionPlanReducer(pending, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
         expect(transactionPlanReducer(invalid, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
         expect(transactionPlanReducer(partial, {type: "FORGET_TRACKED_PLAN"})).toEqual(createEmptyTransactionPlanState());
         expect(transactionPlanReducer(submitting, {type: "FORGET_TRACKED_PLAN"})).toBe(submitting);
+        expect(transactionPlanReducer(untrackedInvalid, {type: "FORGET_TRACKED_PLAN"})).toBe(untrackedInvalid);
         expect(transactionPlanReducer(draft, {type: "FORGET_TRACKED_PLAN"})).toBe(draft);
     });
 });
