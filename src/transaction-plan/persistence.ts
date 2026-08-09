@@ -4,12 +4,11 @@ import { createEmptyTransactionPlanState } from "./reducer";
 import {
     BatchExecutionState,
     QueuedCall,
-    TRANSACTION_PLAN_STORAGE_VERSION,
     TransactionPlanState,
 } from "./types";
 import { isHexData, isRecord, parseBatchReceipt } from "./rpcValidation";
 
-export const TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan.v3";
+export const TRANSACTION_PLAN_STORAGE_KEY = "intereth.transaction-plan";
 
 function isDecimal(value: unknown): value is string {
     return typeof value === "string" && /^\d+$/.test(value);
@@ -180,7 +179,7 @@ export function parseTransactionPlan(serialized: string): TransactionPlanState |
     try {
         const candidate: unknown = JSON.parse(serialized);
         if (!isRecord(candidate)
-            || candidate.version !== TRANSACTION_PLAN_STORAGE_VERSION
+            || !Object.keys(candidate).every((key) => key === "plan" || key === "execution")
             || !isRecord(candidate.plan)
             || !isExecution(candidate.execution)) {
             return null;
@@ -189,7 +188,7 @@ export function parseTransactionPlan(serialized: string): TransactionPlanState |
         if (!plan || (plan.calls.length === 0 && candidate.execution.status !== "idle")) {
             return null;
         }
-        return {version: TRANSACTION_PLAN_STORAGE_VERSION, plan, execution: candidate.execution};
+        return {plan, execution: candidate.execution};
     } catch {
         return null;
     }

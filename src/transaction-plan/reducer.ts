@@ -1,7 +1,6 @@
 import { ethers } from "ethers";
 import {
     QueuedCall,
-    TRANSACTION_PLAN_STORAGE_VERSION,
     TransactionPlanAction,
     TransactionPlanState,
 } from "./types";
@@ -9,7 +8,6 @@ import { canForgetTrackedExecution, isExecutionInFlight, isExecutionMutable } fr
 
 export function createEmptyTransactionPlanState(): TransactionPlanState {
     return {
-        version: TRANSACTION_PLAN_STORAGE_VERSION,
         plan: {
             context: null,
             calls: [],

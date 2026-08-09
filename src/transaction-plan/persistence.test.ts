@@ -67,10 +67,18 @@ describe("transaction plan persistence", () => {
         expect(storage.getItem(TRANSACTION_PLAN_STORAGE_KEY)).toBeNull();
     });
 
-    it("fails closed for malformed, mismatched, and unsupported data", () => {
+    it("does not read the retired versioned storage key", () => {
+        const storage = memoryStorage();
+        const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});
+        storage.setItem("intereth.transaction-plan.v3", JSON.stringify({...state, version: 3}));
+
+        expect(loadTransactionPlan(storage)).toEqual(createEmptyTransactionPlanState());
+    });
+
+    it("fails closed for malformed and inconsistent data", () => {
         const valid = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});
         expect(parseTransactionPlan("not json")).toBeNull();
-        expect(parseTransactionPlan(JSON.stringify({...valid, version: 4}))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({...valid, version: 3}))).toBeNull();
         expect(parseTransactionPlan(JSON.stringify({
             ...valid,
             plan: {...valid.plan, context: {...valid.plan.context!, chainId: "10"}},

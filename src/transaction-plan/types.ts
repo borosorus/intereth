@@ -1,7 +1,5 @@
 import { ParamValue } from "../calls/parameters";
 
-export const TRANSACTION_PLAN_STORAGE_VERSION = 3 as const;
-
 export interface PlanContext {
     account: string;
     chainId: string;
@@ -83,7 +81,6 @@ export interface BatchExecutionState {
 }
 
 export interface TransactionPlanState {
-    version: typeof TRANSACTION_PLAN_STORAGE_VERSION;
     plan: {
         context: PlanContext | null;
         calls: QueuedCall[];
