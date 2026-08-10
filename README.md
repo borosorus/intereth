@@ -14,7 +14,8 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Shows the active RPC URL and chain ID on read-only contract instances.
 - Builds an ordered, browser-persisted transaction plan without opening the wallet.
 - Sends compatible plans as atomic wallet batches through EIP-5792.
-- Runs ABI and raw reads against the speculative state produced by queued calls.
+- Separates execution-focused Interact mode from a technical Simulate workspace with speculative reads and watches.
+- Decodes simulated events, reverts, return data, and supported ERC-20/native balance changes.
 
 ## Usage
 
@@ -29,9 +30,13 @@ If immediate gas estimation returns the standardized ERC-20 insufficient-allowan
 
 Changing accounts on the same network keeps wallet-backed contract cards, rebinds them to the new signer, and resets their interaction forms. Changing networks removes wallet-backed cards from the previous network. Explicit read-only RPC contract cards stay pinned to their configured network in both cases. Disconnecting pauses wallet interactions without clearing their forms.
 
-## Simulated reads
+## Workspace modes and simulation
 
-Enable queued-state simulation from the transaction-plan drawer to make compatible contract reads run after the queued calls without sending anything on-chain. Simulated results are labeled separately, use the latest chain state when run, and keep an explicit **Run on-chain** alternative. The predefined chain `rpcUrl` endpoints are also the simulation endpoints and must support `eth_simulateV1`.
+**Interact** is the default execution workspace. Reads use canonical on-chain state, while queued writes receive a compact speculative preview before wallet execution.
+
+**Simulate** is the technical workspace. Reads can run after the queued writes without sending anything, and an explicit **Run on-chain** action remains available. Read calls can also be pinned as watches; Intereth recomputes their base-block and speculative values whenever the queue changes. The transaction-plan drawer provides decoded per-call results, events, reverts, gas, balance changes, and optional raw RPC details. All simulated values are speculative and are labeled separately from canonical values.
+
+The predefined chain `rpcUrl` endpoints are also the simulation endpoints and must support `eth_simulateV1`. Queue previews and watches use one pinned base block per snapshot so their comparisons share the same canonical starting state.
 
 ## Atomic transaction plans
 

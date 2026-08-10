@@ -79,6 +79,7 @@ export interface BalanceChange {
 
 export interface PlanSimulatedCall extends SimulatedCallResult {
     callId: string;
+    decodedReturn?: DecodedValue[];
     decodedEvents: DecodedEvent[];
     decodedRevert?: DecodedRevert;
 }

@@ -39,6 +39,7 @@ import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { useWorkspaceMode } from "../../workspace/context";
 import InteractSimulationPreview from "./InteractSimulationPreview";
+import SimulationInspector from "../simulation/SimulationInspector";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -454,7 +455,12 @@ export default function TransactionQueuePanel() {
                             {calls.map((call, index) => (
                                 <QueuedCallItem key={call.id} call={call} index={index} total={calls.length} />
                             ))}
-                            {workspace.mode === "simulate" && <SimulationControls />}
+                            {workspace.mode === "simulate" && (
+                                <>
+                                    <SimulationControls />
+                                    <SimulationInspector />
+                                </>
+                            )}
                             {workspace.mode === "interact" ? (
                                 <>
                                     <InteractSimulationPreview />

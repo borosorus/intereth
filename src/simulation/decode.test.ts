@@ -9,7 +9,7 @@ const OTHER = "0x0000000000000000000000000000000000000002";
 const TARGET = "0x0000000000000000000000000000000000000010";
 const TOKEN = "0x0000000000000000000000000000000000000020";
 const contractInterface = new ethers.Interface([
-    "function mint(address to, uint256 amount)",
+    "function mint(address to, uint256 amount) returns (uint256 minted)",
     "event Mint(address indexed to, uint256 amount)",
     "error Unauthorized(address caller)",
 ]);
@@ -45,7 +45,10 @@ function transferLog(address: string, from: string, to: string, amount: bigint):
 describe("simulation decoding", () => {
     it("decodes ABI events and custom errors from portable call metadata", () => {
         const event = contractInterface.encodeEventLog(contractInterface.getEvent("Mint")!, [ACCOUNT, 5]);
-        const success = result({logs: [{address: TARGET, topics: event.topics, data: event.data, raw: event}]});
+        const success = result({
+            returnData: ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [BigInt(5)]),
+            logs: [{address: TARGET, topics: event.topics, data: event.data, raw: event}],
+        });
         const failure = result({
             status: "0x0",
             returnData: contractInterface.encodeErrorResult("Unauthorized", [ACCOUNT]),
@@ -64,6 +67,7 @@ describe("simulation decoding", () => {
         expect(snapshot.calls[0].decodedEvents[0].arguments).toEqual(expect.arrayContaining([
             expect.objectContaining({name: "amount", value: "5"}),
         ]));
+        expect(snapshot.calls[0].decodedReturn).toEqual([{name: "minted", type: "uint256", value: "5"}]);
         expect(snapshot.calls[1].decodedRevert).toMatchObject({name: "Unauthorized", kind: "custom"});
         expect(snapshot.baseBlockNumber).toBe("0x64");
         expect(snapshot.raw).toEqual({calls: 2});
@@ -82,6 +86,20 @@ describe("simulation decoding", () => {
 
         expect(snapshot.calls[0].decodedRevert).toMatchObject({name: "Error", message: "nope", kind: "standard"});
         expect(snapshot.calls[1].decodedRevert).toMatchObject({name: "Reverted", message: "unknown failure", kind: "raw"});
+    });
+
+    it("labels standard transfer logs consistently even when the ABI contains Transfer", () => {
+        const transferInterface = new ethers.Interface(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
+        const transfer = transferInterface.encodeEventLog(transferInterface.getEvent("Transfer")!, [ACCOUNT, OTHER, BigInt(4)]);
+        const transferCall = {...call, decoderAbi: [transferInterface.getEvent("Transfer")!.format("full")]};
+        const snapshot = createPlanSimulationSnapshot(
+            {chainId: "1", account: ACCOUNT},
+            [transferCall],
+            {calls: [result({logs: [{address: TARGET, topics: transfer.topics, data: transfer.data, raw: transfer}]})], raw: {}},
+            "revision",
+            "0x64",
+        );
+        expect(snapshot.calls[0].decodedEvents[0]).toMatchObject({name: "Transfer", kind: "erc20-transfer"});
     });
 });
 

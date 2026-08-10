@@ -9,6 +9,7 @@ import {
     SimulationLog,
 } from "./types";
 import { analyzeBalanceChanges, decodeTransferEvent } from "./balanceChanges";
+import { formatAbiValue } from "../callUtils";
 
 const standardErrors = new ethers.Interface([
     "error Error(string message)",
@@ -52,7 +53,7 @@ function interfacesByAddress(calls: QueuedCall[]) {
 
 function decodeEvent(log: SimulationLog, interfaces: Map<string, ethers.Interface | null>): DecodedEvent | null {
     const transfer = decodeTransferEvent(log);
-    if (transfer?.asset === "native") return transfer.event;
+    if (transfer) return transfer.event;
 
     const contractInterface = interfaces.get(log.address.toLowerCase());
     if (contractInterface) {
@@ -69,10 +70,10 @@ function decodeEvent(log: SimulationLog, interfaces: Map<string, ethers.Interfac
                 };
             }
         } catch {
-            // Fall through to a standard transfer decoder.
+            // Leave the log available in the raw inspector.
         }
     }
-    return transfer?.event ?? null;
+    return null;
 }
 
 function revertData(result: SimulatedCallsResult["calls"][number]) {
@@ -120,6 +121,21 @@ function decodeRevert(call: QueuedCall, result: SimulatedCallsResult["calls"][nu
     };
 }
 
+function decodeReturn(call: QueuedCall, result: SimulatedCallsResult["calls"][number]): DecodedValue[] | undefined {
+    if (result.status !== "0x1" || call.editor.kind !== "abi") return undefined;
+    try {
+        const fragment = ethers.FunctionFragment.from(call.editor.functionFragment);
+        const decoded = new ethers.Interface([fragment]).decodeFunctionResult(fragment, result.returnData);
+        return fragment.outputs.map((output, index) => ({
+            name: output.name || `Output ${index + 1}`,
+            type: output.type,
+            value: formatAbiValue(output, decoded[index]),
+        }));
+    } catch {
+        return undefined;
+    }
+}
+
 export function createPlanSimulationSnapshot(
     context: {chainId: string; account: string},
     calls: QueuedCall[],
@@ -131,6 +147,7 @@ export function createPlanSimulationSnapshot(
     const simulatedCalls = result.calls.map((callResult, index) => ({
         ...callResult,
         callId: calls[index].id,
+        decodedReturn: decodeReturn(calls[index], callResult),
         decodedEvents: callResult.logs.map((log) => decodeEvent(log, interfaces)).filter((event): event is DecodedEvent => event !== null),
         decodedRevert: decodeRevert(calls[index], callResult),
     }));
