@@ -4,7 +4,6 @@ import {
     Button,
     Chip,
     CircularProgress,
-    Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
@@ -27,6 +26,7 @@ import { BatchExecutionError, BatchExecutionState } from "../../transaction-plan
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import CopyButton from "../CopyButton";
 import ErrorDialog from "../ErrorDialog";
+import ResponsiveDialog from "../ResponsiveDialog";
 
 type CapabilityState = AtomicCapabilityProbe | {status: "unchecked" | "checking"};
 
@@ -337,7 +337,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
                     Create retry draft
                 </Button>
             )}
-            <Dialog open={confirmRetry} onClose={() => setConfirmRetry(false)}>
+            <ResponsiveDialog open={confirmRetry} onClose={() => setConfirmRetry(false)}>
                 <DialogTitle>Create a retry draft?</DialogTitle>
                 <DialogContent>
                     <Typography>The batch record will be removed and these calls will become editable and eligible for a new submission. Nothing will be resent automatically.</Typography>
@@ -349,7 +349,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
                         setConfirmRetry(false);
                     }}>Create draft</Button>
                 </DialogActions>
-            </Dialog>
+            </ResponsiveDialog>
         </Stack>
     );
 }

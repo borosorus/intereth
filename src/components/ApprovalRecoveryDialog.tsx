@@ -2,7 +2,6 @@ import {
     Alert,
     Button,
     CircularProgress,
-    Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
@@ -26,6 +25,7 @@ import {
 import { forceSendPreparedTransaction, sendPreparedTransaction } from "../transactions/sendTransaction";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CallResult from "./CallResult";
+import ResponsiveDialog from "./ResponsiveDialog";
 
 export interface ApprovalRecoveryRequest {
     requirement: Erc20ApprovalRequirement;
@@ -182,7 +182,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
     };
 
     return (
-        <Dialog open={request !== null} onClose={busy ? undefined : onClose} maxWidth="sm" fullWidth>
+        <ResponsiveDialog open={request !== null} onClose={busy ? undefined : onClose} maxWidth="sm">
             <DialogTitle>ERC-20 approval required</DialogTitle>
             <DialogContent>
                 {request && (
@@ -266,6 +266,6 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
             <DialogActions>
                 <Button onClick={onClose} disabled={busy}>Close</Button>
             </DialogActions>
-        </Dialog>
+        </ResponsiveDialog>
     );
 }

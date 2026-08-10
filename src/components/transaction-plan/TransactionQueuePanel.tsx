@@ -3,7 +3,6 @@ import {
     Box,
     Button,
     Chip,
-    Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
@@ -37,6 +36,7 @@ import TransactionValueInput from "../TransactionValueInput";
 import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExecution";
 import SimulationControls from "./SimulationControls";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
+import ResponsiveDialog from "../ResponsiveDialog";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -220,7 +220,7 @@ function SessionNotice() {
         </Button>
     ) : null;
     const forgetDialog = (
-        <Dialog open={confirmForget} onClose={() => setConfirmForget(false)}>
+        <ResponsiveDialog open={confirmForget} onClose={() => setConfirmForget(false)}>
             <DialogTitle>Forget batch tracking?</DialogTitle>
             <DialogContent>
                 <Typography>
@@ -231,7 +231,7 @@ function SessionNotice() {
                 <Button onClick={() => setConfirmForget(false)}>Cancel</Button>
                 <Button color="error" onClick={() => dispatch({type: "FORGET_TRACKED_PLAN"})}>Forget tracking</Button>
             </DialogActions>
-        </Dialog>
+        </ResponsiveDialog>
     );
 
     if (sessionStatus === "chain_mismatch") {
@@ -448,7 +448,7 @@ export default function TransactionQueuePanel() {
                     </Box>
                 </Stack>
             </Drawer>
-            <Dialog open={confirmClear} onClose={() => setConfirmClear(false)}>
+            <ResponsiveDialog open={confirmClear} onClose={() => setConfirmClear(false)}>
                 <DialogTitle>Clear transaction plan?</DialogTitle>
                 <DialogContent>
                     <Typography>This removes all {calls.length} queued {calls.length === 1 ? "call" : "calls"}. This action cannot be undone.</Typography>
@@ -466,7 +466,7 @@ export default function TransactionQueuePanel() {
                         Clear plan
                     </Button>
                 </DialogActions>
-            </Dialog>
+            </ResponsiveDialog>
         </>
     );
 }

@@ -1,7 +1,8 @@
-import { Box, Button, Chip, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Collapse, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { NormalizedError } from "../callUtils";
 import CopyButton from "./CopyButton";
+import ResponsiveDialog from "./ResponsiveDialog";
 
 interface ErrorDialogProps {
     error: NormalizedError | null;
@@ -16,7 +17,7 @@ export default function ErrorDialog({error, onClose}: ErrorDialogProps) {
     }, [error]);
 
     return (
-        <Dialog open={error !== null} onClose={onClose} maxWidth="sm" fullWidth>
+        <ResponsiveDialog open={error !== null} onClose={onClose} maxWidth="sm">
             <DialogTitle>{error?.title ?? "Error"}</DialogTitle>
             <DialogContent>
                 <Stack spacing={1.5}>
@@ -48,6 +49,6 @@ export default function ErrorDialog({error, onClose}: ErrorDialogProps) {
                 {error?.details && <CopyButton value={error.details} label="Copy details" variant="text" />}
                 <Button onClick={onClose} variant="contained">Close</Button>
             </DialogActions>
-        </Dialog>
+        </ResponsiveDialog>
     );
 }
