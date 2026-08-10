@@ -3,6 +3,7 @@ import { isHexData, isHexQuantity, isRecord } from "../transaction-plan/rpcValid
 import { PlanContext, QueuedCall } from "../transaction-plan/types";
 import {
     QueuedStateSimulationClient,
+    SimulatedCallsResult,
     SimulatedRead,
     SimulatedReadResult,
     SimulationRpcTransport,
@@ -112,16 +113,23 @@ interface ParsedCallResult {
     status: "0x0" | "0x1";
     returnData: string;
     gasUsed: string;
+    maxUsedGas?: string;
 }
 
 function parseCallResult(value: unknown): ParsedCallResult | null {
     if (!isRecord(value)
         || (value.status !== "0x0" && value.status !== "0x1")
         || !isHexData(value.returnData)
-        || !isHexQuantity(value.gasUsed)) {
+        || !isHexQuantity(value.gasUsed)
+        || (value.maxUsedGas !== undefined && !isHexQuantity(value.maxUsedGas))) {
         return null;
     }
-    return {status: value.status, returnData: value.returnData, gasUsed: value.gasUsed};
+    return {
+        status: value.status,
+        returnData: value.returnData,
+        gasUsed: value.gasUsed,
+        ...(value.maxUsedGas === undefined ? {} : {maxUsedGas: value.maxUsedGas}),
+    };
 }
 
 function parseSimulationResponse(value: unknown, expectedCallCount: number) {
@@ -171,6 +179,23 @@ export class SimulationClient implements QueuedStateSimulationClient {
         }
     }
 
+    async simulateCalls(context: PlanContext, calls: QueuedCall[]): Promise<SimulatedCallsResult> {
+        if (calls.length === 0) {
+            throw Object.assign(new Error("Simulation requires at least one call."), {code: "INVALID_ARGUMENT"});
+        }
+        if (calls.some((call) => call.chainId !== context.chainId || call.from.toLowerCase() !== context.account.toLowerCase())) {
+            throw Object.assign(new Error("Every simulated call must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
+        }
+
+        const requestCalls = calls.map((call) => rpcCall(call.from, call.to, call.data, call.value));
+        const response = await this.transport.send("eth_simulateV1", [{
+            blockStateCalls: [{calls: requestCalls}],
+            validation: false,
+            traceTransfers: false,
+        }, "latest"]);
+        return parseSimulationResponse(response, requestCalls.length);
+    }
+
     async simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead): Promise<SimulatedReadResult> {
         if (calls.length === 0) {
             throw Object.assign(new Error("Queued-state simulation requires at least one queued call."), {code: "INVALID_ARGUMENT"});
@@ -202,6 +227,7 @@ export class SimulationClient implements QueuedStateSimulationClient {
         return {
             returnData: readResult.returnData,
             gasUsed: readResult.gasUsed,
+            maxUsedGas: readResult.maxUsedGas,
             blockNumber: parsed.blockNumber,
         };
     }

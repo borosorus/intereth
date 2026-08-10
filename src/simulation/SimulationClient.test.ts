@@ -23,8 +23,8 @@ function clientWith(response: unknown) {
     return {client: new SimulationClient({send} as SimulationRpcTransport), send};
 }
 
-function callResult(status: "0x0" | "0x1", returnData = "0x", gasUsed = "0x5208") {
-    return {status, returnData, gasUsed};
+function callResult(status: "0x0" | "0x1", returnData = "0x", gasUsed = "0x5208", maxUsedGas?: string) {
+    return {status, returnData, gasUsed, ...(maxUsedGas ? {maxUsedGas} : {})};
 }
 
 describe("SimulationClient", () => {
@@ -58,6 +58,25 @@ describe("SimulationClient", () => {
         }, "latest"]);
     });
 
+    it("simulates a generic ordered call sequence and retains per-call gas", async () => {
+        const second = {...queuedCall, id: "call-2", to: READ_TARGET, data: "0xabcd"};
+        const {client, send} = clientWith([{
+            number: "0x65",
+            calls: [callResult("0x1", "0x", "0x40"), callResult("0x1", "0x01", "0x42", "0x50")],
+        }]);
+
+        await expect(client.simulateCalls(context, [queuedCall, second])).resolves.toEqual({
+            calls: [
+                {status: "0x1", returnData: "0x", gasUsed: "0x40"},
+                {status: "0x1", returnData: "0x01", gasUsed: "0x42", maxUsedGas: "0x50"},
+            ],
+            blockNumber: "0x65",
+        });
+        expect(send).toHaveBeenCalledWith("eth_simulateV1", [expect.objectContaining({
+            blockStateCalls: [{calls: expect.any(Array)}],
+        }), "latest"]);
+    });
+
     it("identifies the first reverted queued call", async () => {
         const second = {...queuedCall, id: "call-2"};
         const {client} = clientWith([{
@@ -82,6 +101,7 @@ describe("SimulationClient", () => {
         ["bad call status", [{calls: [callResult("0x1"), {...callResult("0x1"), status: "0x2"}]}]],
         ["bad return data", [{calls: [callResult("0x1"), callResult("0x1", "0x1")]}]],
         ["bad gas quantity", [{calls: [callResult("0x1"), callResult("0x1", "0x", "12")]}]],
+        ["bad maximum gas quantity", [{calls: [callResult("0x1"), callResult("0x1", "0x", "0x12", "12")]}]],
         ["bad block number", [{number: "12", calls: [callResult("0x1"), callResult("0x1")]}]],
     ])("rejects %s responses", async (_name, response) => {
         const {client} = clientWith(response);
@@ -93,6 +113,9 @@ describe("SimulationClient", () => {
         const {client, send} = clientWith([]);
         await expect(client.simulateRead(context, [], {to: READ_TARGET, data: "0x"})).rejects.toMatchObject({code: "INVALID_ARGUMENT"});
         await expect(client.simulateRead(context, [{...queuedCall, chainId: "10"}], {to: READ_TARGET, data: "0x"}))
+            .rejects.toMatchObject({code: "PLAN_CONTEXT_MISMATCH"});
+        await expect(client.simulateCalls(context, [])).rejects.toMatchObject({code: "INVALID_ARGUMENT"});
+        await expect(client.simulateCalls(context, [{...queuedCall, from: READ_TARGET}]))
             .rejects.toMatchObject({code: "PLAN_CONTEXT_MISMATCH"});
         expect(send).not.toHaveBeenCalled();
     });
