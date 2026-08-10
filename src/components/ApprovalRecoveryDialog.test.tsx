@@ -91,6 +91,7 @@ describe("ApprovalRecoveryDialog", () => {
     async function renderValidated() {
         render(<ApprovalRecoveryDialog request={request} onClose={onClose} onOriginalResult={onOriginalResult} />);
         await waitFor(() => expect(screen.getByLabelText("Token contract address")).toHaveValue(TOKEN));
+        expect(window.getComputedStyle(screen.getByText(SPENDER)).overflowWrap).toBe("anywhere");
         fireEvent.click(screen.getByRole("button", {name: "Validate approval"}));
         await screen.findByText(/both succeeded in simulation/);
     }

@@ -393,14 +393,20 @@ export default function TransactionQueuePanel() {
         <>
             <Paper
                 elevation={6}
-                sx={{position: "fixed", right: {xs: 16, sm: 24}, bottom: {xs: 16, sm: 24}, zIndex: (theme) => theme.zIndex.appBar}}
+                sx={{
+                    position: "fixed",
+                    right: {xs: 16, sm: 24},
+                    bottom: {xs: "calc(72px + env(safe-area-inset-bottom))", sm: 24},
+                    maxWidth: {xs: "calc(100vw - 32px)", sm: "none"},
+                    zIndex: (theme) => theme.zIndex.appBar,
+                }}
             >
                 <Button
                     variant="contained"
                     color="secondary"
                     startIcon={<PlaylistAddCheckIcon />}
                     onClick={() => setOpen(true)}
-                    sx={{py: 1.25, px: 2, textTransform: "none", fontWeight: 800}}
+                    sx={{py: 1.25, px: 2, minHeight: {xs: 44, sm: "auto"}, textTransform: "none", fontWeight: 800}}
                 >
                     {calls.length} queued {calls.length === 1 ? "call" : "calls"} · Review plan
                 </Button>
@@ -409,10 +415,23 @@ export default function TransactionQueuePanel() {
                 anchor="right"
                 open={open}
                 onClose={() => setOpen(false)}
-                PaperProps={{sx: {width: {xs: "100%", sm: 560}, maxWidth: "100%"}}}
+                PaperProps={{sx: {
+                    width: {xs: "100%", sm: 560},
+                    maxWidth: "100%",
+                    height: {xs: "100dvh", sm: "100%"},
+                    maxHeight: {xs: "100dvh", sm: "100%"},
+                }}}
             >
                 <Stack sx={{height: "100%"}}>
-                    <Box sx={{p: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
+                    <Box sx={{
+                        px: 2,
+                        pt: {xs: "calc(16px + env(safe-area-inset-top))", sm: 2},
+                        pb: 2,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 1,
+                    }}>
                         <Box>
                             <Typography variant="h6" sx={{fontWeight: 800}}>Transaction plan</Typography>
                             {context && (
@@ -424,7 +443,7 @@ export default function TransactionQueuePanel() {
                         <IconButton aria-label="Close transaction plan" onClick={() => setOpen(false)}><CloseIcon /></IconButton>
                     </Box>
                     <Divider />
-                    <Box sx={{p: 2, overflowY: "auto", flex: 1}}>
+                    <Box sx={{p: 2, overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1, minHeight: 0}}>
                         <Stack spacing={2}>
                             <SessionNotice />
                             {calls.map((call, index) => (
@@ -435,7 +454,11 @@ export default function TransactionQueuePanel() {
                         </Stack>
                     </Box>
                     <Divider />
-                    <Box sx={{p: 2}}>
+                    <Box sx={{
+                        px: 2,
+                        pt: 2,
+                        pb: {xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2},
+                    }}>
                         <Button
                             color="error"
                             variant="outlined"

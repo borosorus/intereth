@@ -27,6 +27,7 @@ export default function ResponsiveDialog(props: ResponsiveDialogProps) {
                 },
                 "& .MuiDialogContent-root": {
                     minHeight: 0,
+                    overflowWrap: "anywhere",
                     px: {xs: 2, sm: 3},
                 },
                 "& .MuiDialogActions-root": {

@@ -32,6 +32,11 @@ export interface ApprovalRecoveryRequest {
     originalCall: QueuedCall;
 }
 
+const technicalValueSx = {
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    overflowWrap: "anywhere",
+};
+
 interface ApprovalRecoveryDialogProps {
     request: ApprovalRecoveryRequest | null;
     onClose: () => void;
@@ -191,9 +196,20 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             Gas estimation reports that this transaction needs more ERC-20 allowance. Confirm the token before continuing.
                         </Alert>
                         {!walletMatches && <Alert severity="error">Reconnect the original account and network before continuing.</Alert>}
-                        <Typography variant="body2"><strong>Spender:</strong> {request.requirement.spender}</Typography>
-                        <Typography variant="body2"><strong>Current allowance:</strong> {request.requirement.currentAllowance.toString()}</Typography>
-                        <Typography variant="body2"><strong>Required allowance:</strong> {request.requirement.needed.toString()}</Typography>
+                        <Stack spacing={0.75}>
+                            <Stack spacing={0.15}>
+                                <Typography variant="caption" color="text.secondary">Spender</Typography>
+                                <Typography variant="body2" sx={technicalValueSx}>{request.requirement.spender}</Typography>
+                            </Stack>
+                            <Stack spacing={0.15}>
+                                <Typography variant="caption" color="text.secondary">Current allowance</Typography>
+                                <Typography variant="body2" sx={technicalValueSx}>{request.requirement.currentAllowance.toString()}</Typography>
+                            </Stack>
+                            <Stack spacing={0.15}>
+                                <Typography variant="caption" color="text.secondary">Required allowance</Typography>
+                                <Typography variant="body2" sx={technicalValueSx}>{request.requirement.needed.toString()}</Typography>
+                            </Stack>
+                        </Stack>
                         <TextField
                             label="Token contract address"
                             value={tokenAddress}
@@ -209,7 +225,12 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             disabled={busy || checking || approvalConfirmed}
                             fullWidth
                         />
-                        <Button variant="outlined" onClick={() => void validate()} disabled={checking || busy || !tokenAddress.trim()}>
+                        <Button
+                            variant="outlined"
+                            onClick={() => void validate()}
+                            disabled={checking || busy || !tokenAddress.trim()}
+                            sx={{minHeight: {xs: 44, sm: "auto"}}}
+                        >
                             {checking ? <CircularProgress size={20} /> : "Validate approval"}
                         </Button>
                         {validated && (
@@ -229,7 +250,13 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                                 The original transaction was submitted but remains unresolved. Verify its hash before taking any further action.
                             </Alert>
                         ) : approvalConfirmed ? (
-                            <Button variant="contained" color="secondary" disabled={busy || !wallet.signer || !walletMatches} onClick={() => void sendOriginal()}>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                disabled={busy || !wallet.signer || !walletMatches}
+                                onClick={() => void sendOriginal()}
+                                sx={{minHeight: {xs: 44, sm: "auto"}}}
+                            >
                                 Send transaction
                             </Button>
                         ) : (approvalResult?.status === "submitted" || approvalResult?.status === "pending") ? (
@@ -237,7 +264,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                                 The approval was submitted but remains unresolved. Do not submit it again; verify its hash before continuing.
                             </Alert>
                         ) : validated && (
-                            <Stack spacing={1}>
+                            <Stack spacing={{xs: 1.25, sm: 1}} sx={{"& .MuiButton-root": {minHeight: {xs: 44, sm: "auto"}}}}>
                                 <Button variant="contained" color="secondary" disabled={busy || !plan.canEdit || !walletMatches} onClick={addToPlan}>
                                     Add approval and transaction to plan
                                 </Button>
