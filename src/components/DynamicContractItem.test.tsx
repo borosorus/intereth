@@ -6,14 +6,19 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useSimulation } from "../simulation/context";
+import { useWorkspaceMode } from "../workspace/context";
 
 jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
+jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
 
 const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
 const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+
+beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()}));
 
 function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
     mockedSimulation.mockReturnValue({

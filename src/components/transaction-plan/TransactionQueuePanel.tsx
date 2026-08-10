@@ -37,6 +37,7 @@ import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExec
 import SimulationControls from "./SimulationControls";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import ResponsiveDialog from "../ResponsiveDialog";
+import { useWorkspaceMode } from "../../workspace/context";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -377,7 +378,8 @@ export default function TransactionQueuePanel() {
     const [open, setOpen] = useState(false);
     const [confirmClear, setConfirmClear] = useState(false);
     const {reviewRequest} = useTransactionPlanUi();
-    const batchController = useAtomicBatchExecution(open);
+    const workspace = useWorkspaceMode();
+    const batchController = useAtomicBatchExecution(open && workspace.mode === "interact");
     const calls = state.plan.calls;
     const context = state.plan.context;
 
@@ -449,8 +451,12 @@ export default function TransactionQueuePanel() {
                             {calls.map((call, index) => (
                                 <QueuedCallItem key={call.id} call={call} index={index} total={calls.length} />
                             ))}
-                            <SimulationControls />
-                            <AtomicBatchExecution controller={batchController} />
+                            {workspace.mode === "simulate" && <SimulationControls />}
+                            {workspace.mode === "interact" ? (
+                                <AtomicBatchExecution controller={batchController} />
+                            ) : (
+                                <Alert severity="info">Switch to Interact to execute this transaction plan.</Alert>
+                            )}
                         </Stack>
                     </Box>
                     <Divider />

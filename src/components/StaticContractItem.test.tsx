@@ -3,14 +3,18 @@ import "@testing-library/jest-dom";
 import { ethers } from "ethers";
 import { useSimulation } from "../simulation/context";
 import { StaticFunctionItem } from "./StaticContractItem";
+import { useWorkspaceMode } from "../workspace/context";
 
 jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
 jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
 
 const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
 
 describe("StaticFunctionItem simulated reads", () => {
+    beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()}));
     it("uses queued-state simulation as the primary action", async () => {
         const simulateRead = jest.fn().mockResolvedValue({
             returnData: ethers.AbiCoder.defaultAbiCoder().encode(["bool"], [true]),

@@ -1,7 +1,10 @@
-import { AppBar, Box, Stack, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Stack, ToggleButton, ToggleButtonGroup, Toolbar, Typography } from "@mui/material";
 import ConnectionButton from "./ConnectionButton";
+import { WorkspaceMode, useWorkspaceMode } from "../workspace/context";
 
 export default function Bar(){
+    const workspace = useWorkspaceMode();
+
     return (
       <Box>
         <AppBar
@@ -15,8 +18,8 @@ export default function Bar(){
             backgroundColor: 'rgba(244, 247, 251, 0.78)',
           }}
         >
-            <Toolbar sx={{justifyContent: 'space-between', gap: {xs: 1.5, sm: 3}, px: {xs: 2, sm: 3, md: 4}, minHeight: {xs: 78, sm: 88}}}>
-              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0}}>
+            <Toolbar sx={{display: "flex", flexWrap: {xs: "wrap", sm: "nowrap"}, gap: {xs: 1.5, sm: 3}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1.5, sm: 0}, minHeight: {xs: 78, sm: 88}}}>
+              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: 1, order: 1}}>
                 <Box
                   component="img"
                   src={`${process.env.PUBLIC_URL}/intereth-mark.svg`}
@@ -40,7 +43,23 @@ export default function Bar(){
                   </Typography>
                 </Box>
               </Stack>
-              <ConnectionButton/>
+              <Box sx={{order: {xs: 3, sm: 2}, width: {xs: "100%", sm: "auto"}, display: "flex", justifyContent: "center"}}>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={workspace.mode}
+                  onChange={(_, mode: WorkspaceMode | null) => {
+                    if (mode) workspace.setMode(mode);
+                  }}
+                  aria-label="Workspace mode"
+                  fullWidth
+                  sx={{maxWidth: {xs: "none", sm: 280}, "& .MuiToggleButton-root": {px: {xs: 2, sm: 2.5}, textTransform: "none", fontWeight: 700}}}
+                >
+                  <ToggleButton value="interact">Interact</ToggleButton>
+                  <ToggleButton value="simulate">Simulate</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{order: {xs: 2, sm: 3}, flex: "0 0 auto"}}><ConnectionButton/></Box>
             </Toolbar>
         </AppBar>
       </Box>

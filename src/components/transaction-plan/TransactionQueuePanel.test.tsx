@@ -7,14 +7,17 @@ import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../t
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import { useSimulation } from "../../simulation/context";
 import TransactionQueuePanel from "./TransactionQueuePanel";
+import { useWorkspaceMode } from "../../workspace/context";
 
 jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
 jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
+jest.mock("../../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
 
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
 const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
 const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
@@ -72,6 +75,7 @@ function stateWithExecution(execution: ReturnType<typeof queuedState>["execution
 
 describe("TransactionQueuePanel", () => {
     beforeEach(() => {
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
         mockedSimulation.mockReturnValue({
             enabled: false,
             status: "disabled",
@@ -155,6 +159,7 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("enables queued-state simulation from the plan drawer", () => {
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
         const enable = jest.fn().mockResolvedValue(undefined);
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
@@ -174,6 +179,23 @@ describe("TransactionQueuePanel", () => {
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
         fireEvent.click(screen.getByRole("checkbox", {name: "Enable queued-state simulation"}));
         expect(enable).toHaveBeenCalled();
+    });
+
+    it("keeps execution controls out of Simulate mode", () => {
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockWallet();
+        mockedTransactionPlan.mockReturnValue({
+            state: queuedState(),
+            dispatch: jest.fn(),
+            sessionStatus: "ready",
+            canEdit: true,
+        });
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+
+        expect(screen.getByText("Switch to Interact to execute this transaction plan.")).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Check wallet batching"})).not.toBeInTheDocument();
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {

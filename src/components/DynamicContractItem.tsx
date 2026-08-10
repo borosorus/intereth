@@ -21,6 +21,7 @@ import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecov
 import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery";
 import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
+import { useWorkspaceMode } from "../workspace/context";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -43,10 +44,11 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
+    const workspace = useWorkspaceMode();
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const simulationAvailable = !isStateModifying && simulatedRead.available;
+    const simulationAvailable = workspace.mode === "simulate" && !isStateModifying && simulatedRead.available;
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
@@ -234,6 +236,7 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
     const [address, setAddress] = useState('loading...');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
+    const workspace = useWorkspaceMode();
     const walletReady = Boolean(signer && activeWalletChainId === contractChainId);
     const activeContract = useMemo(
         () => contract.connect(walletReady ? signer : null),
@@ -283,10 +286,10 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
             {!walletReady && (
                 <Alert severity="info">
                     Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
-                    {simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
+                    {workspace.mode === "simulate" && simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
                 </Alert>
             )}
-            {simulation.enabled && simulation.status === "ready" && simulation.chainId !== contractChainId && (
+            {workspace.mode === "simulate" && simulation.enabled && simulation.status === "ready" && simulation.chainId !== contractChainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
             <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>

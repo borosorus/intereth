@@ -11,6 +11,7 @@ import { WalletSessionProvider } from './wallet/WalletSessionContext';
 import { TransactionPlanProvider } from './transaction-plan/context';
 import { SimulationProvider } from './simulation/context';
 import { TransactionPlanUiProvider } from './transaction-plan/uiContext';
+import { WorkspaceModeProvider } from './workspace/context';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -56,14 +57,16 @@ root.render(
       />
       <Web3OnboardProvider web3Onboard={web3Onboard}>
         <WalletSessionProvider>
-          <TransactionPlanProvider>
-            <SimulationProvider>
-              <TransactionPlanUiProvider>
-                <Bar/>
-                <App/>
-              </TransactionPlanUiProvider>
-            </SimulationProvider>
-          </TransactionPlanProvider>
+          <WorkspaceModeProvider>
+            <TransactionPlanProvider>
+              <SimulationProvider>
+                <TransactionPlanUiProvider>
+                  <Bar/>
+                  <App/>
+                </TransactionPlanUiProvider>
+              </SimulationProvider>
+            </TransactionPlanProvider>
+          </WorkspaceModeProvider>
         </WalletSessionProvider>
       </Web3OnboardProvider>
     </ThemeProvider>

@@ -14,6 +14,7 @@ import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
+import { useWorkspaceMode } from "../workspace/context";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -27,11 +28,12 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
     const simulatedRead = useSimulatedRead(chainId);
+    const workspace = useWorkspaceMode();
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const simulationAvailable = !isDisabled && simulatedRead.available;
+    const simulationAvailable = workspace.mode === "simulate" && !isDisabled && simulatedRead.available;
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
@@ -133,6 +135,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
     const [detectedChainId, setDetectedChainId] = useState<string>('');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
+    const workspace = useWorkspaceMode();
 
     useEffect(() => {
         contract.getAddress()
@@ -197,7 +200,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                 </Grid>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-            {simulation.enabled && simulation.status === "ready" && chainId && simulation.chainId !== chainId && (
+            {workspace.mode === "simulate" && simulation.enabled && simulation.status === "ready" && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
             <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>

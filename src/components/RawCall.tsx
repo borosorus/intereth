@@ -16,6 +16,7 @@ import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecov
 import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery";
 import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
+import { useWorkspaceMode } from "../workspace/context";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -33,7 +34,8 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
-    const simulationAvailable = staticCall && simulatedRead.available;
+    const workspace = useWorkspaceMode();
+    const simulationAvailable = workspace.mode === "simulate" && staticCall && simulatedRead.available;
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);

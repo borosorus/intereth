@@ -1,4 +1,5 @@
 import { Button, CircularProgress, Stack } from "@mui/material";
+import { useWorkspaceMode } from "../workspace/context";
 
 export type ReadLoadingMode = "simulated" | "onchain" | null;
 
@@ -19,6 +20,23 @@ export default function ReadActions({
     onSimulated,
     onOnChain,
 }: ReadActionsProps) {
+    const workspace = useWorkspaceMode();
+
+    if (workspace.mode === "interact") {
+        return (
+            <Button
+                variant="contained"
+                color="secondary"
+                fullWidth
+                disabled={!onChainAvailable || loading !== null}
+                onClick={onOnChain}
+                sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
+            >
+                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run call"}
+            </Button>
+        );
+    }
+
     if (!simulationAvailable) {
         return (
             <Button
