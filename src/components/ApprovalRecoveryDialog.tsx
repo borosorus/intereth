@@ -57,6 +57,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
     const [confirmForce, setConfirmForce] = useState(false);
     const [approvalConfirmed, setApprovalConfirmed] = useState(false);
     const [approvalResult, setApprovalResult] = useState<Extract<CallResultData, {kind: "transaction"}> | null>(null);
+    const [originalSubmissionUnresolved, setOriginalSubmissionUnresolved] = useState(false);
     const [error, setError] = useState<NormalizedError | null>(null);
     const context = useMemo<PlanContext | null>(() => request ? ({
         account: request.originalCall.from,
@@ -78,6 +79,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
         setConfirmForce(false);
         setApprovalConfirmed(false);
         setApprovalResult(null);
+        setOriginalSubmissionUnresolved(false);
         setError(null);
         if (!request || !context || !rpcUrl) return;
 
@@ -146,12 +148,17 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
         }
     };
 
+    const reportOriginalResult = (result: Extract<CallResultData, {kind: "transaction"}>) => {
+        onOriginalResult(result);
+        setOriginalSubmissionUnresolved(result.status === "submitted" || result.status === "pending");
+    };
+
     const sendOriginal = async () => {
         if (!request || !wallet.signer || !walletMatches) return;
         setBusy(true);
         setError(null);
         try {
-            await sendPreparedTransaction(wallet.signer, request.originalCall, onOriginalResult);
+            await sendPreparedTransaction(wallet.signer, request.originalCall, reportOriginalResult);
             onClose();
         } catch (sendError) {
             setError(normalizeError(sendError, "Transaction failed"));
@@ -165,7 +172,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
         setBusy(true);
         setError(null);
         try {
-            await forceSendPreparedTransaction(wallet.provider, request.originalCall, validated.gasLimit, onOriginalResult);
+            await forceSendPreparedTransaction(wallet.provider, request.originalCall, validated.gasLimit, reportOriginalResult);
             onClose();
         } catch (sendError) {
             setError(normalizeError(sendError, "Forced transaction failed"));
@@ -211,11 +218,24 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             </Alert>
                         )}
                         {error && <Alert severity="error">{error.message}</Alert>}
-                        {approvalResult && <CallResult result={approvalResult} />}
-                        {approvalConfirmed ? (
+                        {approvalResult && (
+                            <Stack spacing={0.5}>
+                                <Typography variant="subtitle2" sx={{fontWeight: 700}}>Approval transaction</Typography>
+                                <CallResult result={approvalResult} />
+                            </Stack>
+                        )}
+                        {originalSubmissionUnresolved ? (
+                            <Alert severity="warning">
+                                The original transaction was submitted but remains unresolved. Verify its hash before taking any further action.
+                            </Alert>
+                        ) : approvalConfirmed ? (
                             <Button variant="contained" color="secondary" disabled={busy || !wallet.signer || !walletMatches} onClick={() => void sendOriginal()}>
                                 Send transaction
                             </Button>
+                        ) : (approvalResult?.status === "submitted" || approvalResult?.status === "pending") ? (
+                            <Alert severity="warning">
+                                The approval was submitted but remains unresolved. Do not submit it again; verify its hash before continuing.
+                            </Alert>
                         ) : validated && (
                             <Stack spacing={1}>
                                 <Button variant="contained" color="secondary" disabled={busy || !plan.canEdit || !walletMatches} onClick={addToPlan}>

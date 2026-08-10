@@ -25,6 +25,8 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 
 State-changing ABI functions and raw calls provide two actions: **Add to queue** and **Send immediately**. The queue is bound to the wallet account and chain that created it. A matching draft restored after refresh is immediately usable. Changing account or network clears unsubmitted drafts; submitted or otherwise unresolved batches remain locked until their original wallet session returns or the user explicitly forgets their tracking state.
 
+If immediate gas estimation returns the standardized ERC-20 insufficient-allowance error, Intereth can validate a user-confirmed token approval before retrying. The approval and transaction may be added to the atomic plan, or the approval may be confirmed separately before an explicit retry. An advanced **Send anyway** action uses simulated target-only gas and warns that the transaction is still expected to revert unless an approval becomes effective first.
+
 Changing accounts on the same network keeps wallet-backed contract cards, rebinds them to the new signer, and resets their interaction forms. Changing networks removes wallet-backed cards from the previous network. Explicit read-only RPC contract cards stay pinned to their configured network in both cases. Disconnecting pauses wallet interactions without clearing their forms.
 
 ## Simulated reads
