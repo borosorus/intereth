@@ -200,7 +200,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                 </Grid>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-            {workspace.mode === "simulate" && simulation.enabled && simulation.status === "ready" && chainId && simulation.chainId !== chainId && (
+            {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
             <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>

@@ -12,9 +12,26 @@ interface PreparedCallIdentity {
 
 interface PrepareAbiCallOptions extends PreparedCallIdentity {
     fragment: ethers.FunctionFragment;
+    decoderAbi?: readonly string[];
     argumentValues: ParamValue[];
     valueAmount?: string;
     valueUnit?: ValueUnit;
+}
+
+export function decoderAbiForInterface(contractInterface: ethers.Interface) {
+    return contractInterface.fragments
+        .filter((fragment) => fragment.type === "event" || fragment.type === "error")
+        .map((fragment) => fragment.format("full"));
+}
+
+function normalizeDecoderAbi(fragments: readonly string[] | undefined) {
+    return (fragments ?? []).map((fragment) => {
+        const parsed = ethers.Fragment.from(fragment);
+        if (parsed.type !== "event" && parsed.type !== "error") {
+            throw Object.assign(new Error("Decoder ABI may contain only event and error fragments."), {code: "INVALID_ARGUMENT"});
+        }
+        return parsed.format("full");
+    });
 }
 
 interface PrepareRawCallOptions extends PreparedCallIdentity {
@@ -73,6 +90,7 @@ export function prepareAbiCall(options: PrepareAbiCallOptions): QueuedCall {
         ...identity,
         data: contractInterface.encodeFunctionData(fragment, args),
         value: value.toString(),
+        decoderAbi: normalizeDecoderAbi(options.decoderAbi),
         display: {
             kind: "abi",
             contractAddress: identity.to,
@@ -105,6 +123,7 @@ export function prepareRawCall(options: PrepareRawCallOptions): QueuedCall {
         ...identity,
         data,
         value: toWeiValue(options.valueAmount, options.valueUnit).toString(),
+        decoderAbi: [],
         display: {
             kind: "raw",
             contractAddress: identity.to,

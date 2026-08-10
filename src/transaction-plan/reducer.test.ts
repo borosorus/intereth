@@ -13,6 +13,7 @@ function call(overrides: Partial<QueuedCall> = {}): QueuedCall {
         to: TARGET,
         data: "0x1234",
         value: "0",
+        decoderAbi: [],
         display: {kind: "raw", contractAddress: TARGET},
         editor: {kind: "raw"},
         createdAt: 1,

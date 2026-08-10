@@ -28,6 +28,7 @@ export interface QueuedCall {
     to: string;
     data: string;
     value: string;
+    decoderAbi: string[];
     display: {
         kind: "abi" | "raw";
         contractAddress: string;

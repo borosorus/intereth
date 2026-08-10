@@ -1,5 +1,15 @@
-import { Alert, Box, Button, Chip, FormControlLabel, Paper, Stack, Switch, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+
+const statusLabels = {
+    idle: "Idle",
+    waiting: "Queued",
+    simulating: "Simulating",
+    ready: "Ready",
+    stale: "Stale",
+    error: "Unavailable",
+} as const;
 
 export default function SimulationControls() {
     const simulation = useSimulation();
@@ -11,35 +21,27 @@ export default function SimulationControls() {
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Queued-state simulation</Typography>
                         <Typography variant="caption" color="text.secondary">
-                            Run reads after the queued calls using the latest chain state.
+                            Automatically refreshed after queue changes.
                         </Typography>
                     </Box>
                     <Chip
                         size="small"
-                        label={simulation.status === "checking"
-                            ? "Checking"
-                            : simulation.status === "ready" ? "Ready" : simulation.status === "error" ? "Unavailable" : "Off"}
+                        label={statusLabels[simulation.status]}
                         color={simulation.status === "ready" ? "success" : simulation.status === "error" ? "error" : "default"}
                     />
                 </Box>
-                <FormControlLabel
-                    control={(
-                        <Switch
-                            checked={simulation.enabled}
-                            disabled={simulation.status === "checking" || (!simulation.enabled && !simulation.canEnable)}
-                            onChange={(_, checked) => checked ? void simulation.enable() : simulation.disable()}
-                            inputProps={{"aria-label": "Enable queued-state simulation"}}
-                        />
-                    )}
-                    label="Use simulation for contract reads"
-                />
+                {simulation.snapshot && (
+                    <Typography variant="caption" color="text.secondary">
+                        Speculative snapshot from base block {ethers.getBigInt(simulation.snapshot.baseBlockNumber).toString()}.
+                    </Typography>
+                )}
                 {!simulation.configured && (
                     <Alert severity="info">No simulation RPC is configured for this network.</Alert>
                 )}
                 {simulation.error && (
                     <Alert
                         severity="error"
-                        action={<Button color="inherit" size="small" disabled={!simulation.canEnable} onClick={() => void simulation.retry()}>Retry</Button>}
+                        action={<Button color="inherit" size="small" disabled={!simulation.active} onClick={simulation.retry}>Retry</Button>}
                     >
                         {simulation.error.message}
                     </Alert>

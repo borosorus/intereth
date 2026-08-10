@@ -22,16 +22,14 @@ describe("RawCall queueing", () => {
     beforeEach(() => {
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
         mockedSimulation.mockReturnValue({
-            enabled: false,
-            status: "disabled",
+            active: false,
+            status: "idle",
             chainId: null,
             error: null,
+            snapshot: null,
             revision: "disabled",
             queuedCallCount: 0,
             configured: false,
-            canEnable: false,
-            enable: jest.fn(),
-            disable: jest.fn(),
             retry: jest.fn(),
             canSimulateChain: jest.fn().mockReturnValue(false),
             simulateRead: jest.fn(),
@@ -42,7 +40,7 @@ describe("RawCall queueing", () => {
         const simulateRead = jest.fn().mockResolvedValue({returnData: "0x1234", gasUsed: "0x20"});
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
-            enabled: true,
+            active: true,
             status: "ready",
             chainId: "1",
             revision: "ready:1",

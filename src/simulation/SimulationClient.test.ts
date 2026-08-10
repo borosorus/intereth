@@ -13,6 +13,7 @@ const queuedCall: QueuedCall = {
     to: TARGET,
     data: "0x1234",
     value: "100",
+    decoderAbi: [],
     display: {kind: "raw", contractAddress: TARGET},
     editor: {kind: "raw"},
     createdAt: 1,
@@ -24,7 +25,7 @@ function clientWith(response: unknown) {
 }
 
 function callResult(status: "0x0" | "0x1", returnData = "0x", gasUsed = "0x5208", maxUsedGas?: string) {
-    return {status, returnData, gasUsed, ...(maxUsedGas ? {maxUsedGas} : {})};
+    return {status, returnData, gasUsed, logs: [], ...(maxUsedGas ? {maxUsedGas} : {})};
 }
 
 describe("SimulationClient", () => {
@@ -35,6 +36,13 @@ describe("SimulationClient", () => {
 
         await expect(clientWith("0xa").client.assertChain("1")).rejects.toMatchObject({code: "SIMULATION_CHAIN_MISMATCH"});
         await expect(clientWith("mainnet").client.assertChain("1")).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
+    });
+
+    it("captures a validated base block", async () => {
+        const {client, send} = clientWith("0x64");
+        await expect(client.getBlockNumber()).resolves.toBe("0x64");
+        expect(send).toHaveBeenCalledWith("eth_blockNumber", []);
+        await expect(clientWith("100").client.getBlockNumber()).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
     });
 
     it("simulates queued calls and the temporary read in one ordered block", async () => {
@@ -54,7 +62,7 @@ describe("SimulationClient", () => {
                 {from: ACCOUNT, to: READ_TARGET, input: "0xabcd", value: "0x0"},
             ]}],
             validation: false,
-            traceTransfers: false,
+            traceTransfers: true,
         }, "latest"]);
     });
 
@@ -65,16 +73,34 @@ describe("SimulationClient", () => {
             calls: [callResult("0x1", "0x", "0x40"), callResult("0x1", "0x01", "0x42", "0x50")],
         }]);
 
-        await expect(client.simulateCalls(context, [queuedCall, second])).resolves.toEqual({
+        await expect(client.simulateCalls(context, [queuedCall, second], "0x64")).resolves.toMatchObject({
             calls: [
-                {status: "0x1", returnData: "0x", gasUsed: "0x40"},
-                {status: "0x1", returnData: "0x01", gasUsed: "0x42", maxUsedGas: "0x50"},
+                {status: "0x1", returnData: "0x", gasUsed: "0x40", logs: []},
+                {status: "0x1", returnData: "0x01", gasUsed: "0x42", maxUsedGas: "0x50", logs: []},
             ],
             blockNumber: "0x65",
         });
         expect(send).toHaveBeenCalledWith("eth_simulateV1", [expect.objectContaining({
             blockStateCalls: [{calls: expect.any(Array)}],
-        }), "latest"]);
+            traceTransfers: true,
+        }), "0x64"]);
+    });
+
+    it("retains validated logs, revert errors, and raw response data", async () => {
+        const log = {address: TARGET, data: "0x", topics: [`0x${"11".repeat(32)}`]};
+        const rawCall = {...callResult("0x0", "0xdead"), logs: [log], error: {code: 3, message: "execution reverted", data: "0xdead"}};
+        const response = [{number: "0x65", calls: [rawCall]}];
+        const {client} = clientWith(response);
+
+        await expect(client.simulateCalls(context, [queuedCall])).resolves.toMatchObject({
+            calls: [{
+                status: "0x0",
+                logs: [{address: TARGET, data: "0x", topics: log.topics}],
+                error: {code: 3, message: "execution reverted", data: "0xdead"},
+                raw: rawCall,
+            }],
+            raw: response,
+        });
     });
 
     it("identifies the first reverted queued call", async () => {
@@ -103,6 +129,8 @@ describe("SimulationClient", () => {
         ["bad gas quantity", [{calls: [callResult("0x1"), callResult("0x1", "0x", "12")]}]],
         ["bad maximum gas quantity", [{calls: [callResult("0x1"), callResult("0x1", "0x", "0x12", "12")]}]],
         ["bad block number", [{number: "12", calls: [callResult("0x1"), callResult("0x1")]}]],
+        ["bad log", [{calls: [callResult("0x1"), {...callResult("0x1"), logs: [{address: "bad", data: "0x", topics: []}]}]}]],
+        ["bad call error", [{calls: [callResult("0x1"), {...callResult("0x0"), error: {message: 3}}]}]],
     ])("rejects %s responses", async (_name, response) => {
         const {client} = clientWith(response);
         await expect(client.simulateRead(context, [queuedCall], {to: READ_TARGET, data: "0x"}))

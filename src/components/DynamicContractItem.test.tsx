@@ -22,16 +22,14 @@ beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jes
 
 function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
     mockedSimulation.mockReturnValue({
-        enabled: false,
-        status: "disabled",
+        active: false,
+        status: "idle",
         chainId: null,
         error: null,
+        snapshot: null,
         revision: "disabled",
         queuedCallCount: 0,
         configured: false,
-        canEnable: false,
-        enable: jest.fn(),
-        disable: jest.fn(),
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(false),
         simulateRead: jest.fn(),
@@ -63,6 +61,7 @@ describe("DynamicFunctionItem queueing", () => {
         });
         const fragment = new ethers.Interface(["function pause()"]).getFunction("pause")!;
         const contract = {
+            interface: new ethers.Interface([fragment]),
             runner: {sendTransaction},
             getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         } as unknown as ethers.BaseContract;
@@ -82,7 +81,7 @@ describe("DynamicFunctionItem queueing", () => {
             gasUsed: "0x100",
         });
         mockSimulation({
-            enabled: true,
+            active: true,
             status: "ready",
             chainId: "1",
             revision: "ready:1",
@@ -189,7 +188,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
 
     it("explains when queued-state simulation belongs to another chain", async () => {
         mockSimulation({
-            enabled: true,
+            active: true,
             status: "ready",
             chainId: "10",
             revision: "ready:10",

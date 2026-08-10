@@ -14,6 +14,7 @@ const queuedCall: QueuedCall = {
     to: "0x0000000000000000000000000000000000000010",
     data: "0x1234",
     value: "100",
+    decoderAbi: [],
     display: {kind: "raw", contractAddress: "0x0000000000000000000000000000000000000010"},
     editor: {kind: "raw"},
     createdAt: 1,
@@ -86,6 +87,14 @@ describe("transaction plan persistence", () => {
         expect(parseTransactionPlan(JSON.stringify({
             ...valid,
             plan: {...valid.plan, calls: [queuedCall, queuedCall]},
+        }))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({
+            ...valid,
+            plan: {...valid.plan, calls: [{...queuedCall, decoderAbi: undefined}]},
+        }))).toBeNull();
+        expect(parseTransactionPlan(JSON.stringify({
+            ...valid,
+            plan: {...valid.plan, calls: [{...queuedCall, decoderAbi: ["function owner() view returns (address)"]}]},
         }))).toBeNull();
         expect(parseTransactionPlan(JSON.stringify({
             ...valid,

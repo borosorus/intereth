@@ -3,35 +3,34 @@ import { NormalizedError, normalizeError } from "../callUtils";
 import { chainsById } from "../chainConfig";
 import { isExecutionMutable } from "../transaction-plan/executionPolicy";
 import { useTransactionPlan } from "../transaction-plan/context";
+import { createPlanSimulationSnapshot } from "./decode";
 import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
-import { SimulatedRead, SimulatedReadResult } from "./types";
+import { PlanSimulationSnapshot, SimulatedRead, SimulatedReadResult } from "./types";
 
-export type SimulationStatus = "disabled" | "checking" | "ready" | "error";
+export type SimulationStatus = "idle" | "waiting" | "simulating" | "ready" | "stale" | "error";
 
 interface SimulationState {
-    enabled: boolean;
     status: SimulationStatus;
     chainId: string | null;
     error: NormalizedError | null;
+    snapshot: PlanSimulationSnapshot | null;
 }
 
 interface SimulationContextValue extends SimulationState {
+    active: boolean;
     revision: string;
     queuedCallCount: number;
     configured: boolean;
-    canEnable: boolean;
-    enable: () => Promise<void>;
-    disable: () => void;
-    retry: () => Promise<void>;
+    retry: () => void;
     canSimulateChain: (chainId: string) => boolean;
     simulateRead: (chainId: string, read: SimulatedRead) => Promise<SimulatedReadResult>;
 }
 
-const disabledState: SimulationState = {
-    enabled: false,
-    status: "disabled",
+const initialState: SimulationState = {
+    status: "idle",
     chainId: null,
     error: null,
+    snapshot: null,
 };
 
 const SimulationContext = createContext<SimulationContextValue | null>(null);
@@ -57,117 +56,123 @@ function isEndpointError(error: unknown) {
 
 export function SimulationProvider({children}: {children: ReactNode}) {
     const transactionPlan = useTransactionPlan();
-    const [state, setState] = useState<SimulationState>(disabledState);
+    const [state, setState] = useState<SimulationState>(initialState);
+    const [retryCount, setRetryCount] = useState(0);
     const clientRef = useRef<SimulationClient | null>(null);
     const requestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
+    const calls = transactionPlan.state.plan.calls;
     const rpcUrl = chainRpcUrl(context?.chainId);
     const sessionAllowed = transactionPlan.sessionStatus === "ready" || transactionPlan.sessionStatus === "disconnected";
-    const planAvailable = Boolean(
-        context
-        && transactionPlan.state.plan.calls.length > 0
-        && isExecutionMutable(transactionPlan.state.execution)
-        && sessionAllowed,
-    );
+    const planAvailable = Boolean(context && calls.length > 0 && isExecutionMutable(transactionPlan.state.execution) && sessionAllowed);
     const configured = rpcUrl.length > 0;
-    const canEnable = planAvailable && configured;
+    const active = planAvailable && configured;
     const revision = useMemo(() => [
-        state.enabled,
-        state.status,
-        state.chainId,
         context?.chainId,
-        ...transactionPlan.state.plan.calls.map((call) => `${call.id}:${call.to}:${call.data}:${call.value}`),
-    ].join("|"), [context?.chainId, state.chainId, state.enabled, state.status, transactionPlan.state.plan.calls]);
-
-    const disable = useCallback(() => {
-        requestIdRef.current += 1;
-        clientRef.current = null;
-        setState(disabledState);
-    }, []);
+        context?.account,
+        ...calls.map((call) => `${call.id}:${call.to}:${call.data}:${call.value}`),
+    ].join("|"), [calls, context?.account, context?.chainId]);
 
     useEffect(() => {
-        if (!planAvailable || !configured || (state.chainId !== null && state.chainId !== context?.chainId)) {
-            disable();
-        }
-    }, [configured, context?.chainId, disable, planAvailable, state.chainId]);
-
-    const enable = useCallback(async () => {
-        if (!context || !canEnable) {
-            const error = normalizeError(
-                Object.assign(new Error(configured
-                    ? "Queued-state simulation is unavailable for the current transaction plan."
-                    : "No simulation RPC is configured for this network."),
-                {code: configured ? "PLAN_CONTEXT_MISMATCH" : "SIMULATION_NOT_CONFIGURED"}),
-                "Simulation unavailable",
-            );
-            setState({enabled: true, status: "error", chainId: context?.chainId ?? null, error});
+        const requestId = ++requestIdRef.current;
+        if (!active || !context) {
+            clientRef.current = null;
+            setState((current) => {
+                const snapshot = current.snapshot
+                    && context
+                    && current.snapshot.chainId === context.chainId
+                    && current.snapshot.account.toLowerCase() === context.account.toLowerCase()
+                    ? current.snapshot
+                    : null;
+                return {status: snapshot ? "stale" : "idle", chainId: context?.chainId ?? null, error: null, snapshot};
+            });
             return;
         }
 
-        const requestId = ++requestIdRef.current;
-        clientRef.current = null;
-        setState({enabled: true, status: "checking", chainId: context.chainId, error: null});
-        try {
-            const client = new SimulationClient(new HttpJsonRpcTransport(rpcUrl));
-            await client.assertChain(context.chainId);
-            if (requestId !== requestIdRef.current) return;
-            clientRef.current = client;
-            setState({enabled: true, status: "ready", chainId: context.chainId, error: null});
-        } catch (enableError) {
-            if (requestId !== requestIdRef.current) return;
-            clientRef.current = null;
-            setState({
-                enabled: true,
-                status: "error",
-                chainId: context.chainId,
-                error: normalizeError(enableError, "Simulation unavailable"),
-            });
-        }
-    }, [canEnable, configured, context, rpcUrl]);
+        setState((current) => {
+            const snapshot = current.snapshot
+                && current.snapshot.chainId === context.chainId
+                && current.snapshot.account.toLowerCase() === context.account.toLowerCase()
+                ? current.snapshot
+                : null;
+            return {status: snapshot ? "stale" : "waiting", chainId: context.chainId, error: null, snapshot};
+        });
+
+        const timer = window.setTimeout(async () => {
+            setState((current) => ({...current, status: "simulating", error: null}));
+            try {
+                const client = new SimulationClient(new HttpJsonRpcTransport(rpcUrl));
+                await client.assertChain(context.chainId);
+                const baseBlockNumber = await client.getBlockNumber();
+                const result = await client.simulateCalls(context, calls, baseBlockNumber);
+                if (requestId !== requestIdRef.current) return;
+                clientRef.current = client;
+                setState({
+                    status: "ready",
+                    chainId: context.chainId,
+                    error: null,
+                    snapshot: createPlanSimulationSnapshot(context, calls, result, revision, baseBlockNumber),
+                });
+            } catch (simulationError) {
+                if (requestId !== requestIdRef.current) return;
+                clientRef.current = null;
+                setState((current) => ({
+                    status: "error",
+                    chainId: context.chainId,
+                    error: normalizeError(simulationError, "Simulation unavailable"),
+                    snapshot: current.snapshot,
+                }));
+            }
+        }, 350);
+
+        return () => {
+            window.clearTimeout(timer);
+            if (requestId === requestIdRef.current) requestIdRef.current += 1;
+        };
+    }, [active, calls, context, retryCount, revision, rpcUrl]);
+
+    const retry = useCallback(() => setRetryCount((current) => current + 1), []);
 
     const canSimulateChain = useCallback((chainId: string) => (
-        state.enabled
+        active
         && state.status === "ready"
         && state.chainId === chainId
-        && context?.chainId === chainId
-        && planAvailable
+        && state.snapshot?.revision === revision
         && clientRef.current !== null
-    ), [context?.chainId, planAvailable, state.chainId, state.enabled, state.status]);
+    ), [active, revision, state.chainId, state.snapshot?.revision, state.status]);
 
     const simulateRead = useCallback(async (chainId: string, read: SimulatedRead) => {
         const client = clientRef.current;
         const planContext = transactionPlan.state.plan.context;
-        if (!client || !planContext || !canSimulateChain(chainId)) {
+        const snapshot = state.snapshot;
+        if (!client || !planContext || !snapshot || !canSimulateChain(chainId)) {
             throw Object.assign(new Error("Queued-state simulation is not ready for this network."), {code: "SIMULATION_RPC_UNAVAILABLE"});
         }
         try {
-            return await client.simulateRead(planContext, transactionPlan.state.plan.calls, read);
+            return await client.simulateRead(planContext, transactionPlan.state.plan.calls, read, snapshot.baseBlockNumber);
         } catch (simulationError) {
             if (isEndpointError(simulationError)) {
                 clientRef.current = null;
-                setState({
-                    enabled: true,
+                setState((current) => ({
+                    ...current,
                     status: "error",
-                    chainId: planContext.chainId,
                     error: normalizeError(simulationError, "Simulation unavailable"),
-                });
+                }));
             }
             throw simulationError;
         }
-    }, [canSimulateChain, transactionPlan.state.plan.calls, transactionPlan.state.plan.context]);
+    }, [canSimulateChain, state.snapshot, transactionPlan.state.plan.calls, transactionPlan.state.plan.context]);
 
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,
+        active,
         revision,
-        queuedCallCount: transactionPlan.state.plan.calls.length,
+        queuedCallCount: calls.length,
         configured,
-        canEnable,
-        enable,
-        disable,
-        retry: enable,
+        retry,
         canSimulateChain,
         simulateRead,
-    }), [canEnable, canSimulateChain, configured, disable, enable, revision, simulateRead, state, transactionPlan.state.plan.calls.length]);
+    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }

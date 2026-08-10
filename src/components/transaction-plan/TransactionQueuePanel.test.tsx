@@ -77,16 +77,14 @@ describe("TransactionQueuePanel", () => {
     beforeEach(() => {
         mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
         mockedSimulation.mockReturnValue({
-            enabled: false,
-            status: "disabled",
+            active: false,
+            status: "idle",
             chainId: null,
             error: null,
+            snapshot: null,
             revision: "disabled",
             queuedCallCount: 0,
             configured: false,
-            canEnable: false,
-            enable: jest.fn(),
-            disable: jest.fn(),
             retry: jest.fn(),
             canSimulateChain: jest.fn().mockReturnValue(false),
             simulateRead: jest.fn(),
@@ -158,14 +156,14 @@ describe("TransactionQueuePanel", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
     });
 
-    it("enables queued-state simulation from the plan drawer", () => {
+    it("shows automatic queued-state simulation in the plan drawer", () => {
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
-        const enable = jest.fn().mockResolvedValue(undefined);
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
+            active: true,
+            status: "waiting",
+            chainId: "1",
             configured: true,
-            canEnable: true,
-            enable,
         });
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
@@ -177,8 +175,8 @@ describe("TransactionQueuePanel", () => {
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
-        fireEvent.click(screen.getByRole("checkbox", {name: "Enable queued-state simulation"}));
-        expect(enable).toHaveBeenCalled();
+        expect(screen.getByText("Automatically refreshed after queue changes.")).toBeInTheDocument();
+        expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
     it("keeps execution controls out of Simulate mode", () => {

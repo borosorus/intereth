@@ -66,6 +66,7 @@ describe("ERC-20 approval recovery preparation", () => {
         to: TARGET,
         data: "0xabcd",
         value: "0",
+        decoderAbi: [],
         display: {kind: "raw", contractAddress: TARGET},
         editor: {kind: "raw"},
         createdAt: 1,

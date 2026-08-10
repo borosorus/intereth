@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { prepareAbiCall } from "../calls/prepareCall";
+import { decoderAbiForInterface, prepareAbiCall } from "../calls/prepareCall";
 import { HttpJsonRpcTransport, SimulationClient } from "../simulation/SimulationClient";
 import { SimulationRpcTransport } from "../simulation/types";
 import { isHexData } from "../transaction-plan/rpcValidation";
@@ -11,6 +11,7 @@ const erc20Errors = new ethers.Interface([
 const erc20Interface = new ethers.Interface([
     "function allowance(address owner, address spender) view returns (uint256)",
     "function approve(address spender, uint256 amount) returns (bool)",
+    "event Approval(address indexed owner, address indexed spender, uint256 value)",
 ]);
 
 export interface Erc20ApprovalRequirement {
@@ -70,6 +71,7 @@ export function createErc20ApprovalCall(
     const fragment = erc20Interface.getFunction("approve")!;
     return prepareAbiCall({
         fragment,
+        decoderAbi: decoderAbiForInterface(erc20Interface),
         target: tokenAddress,
         account: context.account,
         chainId: context.chainId,

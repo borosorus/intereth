@@ -21,6 +21,7 @@ const call: QueuedCall = {
     to: TARGET,
     data: "0x1234",
     value: "0",
+    decoderAbi: [],
     display: {kind: "raw", contractAddress: TARGET},
     editor: {kind: "raw"},
     createdAt: 1,
@@ -39,6 +40,12 @@ function mockPlan(sessionStatus: "ready" | "disconnected" = "ready", execution =
     });
 }
 
+function rpcResult(method: string) {
+    if (method === "eth_chainId") return "0x1";
+    if (method === "eth_blockNumber") return "0x64";
+    return [{number: "0x65", calls: [{status: "0x1", returnData: "0x", gasUsed: "0x5208", logs: []}]}];
+}
+
 let currentSimulation: ReturnType<typeof useSimulation>;
 function Probe() {
     currentSimulation = useSimulation();
@@ -49,52 +56,70 @@ function Wrapper({children}: {children: ReactNode}) {
     return <SimulationProvider>{children}</SimulationProvider>;
 }
 
+async function runDebounce() {
+    await act(async () => {
+        jest.advanceTimersByTime(350);
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+    });
+}
+
 describe("SimulationProvider", () => {
     beforeEach(() => {
-        jest.spyOn(global, "fetch").mockResolvedValue({
-            ok: true,
-            json: async () => ({jsonrpc: "2.0", id: 1, result: "0x1"}),
-        } as Response);
+        jest.useFakeTimers();
+        jest.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+            const body = JSON.parse(String(init?.body)) as {id: number; method: string};
+            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method)})} as Response;
+        });
     });
 
-    afterEach(() => jest.restoreAllMocks());
+    afterEach(() => {
+        jest.useRealTimers();
+        jest.restoreAllMocks();
+    });
 
-    it("checks the endpoint and remains ready across wallet disconnects", async () => {
+    it("automatically pins a base block and remains ready across wallet disconnects", async () => {
         mockPlan();
         const view = render(<Probe />, {wrapper: Wrapper});
+        expect(screen.getByText("waiting")).toBeInTheDocument();
 
-        await act(async () => currentSimulation.enable());
+        await runDebounce();
         expect(screen.getByText("ready")).toBeInTheDocument();
+        expect(currentSimulation.snapshot?.baseBlockNumber).toBe("0x64");
         expect(currentSimulation.canSimulateChain("1")).toBe(true);
 
-        mockPlan("disconnected");
+        mockedTransactionPlan.mockReturnValue({
+            ...mockedTransactionPlan(),
+            sessionStatus: "disconnected",
+            canEdit: false,
+        });
         view.rerender(<Probe />);
         expect(screen.getByText("ready")).toBeInTheDocument();
         expect(currentSimulation.canSimulateChain("1")).toBe(true);
     });
 
-    it("disables simulation when execution starts", async () => {
+    it("retains the last snapshot as stale when execution starts", async () => {
         mockPlan();
         const view = render(<Probe />, {wrapper: Wrapper});
-        await act(async () => currentSimulation.enable());
+        await runDebounce();
 
         mockPlan("ready", {status: "submitting"});
         view.rerender(<Probe />);
-        expect(screen.getByText("disabled")).toBeInTheDocument();
-        expect(currentSimulation.enabled).toBe(false);
+        expect(screen.getByText("stale")).toBeInTheDocument();
+        expect(currentSimulation.active).toBe(false);
+        expect(currentSimulation.snapshot).not.toBeNull();
     });
 
     it("moves endpoint failures into retryable error state", async () => {
-        jest.mocked(global.fetch).mockResolvedValueOnce({
-            ok: false,
-            status: 503,
-        } as Response);
+        jest.mocked(global.fetch).mockResolvedValueOnce({ok: false, status: 503} as Response);
         mockPlan();
         render(<Probe />, {wrapper: Wrapper});
 
-        await act(async () => currentSimulation.enable());
+        await runDebounce();
         expect(screen.getByText("error")).toBeInTheDocument();
         expect(currentSimulation.error?.code).toBe("SIMULATION_RPC_UNAVAILABLE");
-        expect(currentSimulation.canEnable).toBe(true);
+        expect(currentSimulation.active).toBe(true);
     });
 });

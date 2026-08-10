@@ -3,6 +3,7 @@ import { isHexData, isHexQuantity, isRecord } from "../transaction-plan/rpcValid
 import { PlanContext, QueuedCall } from "../transaction-plan/types";
 import {
     QueuedStateSimulationClient,
+    SimulatedCallResult,
     SimulatedCallsResult,
     SimulatedRead,
     SimulatedReadResult,
@@ -109,14 +110,35 @@ function quantity(value: string) {
     }
 }
 
-interface ParsedCallResult {
-    status: "0x0" | "0x1";
-    returnData: string;
-    gasUsed: string;
-    maxUsedGas?: string;
+function parseCallError(value: unknown) {
+    if (!isRecord(value) || typeof value.message !== "string") return null;
+    if (value.code !== undefined && typeof value.code !== "string" && typeof value.code !== "number") return null;
+    if (value.data !== undefined && !isHexData(value.data)) return null;
+    return {
+        ...(value.code === undefined ? {} : {code: value.code}),
+        message: value.message,
+        ...(value.data === undefined ? {} : {data: value.data}),
+    };
 }
 
-function parseCallResult(value: unknown): ParsedCallResult | null {
+function parseLog(value: unknown) {
+    if (!isRecord(value)
+        || typeof value.address !== "string"
+        || !ethers.isAddress(value.address)
+        || !isHexData(value.data)
+        || !Array.isArray(value.topics)
+        || !value.topics.every((topic) => typeof topic === "string" && ethers.isHexString(topic, 32))) {
+        return null;
+    }
+    return {
+        address: ethers.getAddress(value.address),
+        data: value.data,
+        topics: value.topics as string[],
+        raw: value,
+    };
+}
+
+function parseCallResult(value: unknown): SimulatedCallResult | null {
     if (!isRecord(value)
         || (value.status !== "0x0" && value.status !== "0x1")
         || !isHexData(value.returnData)
@@ -124,11 +146,18 @@ function parseCallResult(value: unknown): ParsedCallResult | null {
         || (value.maxUsedGas !== undefined && !isHexQuantity(value.maxUsedGas))) {
         return null;
     }
+    const logs = value.logs === undefined ? [] : Array.isArray(value.logs) ? value.logs.map(parseLog) : [null];
+    if (logs.some((log) => log === null)) return null;
+    const error = value.error === undefined ? undefined : parseCallError(value.error);
+    if (error === null) return null;
     return {
         status: value.status,
         returnData: value.returnData,
         gasUsed: value.gasUsed,
         ...(value.maxUsedGas === undefined ? {} : {maxUsedGas: value.maxUsedGas}),
+        logs: logs as SimulatedCallResult["logs"],
+        ...(error === undefined ? {} : {error}),
+        raw: value,
     };
 }
 
@@ -151,7 +180,7 @@ function parseSimulationResponse(value: unknown, expectedCallCount: number) {
     if (block.number !== undefined && !isHexQuantity(block.number)) {
         throw simulationError("SIMULATION_RESPONSE_INVALID", "The simulation RPC returned an invalid simulated block number.");
     }
-    return {calls: calls as ParsedCallResult[], blockNumber: block.number as string | undefined};
+    return {calls: calls as SimulatedCallResult[], blockNumber: block.number as string | undefined, raw: value};
 }
 
 function rpcCall(from: string, to: string, input: string, value: string) {
@@ -179,7 +208,15 @@ export class SimulationClient implements QueuedStateSimulationClient {
         }
     }
 
-    async simulateCalls(context: PlanContext, calls: QueuedCall[]): Promise<SimulatedCallsResult> {
+    async getBlockNumber() {
+        const blockNumber = await this.transport.send("eth_blockNumber", []);
+        if (!isHexQuantity(blockNumber)) {
+            throw simulationError("SIMULATION_RESPONSE_INVALID", "The simulation RPC returned an invalid block number.");
+        }
+        return blockNumber;
+    }
+
+    async simulateCalls(context: PlanContext, calls: QueuedCall[], baseBlock = "latest"): Promise<SimulatedCallsResult> {
         if (calls.length === 0) {
             throw Object.assign(new Error("Simulation requires at least one call."), {code: "INVALID_ARGUMENT"});
         }
@@ -191,12 +228,12 @@ export class SimulationClient implements QueuedStateSimulationClient {
         const response = await this.transport.send("eth_simulateV1", [{
             blockStateCalls: [{calls: requestCalls}],
             validation: false,
-            traceTransfers: false,
-        }, "latest"]);
+            traceTransfers: true,
+        }, baseBlock]);
         return parseSimulationResponse(response, requestCalls.length);
     }
 
-    async simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead): Promise<SimulatedReadResult> {
+    async simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead, baseBlock = "latest"): Promise<SimulatedReadResult> {
         if (calls.length === 0) {
             throw Object.assign(new Error("Queued-state simulation requires at least one queued call."), {code: "INVALID_ARGUMENT"});
         }
@@ -209,8 +246,8 @@ export class SimulationClient implements QueuedStateSimulationClient {
         const response = await this.transport.send("eth_simulateV1", [{
             blockStateCalls: [{calls: requestCalls}],
             validation: false,
-            traceTransfers: false,
-        }, "latest"]);
+            traceTransfers: true,
+        }, baseBlock]);
         const parsed = parseSimulationResponse(response, requestCalls.length);
 
         const revertedIndex = parsed.calls.slice(0, calls.length).findIndex((call) => call.status === "0x0");

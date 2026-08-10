@@ -62,6 +62,19 @@ function hasValidEditor(value: Record<string, unknown>) {
     }
 }
 
+function hasValidDecoderAbi(value: unknown): value is string[] {
+    if (!Array.isArray(value)) return false;
+    try {
+        return value.every((fragment) => {
+            if (typeof fragment !== "string") return false;
+            const parsed = ethers.Fragment.from(fragment);
+            return parsed.type === "event" || parsed.type === "error";
+        });
+    } catch {
+        return false;
+    }
+}
+
 function isQueuedCall(value: unknown): value is QueuedCall {
     if (!isRecord(value) || !isRecord(value.display) || !isRecord(value.editor)) {
         return false;
@@ -75,6 +88,7 @@ function isQueuedCall(value: unknown): value is QueuedCall {
         && ethers.isAddress(value.to)
         && isHexData(value.data)
         && isDecimal(value.value)
+        && hasValidDecoderAbi(value.decoderAbi)
         && typeof value.createdAt === "number"
         && Number.isFinite(value.createdAt)
         && value.createdAt >= 0

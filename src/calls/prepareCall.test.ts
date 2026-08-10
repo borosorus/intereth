@@ -7,11 +7,18 @@ const RECIPIENT = "0x0000000000000000000000000000000000000020";
 
 describe("prepared calls", () => {
     it("encodes ABI arguments and keeps a detached editor snapshot", () => {
-        const contractInterface = new ethers.Interface(["function transfer(address recipient, uint256 amount)"]);
+        const contractInterface = new ethers.Interface([
+            "function transfer(address recipient, uint256 amount)",
+            "event Transfer(address indexed from, address indexed to, uint256 amount)",
+            "error InsufficientBalance(uint256 available, uint256 required)",
+        ]);
         const fragment = contractInterface.getFunction("transfer")!;
         const argumentValues = [RECIPIENT, {amount: "12", unit: "wei" as const}];
         const prepared = prepareAbiCall({
             fragment,
+            decoderAbi: contractInterface.fragments
+                .filter((item) => item.type === "event" || item.type === "error")
+                .map((item) => item.format("full")),
             target: TARGET,
             account: ACCOUNT,
             chainId: "1",
@@ -22,6 +29,10 @@ describe("prepared calls", () => {
 
         expect(prepared.data).toBe(contractInterface.encodeFunctionData(fragment, [RECIPIENT, BigInt(12)]));
         expect(prepared.value).toBe("0");
+        expect(prepared.decoderAbi).toEqual([
+            "event Transfer(address indexed from, address indexed to, uint256 amount)",
+            "error InsufficientBalance(uint256 available, uint256 required)",
+        ]);
         expect(prepared.display).toMatchObject({
             kind: "abi",
             functionName: "transfer",
@@ -64,6 +75,7 @@ describe("prepared calls", () => {
             chainId: "10",
             data: "0x1234",
             value: "2000000000",
+            decoderAbi: [],
             editor: {kind: "raw"},
         });
 
@@ -90,5 +102,17 @@ describe("prepared calls", () => {
             id: "call-1",
             createdAt: 1,
         })).toThrow("state-modifying");
+    });
+
+    it("rejects non-decoder ABI fragments", () => {
+        const fragment = new ethers.Interface(["function pause()"]).getFunction("pause")!;
+        expect(() => prepareAbiCall({
+            fragment,
+            decoderAbi: ["function owner() view returns (address)"],
+            target: TARGET,
+            account: ACCOUNT,
+            chainId: "1",
+            argumentValues: [],
+        })).toThrow("only event and error");
     });
 });

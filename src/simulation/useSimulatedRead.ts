@@ -41,7 +41,7 @@ export function useSimulatedRead(chainId?: string) {
 
     return {
         available,
-        enabled: simulation.enabled,
+        enabled: simulation.active,
         loading,
         revision: simulation.revision,
         run,

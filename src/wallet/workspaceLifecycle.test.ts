@@ -14,6 +14,7 @@ const call: QueuedCall = {
     to: "0x0000000000000000000000000000000000000010",
     data: "0x",
     value: "0",
+    decoderAbi: [],
     display: {kind: "raw", contractAddress: "0x0000000000000000000000000000000000000010"},
     editor: {kind: "raw"},
     createdAt: 1,

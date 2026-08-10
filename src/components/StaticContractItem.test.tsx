@@ -21,16 +21,14 @@ describe("StaticFunctionItem simulated reads", () => {
             gasUsed: "0x30",
         });
         mockedSimulation.mockReturnValue({
-            enabled: true,
+            active: true,
             status: "ready",
             chainId: "1",
             error: null,
+            snapshot: null,
             revision: "ready:1",
             queuedCallCount: 3,
             configured: true,
-            canEnable: true,
-            enable: jest.fn(),
-            disable: jest.fn(),
             retry: jest.fn(),
             canSimulateChain: jest.fn().mockReturnValue(true),
             simulateRead,
@@ -59,16 +57,14 @@ describe("StaticFunctionItem simulated reads", () => {
     it("keeps an explicit ordinary on-chain action", async () => {
         const simulateRead = jest.fn();
         mockedSimulation.mockReturnValue({
-            enabled: true,
+            active: true,
             status: "ready",
             chainId: "1",
             error: null,
+            snapshot: null,
             revision: "ready:1",
             queuedCallCount: 1,
             configured: true,
-            canEnable: true,
-            enable: jest.fn(),
-            disable: jest.fn(),
             retry: jest.fn(),
             canSimulateChain: jest.fn().mockReturnValue(true),
             simulateRead,

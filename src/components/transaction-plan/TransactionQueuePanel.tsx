@@ -61,6 +61,7 @@ function duplicateCall(call: QueuedCall): QueuedCall {
         editor: call.editor.kind === "abi"
             ? {...call.editor, arguments: JSON.parse(JSON.stringify(call.editor.arguments)) as ParamValue[]}
             : {kind: "raw"},
+        decoderAbi: [...call.decoderAbi],
     };
 }
 
@@ -139,6 +140,7 @@ function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (
             const updated = fragment
                 ? prepareAbiCall({
                     fragment,
+                    decoderAbi: call.decoderAbi,
                     target: call.to,
                     account: call.from,
                     chainId: call.chainId,

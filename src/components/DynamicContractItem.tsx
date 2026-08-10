@@ -10,7 +10,7 @@ import CopyButton from "./CopyButton";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { buildParamValues, createEmptyParamValue, ParamValue, ValueUnit } from "../calls/parameters";
-import { prepareAbiCall } from "../calls/prepareCall";
+import { decoderAbiForInterface, prepareAbiCall } from "../calls/prepareCall";
 import { useTransactionPlan } from "../transaction-plan/context";
 import FunctionCallEditor from "./FunctionCallEditor";
 import { useSimulation } from "../simulation/context";
@@ -75,6 +75,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                 }
                 attemptedCall = prepareAbiCall({
                     fragment: frag,
+                    decoderAbi: decoderAbiForInterface(contract.interface),
                     target: await contract.getAddress(),
                     account: wallet.account,
                     chainId: wallet.chainId,
@@ -138,6 +139,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
             }
             const prepared = prepareAbiCall({
                 fragment: frag,
+                decoderAbi: decoderAbiForInterface(contract.interface),
                 target: await contract.getAddress(),
                 account: wallet.account,
                 chainId: wallet.chainId,
@@ -289,7 +291,7 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
                     {workspace.mode === "simulate" && simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
                 </Alert>
             )}
-            {workspace.mode === "simulate" && simulation.enabled && simulation.status === "ready" && simulation.chainId !== contractChainId && (
+            {workspace.mode === "simulate" && simulation.active && simulation.chainId !== contractChainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
             <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>

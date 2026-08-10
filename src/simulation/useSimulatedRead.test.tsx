@@ -14,16 +14,14 @@ function Probe() {
 
 function simulationValue(revision: string, simulateRead: jest.Mock) {
     return {
-        enabled: true,
+        active: true,
         status: "ready" as const,
         chainId: "1",
         error: null,
+        snapshot: null,
         revision,
         queuedCallCount: 2,
         configured: true,
-        canEnable: true,
-        enable: jest.fn(),
-        disable: jest.fn(),
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(true),
         simulateRead,
