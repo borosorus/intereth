@@ -69,6 +69,7 @@ describe("DynamicFunctionItem queueing", () => {
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} />);
         fireEvent.click(screen.getByRole("button", {name: /pause function pause/}));
+        expect(screen.queryByRole("button", {name: "Send immediately"})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
@@ -131,6 +132,7 @@ describe("DynamicFunctionItem queueing", () => {
 describe("DynamicContractItem wallet lifecycle", () => {
     beforeEach(mockSimulation);
     it("rebinds raw calls to the active signer and preserves the form while disconnected", async () => {
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
         const oldSendTransaction = jest.fn();
         const sendTransaction = jest.fn().mockResolvedValue({
             hash: `0x${"11".repeat(32)}`,

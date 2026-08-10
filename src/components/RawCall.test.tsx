@@ -109,6 +109,7 @@ describe("RawCall queueing", () => {
         } as unknown as ethers.BaseContract;
 
         render(<RawCall contract={contract} />);
+        expect(screen.queryByRole("button", {name: "Send immediately"})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));

@@ -23,6 +23,7 @@ import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
+import { usePinWatch } from "../simulation/usePinWatch";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -42,11 +43,11 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
     const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
-    const [watchNotice, setWatchNotice] = useState<string | null>(null);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
     const workspace = useWorkspaceMode();
+    const watchPin = usePinWatch(chainId);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
     const isStateModifying = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
@@ -54,7 +55,8 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulatedRead.revision]);
+        if (workspace.mode === "simulate") setApprovalRecovery(null);
+    }, [simulatedRead.revision, workspace.mode]);
 
     useEffect(() => {
         if(!expanded && isStateModifying){
@@ -132,23 +134,12 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     }, [args, chainId, contract, frag, simulatedRead]);
 
     const pinWatch = useCallback(async () => {
-        const context = transactionPlan.state.plan.context;
-        if (!context || !chainId || context.chainId !== chainId) return;
         try {
-            const watch = prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context});
-            const duplicate = transactionPlan.state.plan.watches.some((current) => current.to.toLowerCase() === watch.to.toLowerCase()
-                && current.data.toLowerCase() === watch.data.toLowerCase()
-                && current.value === watch.value);
-            if (duplicate) {
-                setWatchNotice("This watch is already pinned.");
-                return;
-            }
-            transactionPlan.dispatch({type: "ADD_WATCH", watch});
-            setWatchNotice("Watch pinned.");
+            await watchPin.pin(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}));
         } catch (watchError) {
             setError(normalizeError(watchError, "Could not pin watch"));
         }
-    }, [args, chainId, contract, frag, transactionPlan]);
+    }, [args, contract, frag, watchPin]);
 
     const addToQueue = useCallback(async () => {
         try {
@@ -211,16 +202,18 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 >
                                     {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
                                 </Button>
-                                <Button
-                                    variant="outlined"
-                                    color="secondary"
-                                    fullWidth
-                                    disabled={disabled || isResponseLoading || isQueueing}
-                                    onClick={() => call()}
-                                    sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                                >
-                                    {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
-                                </Button>
+                                {workspace.mode === "interact" && (
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        fullWidth
+                                        disabled={disabled || isResponseLoading || isQueueing}
+                                        onClick={() => call()}
+                                        sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                                    >
+                                        {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
+                                    </Button>
+                                )}
                             </Stack>
                         ) : (
                             <ReadActions
@@ -231,11 +224,11 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 onSimulated={() => void runSimulated()}
                                 onOnChain={() => void call()}
                                 onPinWatch={() => void pinWatch()}
-                                canPinWatch={workspace.mode === "simulate" && transactionPlan.canEdit && transactionPlan.state.plan.context?.chainId === chainId}
+                                canPinWatch={watchPin.canPin}
                             />
                         )}
                         {queued && <Alert severity="success">Added to transaction queue.</Alert>}
-                        {watchNotice && <Alert severity="info" onClose={() => setWatchNotice(null)}>{watchNotice}</Alert>}
+                        {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
                     </Stack>
                 </Paper>
                 <CallResult result={result} />

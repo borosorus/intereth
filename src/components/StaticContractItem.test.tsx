@@ -53,7 +53,7 @@ describe("StaticFunctionItem simulated reads", () => {
             getFunction: jest.fn(),
         } as unknown as ethers.BaseContract;
 
-        render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
+        const view = render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         fireEvent.click(screen.getByRole("button", {name: /active function active/}));
         fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
 
@@ -64,6 +64,11 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(await screen.findByText("true")).toBeInTheDocument();
         expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
+
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
+        view.rerender(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
+        expect(screen.queryByText("Simulated")).not.toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Run call"})).toBeInTheDocument();
     });
 
     it("keeps an explicit ordinary on-chain action", async () => {

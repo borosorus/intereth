@@ -16,7 +16,7 @@ import ReadActions, { ReadLoadingMode } from "./ReadActions";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
-import { useTransactionPlan } from "../transaction-plan/context";
+import { usePinWatch } from "../simulation/usePinWatch";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -31,8 +31,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const [error, setError] = useState<NormalizedError | null>(null);
     const simulatedRead = useSimulatedRead(chainId);
     const workspace = useWorkspaceMode();
-    const transactionPlan = useTransactionPlan();
-    const [watchNotice, setWatchNotice] = useState<string | null>(null);
+    const watchPin = usePinWatch(chainId);
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
@@ -41,7 +40,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulatedRead.revision]);
+    }, [simulatedRead.revision, workspace.mode]);
 
     const call = useCallback(async () => {
         try {
@@ -80,23 +79,12 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     }, [args, contract, frag, simulatedRead]);
 
     const pinWatch = useCallback(async () => {
-        const context = transactionPlan.state.plan.context;
-        if (!context || context.chainId !== chainId) return;
         try {
-            const watch = prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context});
-            const duplicate = transactionPlan.state.plan.watches.some((current) => current.to.toLowerCase() === watch.to.toLowerCase()
-                && current.data.toLowerCase() === watch.data.toLowerCase()
-                && current.value === watch.value);
-            if (duplicate) {
-                setWatchNotice("This watch is already pinned.");
-                return;
-            }
-            transactionPlan.dispatch({type: "ADD_WATCH", watch});
-            setWatchNotice("Watch pinned.");
+            await watchPin.pin(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}));
         } catch (watchError) {
             setError(normalizeError(watchError, "Could not pin watch"));
         }
-    }, [args, chainId, contract, frag, transactionPlan]);
+    }, [args, contract, frag, watchPin]);
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -136,9 +124,9 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 onSimulated={() => void runSimulated()}
                                 onOnChain={() => void call()}
                                 onPinWatch={() => void pinWatch()}
-                                canPinWatch={workspace.mode === "simulate" && transactionPlan.canEdit && transactionPlan.state.plan.context?.chainId === chainId}
+                                canPinWatch={watchPin.canPin}
                             />
-                            {watchNotice && <Alert severity="info" onClose={() => setWatchNotice(null)}>{watchNotice}</Alert>}
+                            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
                         </Stack>
                         <CallResult result={result} />
                     </>

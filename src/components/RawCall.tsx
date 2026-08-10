@@ -18,6 +18,7 @@ import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareRawWatch } from "../simulation/watchExpressions";
+import { usePinWatch } from "../simulation/usePinWatch";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -27,7 +28,6 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const [error, setError] = useState<NormalizedError | null>(null);
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
     const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
-    const [watchNotice, setWatchNotice] = useState<string | null>(null);
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
@@ -37,11 +37,13 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
     const workspace = useWorkspaceMode();
+    const watchPin = usePinWatch(chainId);
     const simulationAvailable = workspace.mode === "simulate" && staticCall && simulatedRead.available;
 
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulatedRead.revision]);
+        if (workspace.mode === "simulate") setApprovalRecovery(null);
+    }, [simulatedRead.revision, workspace.mode]);
 
     const call = useCallback(async () => {
         let attemptedCall: QueuedCall | null = null;
@@ -117,23 +119,12 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     }, [chainId, contract, data, simulatedRead]);
 
     const pinWatch = useCallback(async () => {
-        const context = transactionPlan.state.plan.context;
-        if (!context || !chainId || context.chainId !== chainId) return;
         try {
-            const watch = prepareRawWatch({target: await contract.getAddress(), context, data});
-            const duplicate = transactionPlan.state.plan.watches.some((current) => current.to.toLowerCase() === watch.to.toLowerCase()
-                && current.data.toLowerCase() === watch.data.toLowerCase()
-                && current.value === watch.value);
-            if (duplicate) {
-                setWatchNotice("This watch is already pinned.");
-                return;
-            }
-            transactionPlan.dispatch({type: "ADD_WATCH", watch});
-            setWatchNotice("Watch pinned.");
+            await watchPin.pin(async (context) => prepareRawWatch({target: await contract.getAddress(), context, data}));
         } catch (watchError) {
             setError(normalizeError(watchError, "Could not pin watch"));
         }
-    }, [chainId, contract, data, transactionPlan]);
+    }, [contract, data, watchPin]);
 
     const addToQueue = useCallback(async () => {
         try {
@@ -205,7 +196,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     onSimulated={() => void runSimulated()}
                     onOnChain={() => void call()}
                     onPinWatch={() => void pinWatch()}
-                    canPinWatch={workspace.mode === "simulate" && transactionPlan.canEdit && transactionPlan.state.plan.context?.chainId === chainId}
+                    canPinWatch={watchPin.canPin}
                 />
             ) : (
                 <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
@@ -219,20 +210,22 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     >
                         {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
                     </Button>
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        fullWidth
-                        disabled={disabled || isResponseLoading || isQueueing}
-                        onClick={() => call()}
-                        sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                    >
-                        {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
-                    </Button>
+                    {workspace.mode === "interact" && (
+                        <Button
+                            variant="outlined"
+                            color="secondary"
+                            fullWidth
+                            disabled={disabled || isResponseLoading || isQueueing}
+                            onClick={() => call()}
+                            sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                        >
+                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
+                        </Button>
+                    )}
                 </Stack>
             )}
             {queued && <Alert severity="success">Added to transaction queue.</Alert>}
-            {watchNotice && <Alert severity="info" onClose={() => setWatchNotice(null)}>{watchNotice}</Alert>}
+            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
             <CallResult result={result} />
         </Stack>
         <ErrorDialog error={error} onClose={() => setError(null)}/>
