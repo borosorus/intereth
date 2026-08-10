@@ -131,6 +131,12 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
     } else if (code === "SIMULATION_READ_REVERTED") {
         title = "Simulated read reverted";
         displayMessage = message || "The read reverted after applying the queued calls.";
+    } else if (code === "APPROVAL_RECOVERY_SIMULATION_FAILED") {
+        title = "Approval did not resolve the transaction";
+        displayMessage = message || "The proposed approval did not make the transaction succeed in simulation.";
+    } else if (code === "INVALID_WALLET_RESPONSE") {
+        title = "Invalid wallet response";
+        displayMessage = message || "The wallet returned invalid transaction data.";
     } else if (code === "INVALID_BATCH_RESPONSE") {
         title = "Invalid wallet response";
         displayMessage = message || "The wallet returned invalid batch data.";

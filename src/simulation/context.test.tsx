@@ -7,7 +7,7 @@ import { QueuedCall } from "../transaction-plan/types";
 import { SimulationProvider, useSimulation } from "./context";
 
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../onboard", () => ({
+jest.mock("../chainConfig", () => ({
     chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),
 }));
 

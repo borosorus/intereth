@@ -10,6 +10,7 @@ import { blueGrey, deepOrange } from '@mui/material/colors';
 import { WalletSessionProvider } from './wallet/WalletSessionContext';
 import { TransactionPlanProvider } from './transaction-plan/context';
 import { SimulationProvider } from './simulation/context';
+import { TransactionPlanUiProvider } from './transaction-plan/uiContext';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -57,8 +58,10 @@ root.render(
         <WalletSessionProvider>
           <TransactionPlanProvider>
             <SimulationProvider>
-              <Bar/>
-              <App/>
+              <TransactionPlanUiProvider>
+                <Bar/>
+                <App/>
+              </TransactionPlanUiProvider>
             </SimulationProvider>
           </TransactionPlanProvider>
         </WalletSessionProvider>

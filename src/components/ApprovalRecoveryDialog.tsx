@@ -1,0 +1,251 @@
+import {
+    Alert,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Stack,
+    TextField,
+    Typography,
+} from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
+import { chainsById } from "../chainConfig";
+import { HttpJsonRpcTransport } from "../simulation/SimulationClient";
+import { useTransactionPlan } from "../transaction-plan/context";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
+import { PlanContext, QueuedCall } from "../transaction-plan/types";
+import {
+    Erc20ApprovalRequirement,
+    inferDirectApprovalToken,
+    ValidatedApprovalRecovery,
+    validateApprovalRecovery,
+} from "../transactions/approvalRecovery";
+import { forceSendPreparedTransaction, sendPreparedTransaction } from "../transactions/sendTransaction";
+import { useWalletSession } from "../wallet/WalletSessionContext";
+import CallResult from "./CallResult";
+
+export interface ApprovalRecoveryRequest {
+    requirement: Erc20ApprovalRequirement;
+    originalCall: QueuedCall;
+}
+
+interface ApprovalRecoveryDialogProps {
+    request: ApprovalRecoveryRequest | null;
+    onClose: () => void;
+    onOriginalResult: (result: Extract<CallResultData, {kind: "transaction"}>) => void;
+}
+
+function parseAmount(value: string) {
+    if (!/^\d+$/.test(value.trim())) {
+        throw Object.assign(new Error("Approval amount must be a non-negative integer in token base units."), {code: "INVALID_ARGUMENT"});
+    }
+    return BigInt(value.trim());
+}
+
+export default function ApprovalRecoveryDialog({request, onClose, onOriginalResult}: ApprovalRecoveryDialogProps) {
+    const wallet = useWalletSession();
+    const plan = useTransactionPlan();
+    const planUi = useTransactionPlanUi();
+    const [tokenAddress, setTokenAddress] = useState("");
+    const [amount, setAmount] = useState("");
+    const [validated, setValidated] = useState<ValidatedApprovalRecovery | null>(null);
+    const [checking, setChecking] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [confirmForce, setConfirmForce] = useState(false);
+    const [approvalConfirmed, setApprovalConfirmed] = useState(false);
+    const [approvalResult, setApprovalResult] = useState<Extract<CallResultData, {kind: "transaction"}> | null>(null);
+    const [error, setError] = useState<NormalizedError | null>(null);
+    const context = useMemo<PlanContext | null>(() => request ? ({
+        account: request.originalCall.from,
+        chainId: request.originalCall.chainId,
+    }) : null, [request]);
+    const rpcUrl = context ? chainsById.get(context.chainId)?.rpcUrl.trim() ?? "" : "";
+    const walletMatches = Boolean(
+        context
+        && wallet.account?.toLowerCase() === context.account.toLowerCase()
+        && wallet.chainId === context.chainId,
+    );
+
+    useEffect(() => {
+        setTokenAddress("");
+        setAmount(request?.requirement.needed.toString() ?? "");
+        setValidated(null);
+        setChecking(false);
+        setBusy(false);
+        setConfirmForce(false);
+        setApprovalConfirmed(false);
+        setApprovalResult(null);
+        setError(null);
+        if (!request || !context || !rpcUrl) return;
+
+        let cancelled = false;
+        inferDirectApprovalToken(
+            new HttpJsonRpcTransport(rpcUrl),
+            context,
+            request.originalCall.to,
+            request.requirement,
+        ).then((inferred) => {
+            if (!cancelled && inferred) setTokenAddress((current) => current === "" ? inferred : current);
+        }).catch(() => undefined);
+        return () => { cancelled = true; };
+    }, [context, request, rpcUrl]);
+
+    const invalidate = () => {
+        setValidated(null);
+        setConfirmForce(false);
+        setApprovalConfirmed(false);
+        setApprovalResult(null);
+        setError(null);
+    };
+
+    const validate = async () => {
+        if (!request || !context) return;
+        setChecking(true);
+        setError(null);
+        try {
+            if (!rpcUrl) throw Object.assign(new Error("No simulation RPC is configured for this network."), {code: "SIMULATION_NOT_CONFIGURED"});
+            const result = await validateApprovalRecovery(
+                rpcUrl,
+                context,
+                request.originalCall,
+                request.requirement,
+                tokenAddress,
+                parseAmount(amount),
+            );
+            setValidated(result);
+        } catch (validationError) {
+            setValidated(null);
+            setError(normalizeError(validationError, "Approval validation failed"));
+        } finally {
+            setChecking(false);
+        }
+    };
+
+    const addToPlan = () => {
+        if (!request || !validated || !plan.canEdit || !walletMatches) return;
+        plan.dispatch({type: "ADD_CALL", call: validated.approvalCall});
+        plan.dispatch({type: "ADD_CALL", call: request.originalCall});
+        planUi.requestReview();
+        onClose();
+    };
+
+    const approveFirst = async () => {
+        if (!validated || !wallet.signer || !walletMatches) return;
+        setBusy(true);
+        setError(null);
+        try {
+            const result = await sendPreparedTransaction(wallet.signer, validated.approvalCall, setApprovalResult);
+            setApprovalConfirmed(result.status === "confirmed");
+        } catch (approvalError) {
+            setError(normalizeError(approvalError, "Approval transaction failed"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const sendOriginal = async () => {
+        if (!request || !wallet.signer || !walletMatches) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await sendPreparedTransaction(wallet.signer, request.originalCall, onOriginalResult);
+            onClose();
+        } catch (sendError) {
+            setError(normalizeError(sendError, "Transaction failed"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const forceSend = async () => {
+        if (!request || !validated || !wallet.provider || !walletMatches) return;
+        setBusy(true);
+        setError(null);
+        try {
+            await forceSendPreparedTransaction(wallet.provider, request.originalCall, validated.gasLimit, onOriginalResult);
+            onClose();
+        } catch (sendError) {
+            setError(normalizeError(sendError, "Forced transaction failed"));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <Dialog open={request !== null} onClose={busy ? undefined : onClose} maxWidth="sm" fullWidth>
+            <DialogTitle>ERC-20 approval required</DialogTitle>
+            <DialogContent>
+                {request && (
+                    <Stack spacing={2} sx={{pt: 0.5}}>
+                        <Alert severity="warning">
+                            Gas estimation reports that this transaction needs more ERC-20 allowance. Confirm the token before continuing.
+                        </Alert>
+                        {!walletMatches && <Alert severity="error">Reconnect the original account and network before continuing.</Alert>}
+                        <Typography variant="body2"><strong>Spender:</strong> {request.requirement.spender}</Typography>
+                        <Typography variant="body2"><strong>Current allowance:</strong> {request.requirement.currentAllowance.toString()}</Typography>
+                        <Typography variant="body2"><strong>Required allowance:</strong> {request.requirement.needed.toString()}</Typography>
+                        <TextField
+                            label="Token contract address"
+                            value={tokenAddress}
+                            onChange={(event) => { setTokenAddress(event.target.value); invalidate(); }}
+                            disabled={busy || checking || approvalConfirmed}
+                            fullWidth
+                            helperText="Intereth fills this only when the failed transaction target can be verified as the token."
+                        />
+                        <TextField
+                            label="Approval amount (base units)"
+                            value={amount}
+                            onChange={(event) => { setAmount(event.target.value); invalidate(); }}
+                            disabled={busy || checking || approvalConfirmed}
+                            fullWidth
+                        />
+                        <Button variant="outlined" onClick={() => void validate()} disabled={checking || busy || !tokenAddress.trim()}>
+                            {checking ? <CircularProgress size={20} /> : "Validate approval"}
+                        </Button>
+                        {validated && (
+                            <Alert severity="success">
+                                Approval and transaction both succeeded in simulation. Forced-send gas limit: {validated.gasLimit.toString()}.
+                            </Alert>
+                        )}
+                        {error && <Alert severity="error">{error.message}</Alert>}
+                        {approvalResult && <CallResult result={approvalResult} />}
+                        {approvalConfirmed ? (
+                            <Button variant="contained" color="secondary" disabled={busy || !wallet.signer || !walletMatches} onClick={() => void sendOriginal()}>
+                                Send transaction
+                            </Button>
+                        ) : validated && (
+                            <Stack spacing={1}>
+                                <Button variant="contained" color="secondary" disabled={busy || !plan.canEdit || !walletMatches} onClick={addToPlan}>
+                                    Add approval and transaction to plan
+                                </Button>
+                                <Button variant="outlined" disabled={busy || !wallet.signer || !walletMatches} onClick={() => void approveFirst()}>
+                                    Approve first
+                                </Button>
+                                {confirmForce ? (
+                                    <Stack spacing={1}>
+                                        <Alert severity="error">
+                                            This bypasses gas estimation. Unless an approval becomes effective before execution, the transaction is expected to revert and consume gas.
+                                        </Alert>
+                                        <Button color="error" variant="contained" disabled={busy || !wallet.provider || !walletMatches} onClick={() => void forceSend()}>
+                                            Confirm force send
+                                        </Button>
+                                    </Stack>
+                                ) : (
+                                    <Button color="error" variant="text" disabled={busy || !wallet.provider || !walletMatches} onClick={() => setConfirmForce(true)}>
+                                        Send anyway
+                                    </Button>
+                                )}
+                            </Stack>
+                        )}
+                    </Stack>
+                )}
+            </DialogContent>
+            <DialogActions>
+                <Button onClick={onClose} disabled={busy}>Close</Button>
+            </DialogActions>
+        </Dialog>
+    );
+}

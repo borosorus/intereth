@@ -12,6 +12,10 @@ import { useTransactionPlan } from "../transaction-plan/context";
 import { normalizeReadData } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
+import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
+import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery";
+import { sendPreparedTransaction } from "../transactions/sendTransaction";
+import { QueuedCall } from "../transaction-plan/types";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -20,6 +24,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const [result, setResult] = useState<CallResultData | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
+    const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
@@ -35,6 +40,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     }, [simulatedRead.revision]);
 
     const call = useCallback(async () => {
+        let attemptedCall: QueuedCall | null = null;
         const runner = contract.runner;
         const hasTxRunner = typeof runner?.sendTransaction === "function";
         const hasCallRunner = typeof runner?.call === "function";
@@ -50,10 +56,10 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             setError(null);
             const contractAddress = await contract.getAddress();
             if (!staticCall) {
-                if (!wallet.account || !wallet.chainId) {
+                if (!wallet.account || !wallet.chainId || !wallet.signer) {
                     throw Object.assign(new Error("The connected wallet is not ready to send this transaction."), {code: "WALLET_DISCONNECTED"});
                 }
-                const prepared = prepareRawCall({
+                attemptedCall = prepareRawCall({
                     target: contractAddress,
                     account: wallet.account,
                     chainId: wallet.chainId,
@@ -61,28 +67,20 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     valueAmount,
                     valueUnit,
                 });
-                const resp: ethers.TransactionResponse = await runner!.sendTransaction!({
-                    to: prepared.to,
-                    data: prepared.data,
-                    value: prepared.value,
-                });
-                setResult({kind: "transaction", status: "submitted", hash: resp.hash});
-                const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                setResult(receipt ? {
-                    kind: "transaction",
-                    status: receipt.status === 1 ? "confirmed" : "failed",
-                    hash: receipt.hash,
-                    blockNumber: receipt.blockNumber,
-                    gasUsed: receipt.gasUsed.toString(),
-                } : {kind: "transaction", status: "pending", hash: resp.hash});
+                await sendPreparedTransaction(wallet.signer, attemptedCall, setResult);
             } else {
                 setReadLoading("onchain");
                 const callData = normalizeReadData(data);
                 const resp = await runner!.call!({to: contractAddress, data: callData});
                 setResult({kind: "raw", data: resp, source: {kind: "onchain"}});
             }
-        } catch (error) {
-            const normalized = normalizeError(error, staticCall ? "Raw call failed" : "Transaction failed");
+        } catch (caughtError) {
+            const approvalRequirement = attemptedCall ? detectErc20ApprovalRequirement(caughtError) : null;
+            if (attemptedCall && approvalRequirement) {
+                setApprovalRecovery({requirement: approvalRequirement, originalCall: attemptedCall});
+                return;
+            }
+            const normalized = normalizeError(caughtError, staticCall ? "Raw call failed" : "Transaction failed");
             setResult((current) => current?.kind === "transaction"
                 ? {...current, status: normalized.code === "CALL_EXCEPTION" ? "failed" : "pending"}
                 : current);
@@ -91,7 +89,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             setIsResponseLoading(false);
             setReadLoading(null);
         }
-    }, [contract, data, staticCall, valueAmount, valueUnit, wallet.account, wallet.chainId]);
+    }, [contract, data, staticCall, valueAmount, valueUnit, wallet.account, wallet.chainId, wallet.signer]);
 
     const runSimulated = useCallback(async () => {
         if (!chainId) return;
@@ -212,6 +210,11 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             <CallResult result={result} />
         </Stack>
         <ErrorDialog error={error} onClose={() => setError(null)}/>
+        <ApprovalRecoveryDialog
+            request={approvalRecovery}
+            onClose={() => setApprovalRecovery(null)}
+            onOriginalResult={setResult}
+        />
     </Paper>
     );
 }

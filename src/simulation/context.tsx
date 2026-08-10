@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NormalizedError, normalizeError } from "../callUtils";
-import { chainsById } from "../onboard";
+import { chainsById } from "../chainConfig";
 import { isExecutionMutable } from "../transaction-plan/executionPolicy";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";

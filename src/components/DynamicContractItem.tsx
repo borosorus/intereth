@@ -17,6 +17,10 @@ import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions, { ReadLoadingMode } from "./ReadActions";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
+import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
+import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery";
+import { sendPreparedTransaction } from "../transactions/sendTransaction";
+import { QueuedCall } from "../transaction-plan/types";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -35,6 +39,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const [valueAmount, setValueAmount] = useState('');
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
+    const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
@@ -52,19 +57,21 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
             setResult(null);
             setIsResponseLoading(false);
             setQueued(false);
+            setApprovalRecovery(null);
         }
     }, [expanded, isStateModifying]);
 
     const call = useCallback(async () => {
+        let attemptedCall: QueuedCall | null = null;
         try {
             setIsResponseLoading(true);
             setResult(null);
             setError(null);
             if (isStateModifying) {
-                if (!wallet.account || !wallet.chainId || typeof contract.runner?.sendTransaction !== "function") {
+                if (!wallet.account || !wallet.chainId || !wallet.signer) {
                     throw Object.assign(new Error("The connected wallet is not ready to send this transaction."), {code: "WALLET_DISCONNECTED"});
                 }
-                const prepared = prepareAbiCall({
+                attemptedCall = prepareAbiCall({
                     fragment: frag,
                     target: await contract.getAddress(),
                     account: wallet.account,
@@ -73,28 +80,20 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                     valueAmount,
                     valueUnit,
                 });
-                const resp: ethers.TransactionResponse = await contract.runner.sendTransaction({
-                    to: prepared.to,
-                    data: prepared.data,
-                    value: prepared.value,
-                });
-                setResult({kind: "transaction", status: "submitted", hash: resp.hash});
-                const receipt: ethers.TransactionReceipt | null = await resp.wait(1, 60000);
-                setResult(receipt ? {
-                    kind: "transaction",
-                    status: receipt.status === 1 ? "confirmed" : "failed",
-                    hash: receipt.hash,
-                    blockNumber: receipt.blockNumber,
-                    gasUsed: receipt.gasUsed.toString(),
-                } : {kind: "transaction", status: "pending", hash: resp.hash});
+                await sendPreparedTransaction(wallet.signer, attemptedCall, setResult);
             } else {
                 setReadLoading("onchain");
                 const callArgs = buildParamValues(frag.inputs, args);
                 const resp = await contract.getFunction(frag).staticCall(...callArgs);
                 setResult({kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}});
             }
-        } catch (error) {
-            const normalized = normalizeError(error, isStateModifying ? "Transaction failed" : "Call failed");
+        } catch (caughtError) {
+            const approvalRequirement = attemptedCall ? detectErc20ApprovalRequirement(caughtError) : null;
+            if (attemptedCall && approvalRequirement) {
+                setApprovalRecovery({requirement: approvalRequirement, originalCall: attemptedCall});
+                return;
+            }
+            const normalized = normalizeError(caughtError, isStateModifying ? "Transaction failed" : "Call failed");
             setResult((current) => current?.kind === "transaction"
                 ? {...current, status: normalized.code === "CALL_EXCEPTION" ? "failed" : "pending"}
                 : current);
@@ -103,7 +102,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
             setIsResponseLoading(false);
             setReadLoading(null);
         }
-    }, [args, contract, frag, isStateModifying, valueAmount, valueUnit, wallet.account, wallet.chainId]);
+    }, [args, contract, frag, isStateModifying, valueAmount, valueUnit, wallet.account, wallet.chainId, wallet.signer]);
 
     const runSimulated = useCallback(async () => {
         if (!chainId) return;
@@ -214,6 +213,11 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                 <CallResult result={result} />
             </AccordionDetails>
             <ErrorDialog error={error} onClose={() => setError(null)}/>
+            <ApprovalRecoveryDialog
+                request={approvalRecovery}
+                onClose={() => setApprovalRecovery(null)}
+                onOriginalResult={setResult}
+            />
         </Accordion>
     );
 }

@@ -23,7 +23,7 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import PlaylistAddCheckIcon from "@mui/icons-material/PlaylistAddCheck";
 import { ethers } from "ethers";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ParamValue, ValueUnit } from "../../calls/parameters";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { normalizeError, NormalizedError } from "../../callUtils";
@@ -36,6 +36,7 @@ import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
 import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExecution";
 import SimulationControls from "./SimulationControls";
+import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -375,9 +376,14 @@ export default function TransactionQueuePanel() {
     const {state, dispatch} = useTransactionPlan();
     const [open, setOpen] = useState(false);
     const [confirmClear, setConfirmClear] = useState(false);
+    const {reviewRequest} = useTransactionPlanUi();
     const batchController = useAtomicBatchExecution(open);
     const calls = state.plan.calls;
     const context = state.plan.context;
+
+    useEffect(() => {
+        if (reviewRequest > 0 && calls.length > 0) setOpen(true);
+    }, [calls.length, reviewRequest]);
 
     if (calls.length === 0) {
         return null;
