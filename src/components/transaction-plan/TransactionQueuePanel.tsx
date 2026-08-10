@@ -38,6 +38,7 @@ import SimulationControls from "./SimulationControls";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { useWorkspaceMode } from "../../workspace/context";
+import InteractSimulationPreview from "./InteractSimulationPreview";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -455,7 +456,10 @@ export default function TransactionQueuePanel() {
                             ))}
                             {workspace.mode === "simulate" && <SimulationControls />}
                             {workspace.mode === "interact" ? (
-                                <AtomicBatchExecution controller={batchController} />
+                                <>
+                                    <InteractSimulationPreview />
+                                    <AtomicBatchExecution controller={batchController} />
+                                </>
                             ) : (
                                 <Alert severity="info">Switch to Interact to execute this transaction plan.</Alert>
                             )}
