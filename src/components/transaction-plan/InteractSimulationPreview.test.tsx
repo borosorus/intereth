@@ -80,6 +80,7 @@ function mockReady() {
         revision: "queue",
         queuedCallCount: 2,
         configured: true,
+        watchEvaluations: {},
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(true),
         simulateRead: jest.fn(),

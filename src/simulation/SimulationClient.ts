@@ -216,6 +216,19 @@ export class SimulationClient implements QueuedStateSimulationClient {
         return blockNumber;
     }
 
+    async readAtBlock(context: PlanContext, read: SimulatedRead, baseBlock: string) {
+        const response = await this.transport.send("eth_call", [{
+            from: validatedAddress(context.account),
+            to: validatedAddress(read.to),
+            data: normalizedData(read.data),
+            value: quantity(read.value ?? "0"),
+        }, baseBlock]);
+        if (!isHexData(response)) {
+            throw simulationError("SIMULATION_RESPONSE_INVALID", "The RPC returned invalid read data.");
+        }
+        return response;
+    }
+
     async simulateCalls(context: PlanContext, calls: QueuedCall[], baseBlock = "latest"): Promise<SimulatedCallsResult> {
         if (calls.length === 0) {
             throw Object.assign(new Error("Simulation requires at least one call."), {code: "INVALID_ARGUMENT"});

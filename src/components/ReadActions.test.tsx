@@ -20,15 +20,19 @@ describe("ReadActions workspace modes", () => {
                 loading={null}
                 onSimulated={jest.fn()}
                 onOnChain={onChain}
+                onPinWatch={jest.fn()}
+                canPinWatch
             />,
         );
 
         expect(screen.queryByRole("button", {name: "Run simulated"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Pin watch"})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Run call"}));
         expect(onChain).toHaveBeenCalled();
     });
 
     it("offers canonical and speculative calls in Simulate mode", () => {
+        const onPinWatch = jest.fn();
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
 
         render(
@@ -39,10 +43,14 @@ describe("ReadActions workspace modes", () => {
                 loading={null}
                 onSimulated={jest.fn()}
                 onOnChain={jest.fn()}
+                onPinWatch={onPinWatch}
+                canPinWatch
             />,
         );
 
         expect(screen.getByRole("button", {name: "Run simulated"})).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Pin watch"}));
+        expect(onPinWatch).toHaveBeenCalled();
     });
 });

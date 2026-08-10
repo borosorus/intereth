@@ -30,6 +30,7 @@ function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {
         revision: "disabled",
         queuedCallCount: 0,
         configured: false,
+        watchEvaluations: {},
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(false),
         simulateRead: jest.fn(),

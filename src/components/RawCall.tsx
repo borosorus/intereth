@@ -17,6 +17,7 @@ import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery
 import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
+import { prepareRawWatch } from "../simulation/watchExpressions";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const [isResponseLoading, setIsResponseLoading] = useState(false);
@@ -26,6 +27,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     const [error, setError] = useState<NormalizedError | null>(null);
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
     const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
+    const [watchNotice, setWatchNotice] = useState<string | null>(null);
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
@@ -114,6 +116,25 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
         }
     }, [chainId, contract, data, simulatedRead]);
 
+    const pinWatch = useCallback(async () => {
+        const context = transactionPlan.state.plan.context;
+        if (!context || !chainId || context.chainId !== chainId) return;
+        try {
+            const watch = prepareRawWatch({target: await contract.getAddress(), context, data});
+            const duplicate = transactionPlan.state.plan.watches.some((current) => current.to.toLowerCase() === watch.to.toLowerCase()
+                && current.data.toLowerCase() === watch.data.toLowerCase()
+                && current.value === watch.value);
+            if (duplicate) {
+                setWatchNotice("This watch is already pinned.");
+                return;
+            }
+            transactionPlan.dispatch({type: "ADD_WATCH", watch});
+            setWatchNotice("Watch pinned.");
+        } catch (watchError) {
+            setError(normalizeError(watchError, "Could not pin watch"));
+        }
+    }, [chainId, contract, data, transactionPlan]);
+
     const addToQueue = useCallback(async () => {
         try {
             setIsQueueing(true);
@@ -183,6 +204,8 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
                     onSimulated={() => void runSimulated()}
                     onOnChain={() => void call()}
+                    onPinWatch={() => void pinWatch()}
+                    canPinWatch={workspace.mode === "simulate" && transactionPlan.canEdit && transactionPlan.state.plan.context?.chainId === chainId}
                 />
             ) : (
                 <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
@@ -209,6 +232,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                 </Stack>
             )}
             {queued && <Alert severity="success">Added to transaction queue.</Alert>}
+            {watchNotice && <Alert severity="info" onClose={() => setWatchNotice(null)}>{watchNotice}</Alert>}
             <CallResult result={result} />
         </Stack>
         <ErrorDialog error={error} onClose={() => setError(null)}/>

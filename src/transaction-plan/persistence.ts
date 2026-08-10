@@ -5,6 +5,7 @@ import {
     BatchExecutionState,
     QueuedCall,
     TransactionPlanState,
+    WatchExpression,
 } from "./types";
 import { isHexData, isRecord, parseBatchReceipt } from "./rpcValidation";
 
@@ -97,6 +98,51 @@ function isQueuedCall(value: unknown): value is QueuedCall {
         && value.display.kind === value.editor.kind;
 }
 
+function hasValidWatchDisplay(value: unknown) {
+    if (!isRecord(value)
+        || (value.kind !== "abi" && value.kind !== "raw")
+        || (value.functionSignature !== undefined && typeof value.functionSignature !== "string")) {
+        return false;
+    }
+    return value.arguments === undefined || (Array.isArray(value.arguments) && value.arguments.every((argument) => (
+        isRecord(argument)
+        && typeof argument.name === "string"
+        && typeof argument.type === "string"
+        && typeof argument.value === "string"
+    )));
+}
+
+function hasValidWatchDecoder(value: unknown) {
+    if (!isRecord(value) || (value.kind !== "abi" && value.kind !== "raw")) return false;
+    if (value.kind === "raw") return Object.keys(value).every((key) => key === "kind");
+    if (typeof value.functionFragment !== "string") return false;
+    try {
+        const fragment = ethers.FunctionFragment.from(value.functionFragment);
+        return fragment.stateMutability === "view" || fragment.stateMutability === "pure";
+    } catch {
+        return false;
+    }
+}
+
+function isWatchExpression(value: unknown): value is WatchExpression {
+    return isRecord(value)
+        && typeof value.id === "string"
+        && value.id.length > 0
+        && isDecimal(value.chainId)
+        && typeof value.from === "string"
+        && ethers.isAddress(value.from)
+        && typeof value.to === "string"
+        && ethers.isAddress(value.to)
+        && isHexData(value.data)
+        && isDecimal(value.value)
+        && hasValidWatchDisplay(value.display)
+        && hasValidWatchDecoder(value.decoder)
+        && (value.display as {kind: string}).kind === (value.decoder as {kind: string}).kind
+        && typeof value.createdAt === "number"
+        && Number.isFinite(value.createdAt)
+        && value.createdAt >= 0;
+}
+
 const EXECUTION_STATUSES: BatchExecutionState["status"][] = [
     "idle",
     "submitting",
@@ -162,7 +208,11 @@ function isExecution(value: unknown): value is BatchExecutionState {
 }
 
 function parsePlan(value: unknown): TransactionPlanState["plan"] | null {
-    if (!isRecord(value) || !Array.isArray(value.calls) || !value.calls.every(isQueuedCall)) {
+    if (!isRecord(value)
+        || !Array.isArray(value.calls)
+        || !value.calls.every(isQueuedCall)
+        || !Array.isArray(value.watches)
+        || !value.watches.every(isWatchExpression)) {
         return null;
     }
     const context = value.context;
@@ -181,12 +231,18 @@ function parsePlan(value: unknown): TransactionPlanState["plan"] | null {
         if (new Set(value.calls.map((call) => call.id)).size !== value.calls.length) {
             return null;
         }
+        const watches = value.watches as WatchExpression[];
+        if (new Set(watches.map((watch) => watch.id)).size !== watches.length
+            || watches.some((watch) => watch.chainId !== chainId || watch.from.toLowerCase() !== account.toLowerCase())) {
+            return null;
+        }
         return {
             context: {account: ethers.getAddress(account), chainId},
             calls: value.calls,
+            watches,
         };
     }
-    return context === null ? {context: null, calls: []} : null;
+    return context === null && value.watches.length === 0 ? {context: null, calls: [], watches: []} : null;
 }
 
 export function parseTransactionPlan(serialized: string): TransactionPlanState | null {

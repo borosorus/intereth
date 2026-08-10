@@ -3,10 +3,11 @@ import "@testing-library/jest-dom";
 import { ReactNode } from "react";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../transaction-plan/reducer";
-import { QueuedCall } from "../transaction-plan/types";
+import { QueuedCall, WatchExpression } from "../transaction-plan/types";
 import { SimulationProvider, useSimulation } from "./context";
 
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+jest.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: jest.fn()})}));
 jest.mock("../chainConfig", () => ({
     chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),
 }));
@@ -26,6 +27,17 @@ const call: QueuedCall = {
     editor: {kind: "raw"},
     createdAt: 1,
 };
+const watch: WatchExpression = {
+    id: "watch-1",
+    chainId: "1",
+    from: ACCOUNT,
+    to: TARGET,
+    data: "0xabcd",
+    value: "0",
+    display: {kind: "raw"},
+    decoder: {kind: "raw"},
+    createdAt: 2,
+};
 
 function planState() {
     return transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call});
@@ -40,10 +52,22 @@ function mockPlan(sessionStatus: "ready" | "disconnected" = "ready", execution =
     });
 }
 
-function rpcResult(method: string) {
+function mockWatchedPlan() {
+    const state = transactionPlanReducer(planState(), {type: "ADD_WATCH", watch});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+}
+
+function rpcResult(method: string, params: unknown[]) {
     if (method === "eth_chainId") return "0x1";
     if (method === "eth_blockNumber") return "0x64";
-    return [{number: "0x65", calls: [{status: "0x1", returnData: "0x", gasUsed: "0x5208", logs: []}]}];
+    if (method === "eth_call") return "0x002a";
+    const request = params[0] as {blockStateCalls: Array<{calls: unknown[]}>};
+    return [{number: "0x65", calls: request.blockStateCalls[0].calls.map((_, index, calls) => ({
+        status: "0x1",
+        returnData: index === calls.length - 1 && calls.length > 1 ? "0x002b" : "0x",
+        gasUsed: "0x5208",
+        logs: [],
+    }))}];
 }
 
 let currentSimulation: ReturnType<typeof useSimulation>;
@@ -70,8 +94,8 @@ describe("SimulationProvider", () => {
     beforeEach(() => {
         jest.useFakeTimers();
         jest.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
-            const body = JSON.parse(String(init?.body)) as {id: number; method: string};
-            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method)})} as Response;
+            const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
+            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
         });
     });
 
@@ -121,5 +145,28 @@ describe("SimulationProvider", () => {
         expect(screen.getByText("error")).toBeInTheDocument();
         expect(currentSimulation.error?.code).toBe("SIMULATION_RPC_UNAVAILABLE");
         expect(currentSimulation.active).toBe(true);
+    });
+
+    it("evaluates watches against the exact base and isolated speculative queue", async () => {
+        mockWatchedPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await runDebounce();
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(currentSimulation.watchEvaluations[watch.id]).toMatchObject({
+            status: "ready",
+            baseBlockNumber: "0x64",
+            base: {returnData: "0x002a"},
+            simulated: {returnData: "0x002b"},
+        });
+        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string; params: unknown[]});
+        expect(requests.find((request) => request.method === "eth_call")?.params[1]).toBe("0x64");
+        expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(2);
     });
 });

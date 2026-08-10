@@ -1,5 +1,5 @@
 import { transactionPlanReducer, createEmptyTransactionPlanState } from "./reducer";
-import { QueuedCall, TransactionPlanState } from "./types";
+import { QueuedCall, TransactionPlanState, WatchExpression } from "./types";
 
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const OTHER_ACCOUNT = "0x0000000000000000000000000000000000000002";
@@ -26,6 +26,21 @@ function addCalls(...calls: QueuedCall[]) {
         (state, queuedCall) => transactionPlanReducer(state, {type: "ADD_CALL", call: queuedCall}),
         createEmptyTransactionPlanState(),
     );
+}
+
+function watch(overrides: Partial<WatchExpression> = {}): WatchExpression {
+    return {
+        id: "watch-1",
+        chainId: "1",
+        from: ACCOUNT,
+        to: TARGET,
+        data: "0xabcd",
+        value: "0",
+        display: {kind: "raw"},
+        decoder: {kind: "raw"},
+        createdAt: 2,
+        ...overrides,
+    };
 }
 
 describe("transactionPlanReducer", () => {
@@ -82,6 +97,17 @@ describe("transactionPlanReducer", () => {
         }
         expect(state.plan.calls).toEqual([]);
         expect(state.plan.context).toBeNull();
+    });
+
+    it("adds plan-scoped watches, rejects duplicates, and clears them with the last call", () => {
+        const draft = addCalls(call());
+        const withWatch = transactionPlanReducer(draft, {type: "ADD_WATCH", watch: watch()});
+        expect(withWatch.plan.watches).toEqual([watch()]);
+        expect(transactionPlanReducer(withWatch, {type: "ADD_WATCH", watch: watch({id: "duplicate"})})).toBe(withWatch);
+        expect(transactionPlanReducer(withWatch, {type: "ADD_WATCH", watch: watch({id: "wrong-chain", chainId: "10"})})).toBe(withWatch);
+
+        const empty = transactionPlanReducer(withWatch, {type: "REMOVE_CALL", callId: "call-1"});
+        expect(empty.plan).toEqual({context: null, calls: [], watches: []});
     });
 
     it("locks mutations and clearing while a batch is in flight", () => {

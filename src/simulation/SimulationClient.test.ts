@@ -45,6 +45,19 @@ describe("SimulationClient", () => {
         await expect(clientWith("100").client.getBlockNumber()).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
     });
 
+    it("runs canonical watch reads at the exact simulation base block", async () => {
+        const {client, send} = clientWith("0x002a");
+        await expect(client.readAtBlock(context, {to: READ_TARGET, data: "0xabcd"}, "0x64")).resolves.toBe("0x002a");
+        expect(send).toHaveBeenCalledWith("eth_call", [{
+            from: ACCOUNT,
+            to: READ_TARGET,
+            data: "0xabcd",
+            value: "0x0",
+        }, "0x64"]);
+        await expect(clientWith("42").client.readAtBlock(context, {to: READ_TARGET, data: "0x"}, "0x64"))
+            .rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
+    });
+
     it("simulates queued calls and the temporary read in one ordered block", async () => {
         const {client, send} = clientWith([{
             number: "0x65",

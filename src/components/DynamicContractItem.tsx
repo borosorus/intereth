@@ -22,6 +22,7 @@ import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery
 import { sendPreparedTransaction } from "../transactions/sendTransaction";
 import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
+import { prepareAbiWatch } from "../simulation/watchExpressions";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -41,6 +42,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
     const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
     const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
+    const [watchNotice, setWatchNotice] = useState<string | null>(null);
     const wallet = useWalletSession();
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
@@ -129,6 +131,25 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
         }
     }, [args, chainId, contract, frag, simulatedRead]);
 
+    const pinWatch = useCallback(async () => {
+        const context = transactionPlan.state.plan.context;
+        if (!context || !chainId || context.chainId !== chainId) return;
+        try {
+            const watch = prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context});
+            const duplicate = transactionPlan.state.plan.watches.some((current) => current.to.toLowerCase() === watch.to.toLowerCase()
+                && current.data.toLowerCase() === watch.data.toLowerCase()
+                && current.value === watch.value);
+            if (duplicate) {
+                setWatchNotice("This watch is already pinned.");
+                return;
+            }
+            transactionPlan.dispatch({type: "ADD_WATCH", watch});
+            setWatchNotice("Watch pinned.");
+        } catch (watchError) {
+            setError(normalizeError(watchError, "Could not pin watch"));
+        }
+    }, [args, chainId, contract, frag, transactionPlan]);
+
     const addToQueue = useCallback(async () => {
         try {
             setIsQueueing(true);
@@ -209,9 +230,12 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
                                 onSimulated={() => void runSimulated()}
                                 onOnChain={() => void call()}
+                                onPinWatch={() => void pinWatch()}
+                                canPinWatch={workspace.mode === "simulate" && transactionPlan.canEdit && transactionPlan.state.plan.context?.chainId === chainId}
                             />
                         )}
                         {queued && <Alert severity="success">Added to transaction queue.</Alert>}
+                        {watchNotice && <Alert severity="info" onClose={() => setWatchNotice(null)}>{watchNotice}</Alert>}
                     </Stack>
                 </Paper>
                 <CallResult result={result} />

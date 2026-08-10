@@ -22,6 +22,7 @@ function simulationValue(revision: string, simulateRead: jest.Mock) {
         revision,
         queuedCallCount: 2,
         configured: true,
+        watchEvaluations: {},
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(true),
         simulateRead,

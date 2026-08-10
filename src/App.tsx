@@ -9,6 +9,7 @@ import TransactionQueuePanel from './components/transaction-plan/TransactionQueu
 import { useWalletSession } from './wallet/WalletSessionContext';
 import { useTransactionPlan } from './transaction-plan/context';
 import { reconcileWalletWorkspace, WalletIdentity } from './wallet/workspaceLifecycle';
+import WatchPanel from './components/simulation/WatchPanel';
 
 interface ContractInstanceBase {
   id: string;
@@ -86,6 +87,7 @@ export default function App(){
             >
               <ContractManager addContract={addContract} showExamples={contracts.length === 0}/>
             </Paper>
+            <WatchPanel />
             {contracts.length > 0 && (
               <Box>
                 <Stack spacing={2}>

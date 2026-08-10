@@ -11,6 +11,7 @@ export function createEmptyTransactionPlanState(): TransactionPlanState {
         plan: {
             context: null,
             calls: [],
+            watches: [],
         },
         execution: {
             status: "idle",
@@ -37,6 +38,21 @@ function establishPlan(state: TransactionPlanState, call: QueuedCall): Transacti
         context: state.plan.context ?? {account: ethers.getAddress(call.from), chainId: call.chainId},
         calls: [...state.plan.calls, call],
     };
+}
+
+function watchMatchesPlan(state: TransactionPlanState, watch: TransactionPlanState["plan"]["watches"][number]) {
+    const context = state.plan.context;
+    return Boolean(context
+        && context.chainId === watch.chainId
+        && context.account.toLowerCase() === watch.from.toLowerCase());
+}
+
+function sameWatch(left: TransactionPlanState["plan"]["watches"][number], right: TransactionPlanState["plan"]["watches"][number]) {
+    return left.chainId === right.chainId
+        && left.from.toLowerCase() === right.from.toLowerCase()
+        && left.to.toLowerCase() === right.to.toLowerCase()
+        && left.data.toLowerCase() === right.data.toLowerCase()
+        && left.value === right.value;
 }
 
 export function transactionPlanReducer(state: TransactionPlanState, action: TransactionPlanAction): TransactionPlanState {
@@ -70,6 +86,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                     ...state.plan,
                     calls,
                     context: calls.length === 0 ? null : state.plan.context,
+                    watches: calls.length === 0 ? [] : state.plan.watches,
                 },
             };
         }
@@ -100,6 +117,17 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
         }
         case "CLEAR_PLAN":
             return isExecutionInFlight(state.execution) ? state : createEmptyTransactionPlanState();
+        case "ADD_WATCH":
+            if (!isExecutionMutable(state.execution)
+                || !watchMatchesPlan(state, action.watch)
+                || state.plan.watches.some((watch) => watch.id === action.watch.id || sameWatch(watch, action.watch))) {
+                return state;
+            }
+            return {...state, plan: {...state.plan, watches: [...state.plan.watches, action.watch]}};
+        case "REMOVE_WATCH":
+            return isExecutionMutable(state.execution)
+                ? {...state, plan: {...state.plan, watches: state.plan.watches.filter((watch) => watch.id !== action.watchId)}}
+                : state;
         case "FORGET_TRACKED_PLAN":
             return canForgetTrackedExecution(state.execution) ? createEmptyTransactionPlanState() : state;
         case "START_BATCH_SUBMISSION":

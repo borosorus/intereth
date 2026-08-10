@@ -5,7 +5,9 @@ import { isExecutionMutable } from "../transaction-plan/executionPolicy";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createPlanSimulationSnapshot } from "./decode";
 import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
-import { PlanSimulationSnapshot, SimulatedRead, SimulatedReadResult } from "./types";
+import { PlanSimulationSnapshot, SimulatedRead, SimulatedReadResult, WatchEvaluation } from "./types";
+import { useWorkspaceMode } from "../workspace/context";
+import { decodeWatchResult } from "./watchExpressions";
 
 export type SimulationStatus = "idle" | "waiting" | "simulating" | "ready" | "stale" | "error";
 
@@ -21,6 +23,7 @@ interface SimulationContextValue extends SimulationState {
     revision: string;
     queuedCallCount: number;
     configured: boolean;
+    watchEvaluations: Record<string, WatchEvaluation>;
     retry: () => void;
     canSimulateChain: (chainId: string) => boolean;
     simulateRead: (chainId: string, read: SimulatedRead) => Promise<SimulatedReadResult>;
@@ -56,12 +59,16 @@ function isEndpointError(error: unknown) {
 
 export function SimulationProvider({children}: {children: ReactNode}) {
     const transactionPlan = useTransactionPlan();
+    const workspace = useWorkspaceMode();
     const [state, setState] = useState<SimulationState>(initialState);
+    const [watchEvaluations, setWatchEvaluations] = useState<Record<string, WatchEvaluation>>({});
     const [retryCount, setRetryCount] = useState(0);
     const clientRef = useRef<SimulationClient | null>(null);
     const requestIdRef = useRef(0);
+    const watchRequestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
     const calls = transactionPlan.state.plan.calls;
+    const watches = transactionPlan.state.plan.watches;
     const rpcUrl = chainRpcUrl(context?.chainId);
     const sessionAllowed = transactionPlan.sessionStatus === "ready" || transactionPlan.sessionStatus === "disconnected";
     const planAvailable = Boolean(context && calls.length > 0 && isExecutionMutable(transactionPlan.state.execution) && sessionAllowed);
@@ -163,18 +170,119 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         }
     }, [canSimulateChain, state.snapshot, transactionPlan.state.plan.calls, transactionPlan.state.plan.context]);
 
+    useEffect(() => {
+        const requestId = ++watchRequestIdRef.current;
+        const snapshot = state.snapshot;
+        const client = clientRef.current;
+        if (watches.length === 0) {
+            setWatchEvaluations({});
+            return;
+        }
+        if (workspace.mode !== "simulate" || state.status !== "ready" || !snapshot || !context || !client || snapshot.revision !== revision) {
+            setWatchEvaluations((current) => Object.fromEntries(watches
+                .filter((watch) => current[watch.id])
+                .map((watch) => {
+                    const evaluation = current[watch.id];
+                    return [watch.id, state.status === "error"
+                        ? evaluation
+                        : {...evaluation, status: "stale" as const}];
+                })));
+            return;
+        }
+
+        const watchRevision = `${revision}|${watches.map((watch) => `${watch.id}:${watch.to}:${watch.data}:${watch.value}`).join("|")}`;
+        setWatchEvaluations((current) => Object.fromEntries(watches.map((watch) => [watch.id, {
+            ...(current[watch.id] ?? {}),
+            watchId: watch.id,
+            revision: watchRevision,
+            baseBlockNumber: snapshot.baseBlockNumber,
+            status: "loading" as const,
+        }])));
+
+        const queueSucceeded = snapshot.calls.every((call) => call.status === "0x1");
+        const evaluate = async (watch: typeof watches[number]) => {
+            try {
+                const read = {to: watch.to, data: watch.data, value: watch.value};
+                const baseData = await client.readAtBlock(context, read, snapshot.baseBlockNumber);
+                const base = decodeWatchResult(watch, baseData);
+                if (!queueSucceeded) {
+                    return {evaluation: {
+                        watchId: watch.id,
+                        revision: watchRevision,
+                        baseBlockNumber: snapshot.baseBlockNumber,
+                        status: "blocked" as const,
+                        base,
+                    }};
+                }
+                const simulatedResult = await client.simulateRead(context, calls, read, snapshot.baseBlockNumber);
+                return {evaluation: {
+                    watchId: watch.id,
+                    revision: watchRevision,
+                    baseBlockNumber: snapshot.baseBlockNumber,
+                    status: "ready" as const,
+                    base,
+                    simulated: decodeWatchResult(watch, simulatedResult.returnData),
+                }};
+            } catch (watchError) {
+                const normalized = normalizeError(watchError, "Watch evaluation failed");
+                return {
+                    evaluation: {
+                        watchId: watch.id,
+                        revision: watchRevision,
+                        baseBlockNumber: snapshot.baseBlockNumber,
+                        status: "error" as const,
+                        error: {code: normalized.code, message: normalized.message},
+                    },
+                    sourceError: watchError,
+                };
+            }
+        };
+
+        void mapWithConcurrency(watches, 4, evaluate).then((results) => {
+            if (requestId !== watchRequestIdRef.current) return;
+            setWatchEvaluations(Object.fromEntries(results.map(({evaluation}) => [evaluation.watchId, evaluation])));
+            const endpointFailure = results.find(({sourceError}) => sourceError && isEndpointError(sourceError));
+            if (endpointFailure?.sourceError) {
+                clientRef.current = null;
+                setState((current) => ({
+                    ...current,
+                    status: "error",
+                    error: normalizeError(endpointFailure.sourceError, "Simulation unavailable"),
+                }));
+            }
+        });
+
+        return () => {
+            if (requestId === watchRequestIdRef.current) watchRequestIdRef.current += 1;
+        };
+    }, [calls, context, revision, state.snapshot, state.status, watches, workspace.mode]);
+
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,
         active,
         revision,
         queuedCallCount: calls.length,
         configured,
+        watchEvaluations,
         retry,
         canSimulateChain,
         simulateRead,
-    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state]);
+    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state, watchEvaluations]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
+}
+
+async function mapWithConcurrency<T, R>(items: readonly T[], limit: number, mapper: (item: T) => Promise<R>): Promise<R[]> {
+    const results = new Array<R>(items.length);
+    let nextIndex = 0;
+    const worker = async () => {
+        while (nextIndex < items.length) {
+            const index = nextIndex++;
+            results[index] = await mapper(items[index]);
+        }
+    };
+    await Promise.all(Array.from({length: Math.min(limit, items.length)}, worker));
+    return results;
 }
 
 export function useSimulation() {

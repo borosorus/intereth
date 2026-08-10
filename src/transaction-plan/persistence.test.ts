@@ -39,6 +39,24 @@ describe("transaction plan persistence", () => {
         expect(() => JSON.stringify(state)).not.toThrow();
     });
 
+    it("round-trips current watch expressions and rejects plans without the current watch field", () => {
+        const draft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});
+        const watched = transactionPlanReducer(draft, {type: "ADD_WATCH", watch: {
+            id: "watch-1",
+            chainId: "1",
+            from: queuedCall.from,
+            to: queuedCall.to,
+            data: "0x1234",
+            value: "0",
+            display: {kind: "raw"},
+            decoder: {kind: "raw"},
+            createdAt: 2,
+        }});
+        expect(parseTransactionPlan(JSON.stringify(watched))).toEqual(watched);
+        const {watches: _watches, ...oldPlan} = watched.plan;
+        expect(parseTransactionPlan(JSON.stringify({...watched, plan: oldPlan}))).toBeNull();
+    });
+
     it("preserves tracked batches and recovers a submission interrupted before an ID was saved", () => {
         const storage = memoryStorage();
         const draft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});

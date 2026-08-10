@@ -10,6 +10,8 @@ interface ReadActionsProps {
     loading: ReadLoadingMode;
     onSimulated: () => void;
     onOnChain: () => void;
+    onPinWatch?: () => void;
+    canPinWatch?: boolean;
 }
 
 export default function ReadActions({
@@ -19,6 +21,8 @@ export default function ReadActions({
     loading,
     onSimulated,
     onOnChain,
+    onPinWatch,
+    canPinWatch = false,
 }: ReadActionsProps) {
     const workspace = useWorkspaceMode();
 
@@ -39,16 +43,23 @@ export default function ReadActions({
 
     if (!simulationAvailable) {
         return (
-            <Button
-                variant="contained"
-                color="secondary"
-                fullWidth
-                disabled={!onChainAvailable || loading !== null}
-                onClick={onOnChain}
-                sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
-            >
-                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : simulationEnabled ? "Run on-chain" : "Run call"}
-            </Button>
+            <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    fullWidth
+                    disabled={!onChainAvailable || loading !== null}
+                    onClick={onOnChain}
+                    sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
+                >
+                    {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : simulationEnabled ? "Run on-chain" : "Run call"}
+                </Button>
+                {onPinWatch && (
+                    <Button variant="outlined" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
+                        Pin watch
+                    </Button>
+                )}
+            </Stack>
         );
     }
 
@@ -74,6 +85,11 @@ export default function ReadActions({
             >
                 {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
             </Button>
+            {onPinWatch && (
+                <Button variant="outlined" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
+                    Pin watch
+                </Button>
+            )}
         </Stack>
     );
 }

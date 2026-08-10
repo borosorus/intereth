@@ -94,9 +94,27 @@ export interface PlanSimulationSnapshot {
     raw: unknown;
 }
 
+export interface WatchResultValue {
+    returnData: string;
+    values?: DecodedValue[];
+}
+
+export type WatchEvaluationStatus = "loading" | "ready" | "blocked" | "error" | "stale";
+
+export interface WatchEvaluation {
+    watchId: string;
+    revision: string;
+    baseBlockNumber: string;
+    status: WatchEvaluationStatus;
+    base?: WatchResultValue;
+    simulated?: WatchResultValue;
+    error?: {code?: string | number; message: string};
+}
+
 export interface QueuedStateSimulationClient {
     assertChain(expectedChainId: string): Promise<void>;
     getBlockNumber(): Promise<string>;
+    readAtBlock(context: PlanContext, read: SimulatedRead, baseBlock: string): Promise<string>;
     simulateCalls(context: PlanContext, calls: QueuedCall[], baseBlock?: string): Promise<SimulatedCallsResult>;
     simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead, baseBlock?: string): Promise<SimulatedReadResult>;
 }

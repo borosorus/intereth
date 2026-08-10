@@ -40,6 +40,26 @@ export interface QueuedCall {
     createdAt: number;
 }
 
+export type WatchDecoderMetadata =
+    | {kind: "abi"; functionFragment: string}
+    | {kind: "raw"};
+
+export interface WatchExpression {
+    id: string;
+    chainId: string;
+    from: string;
+    to: string;
+    data: string;
+    value: string;
+    display: {
+        kind: "abi" | "raw";
+        functionSignature?: string;
+        arguments?: DisplayArgument[];
+    };
+    decoder: WatchDecoderMetadata;
+    createdAt: number;
+}
+
 export interface BatchExecutionError {
     code?: string | number;
     message: string;
@@ -85,6 +105,7 @@ export interface TransactionPlanState {
     plan: {
         context: PlanContext | null;
         calls: QueuedCall[];
+        watches: WatchExpression[];
     };
     execution: BatchExecutionState;
 }
@@ -96,6 +117,8 @@ export type TransactionPlanAction =
     | {type: "DUPLICATE_CALL"; call: QueuedCall; afterCallId: string}
     | {type: "MOVE_CALL"; callId: string; direction: "up" | "down"}
     | {type: "CLEAR_PLAN"}
+    | {type: "ADD_WATCH"; watch: WatchExpression}
+    | {type: "REMOVE_WATCH"; watchId: string}
     | {type: "FORGET_TRACKED_PLAN"}
     | {type: "START_BATCH_SUBMISSION"}
     | {type: "BATCH_SUBMITTED"; batchId: string; submittedAt: number}
