@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Link, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useEffect, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -6,7 +6,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { ProviderDetails } from "../presets";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
@@ -170,20 +169,9 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                                 {providerDetails?.label ?? "RPC provider"}
                             </Typography>
                             {providerDetails?.url ? (
-                                <Link
-                                    href={providerDetails.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(event) => event.stopPropagation()}
-                                    color="text.secondary"
-                                    underline="hover"
-                                    sx={{display: "flex", alignItems: "center", gap: 0.4, minWidth: 0, fontSize: "0.75rem"}}
-                                >
-                                    <Box component="span" sx={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                                        {providerDetails.url}
-                                    </Box>
-                                    <OpenInNewIcon sx={{fontSize: 13, flex: "0 0 auto"}} />
-                                </Link>
+                                <Box sx={{minWidth: 0, fontSize: "0.75rem"}}>
+                                    <CopyButton value={providerDetails.url} label="Copy RPC URL" variant="url" />
+                                </Box>
                             ) : (
                                 <Typography variant="caption" color="text.secondary">Unknown endpoint</Typography>
                             )}

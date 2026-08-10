@@ -29,4 +29,16 @@ describe("CopyButton", () => {
 
         expect(await screen.findByText("Clipboard access failed")).toBeInTheDocument();
     });
+
+    it("copies URL values without rendering a navigable link", async () => {
+        const writeText = jest.fn().mockResolvedValue(undefined);
+        setClipboard(writeText);
+        render(<CopyButton value="https://rpc.example" label="Copy RPC URL" variant="url" />);
+
+        expect(screen.queryByRole("link")).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Copy RPC URL"}));
+
+        expect(writeText).toHaveBeenCalledWith("https://rpc.example");
+        expect(await screen.findByText("Copied to clipboard")).toBeInTheDocument();
+    });
 });

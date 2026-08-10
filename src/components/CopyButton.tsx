@@ -6,7 +6,7 @@ import { useState } from "react";
 interface CopyButtonProps {
     value: string;
     label: string;
-    variant?: "icon" | "text";
+    variant?: "icon" | "text" | "url";
     size?: "small" | "medium";
 }
 
@@ -33,7 +33,29 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
 
     return (
         <>
-            {variant === "text" ? (
+            {variant === "url" ? (
+                <Tooltip title={copied ? "Copied" : label}>
+                    <Button
+                        size={size}
+                        onClick={copy}
+                        endIcon={icon}
+                        aria-label={label}
+                        sx={{
+                            width: 1,
+                            minWidth: 0,
+                            p: 0,
+                            justifyContent: "flex-start",
+                            textTransform: "none",
+                            color: "text.secondary",
+                            fontSize: "inherit",
+                            lineHeight: "inherit",
+                            "& .MuiButton-endIcon": {flex: "0 0 auto"},
+                        }}
+                    >
+                        <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{value}</span>
+                    </Button>
+                </Tooltip>
+            ) : variant === "text" ? (
                 <Button size={size} onClick={copy} startIcon={icon} sx={{textTransform: "none"}}>
                     {copied ? "Copied" : label}
                 </Button>

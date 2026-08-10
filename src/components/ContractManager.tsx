@@ -10,7 +10,6 @@ import {
     Grid,
     InputAdornment,
     InputLabel,
-    Link,
     MenuItem,
     Paper,
     Select,
@@ -21,7 +20,6 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DynamicContract } from "../App";
@@ -30,6 +28,7 @@ import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDet
 import ErrorDialog from "./ErrorDialog";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
+import CopyButton from "./CopyButton";
 
 enum CustomRpcState {
     disabled,
@@ -98,17 +97,9 @@ function renderCustomRpcProgress(state: CustomRpcState) {
 function ProviderSummary({details}: {details: ProviderDetails}) {
     return (
         <Stack direction={{xs: "column", sm: "row"}} spacing={0.75} alignItems={{xs: "flex-start", sm: "center"}}>
-            <Link
-                href={details.url}
-                target="_blank"
-                rel="noreferrer"
-                color="text.secondary"
-                underline="hover"
-                sx={{display: "inline-flex", alignItems: "center", gap: 0.5, minWidth: 0, wordBreak: "break-all"}}
-            >
-                {details.url}
-                <OpenInNewIcon sx={{fontSize: 14, flex: "0 0 auto"}} />
-            </Link>
+            <Box sx={{minWidth: 0, maxWidth: "100%", fontSize: "0.875rem"}}>
+                <CopyButton value={details.url} label="Copy RPC URL" variant="url" />
+            </Box>
             <Chip label={`Chain ID ${details.chainId}`} size="small" variant="outlined" sx={{flex: "0 0 auto"}} />
         </Stack>
     );
