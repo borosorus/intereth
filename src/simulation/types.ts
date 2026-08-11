@@ -1,4 +1,4 @@
-import { PlanContext, QueuedCall } from "../transaction-plan/types";
+import { PlanContext, QueuedCall, WatchExpression } from "../transaction-plan/types";
 
 export interface SimulationRpcTransport {
     send(method: string, params: unknown[]): Promise<unknown>;
@@ -44,6 +44,16 @@ export interface SimulatedCallsResult {
     calls: SimulatedCallResult[];
     blockNumber?: string;
     raw: unknown;
+}
+
+export interface SimulatedWatchResult {
+    watchId: string;
+    result: SimulatedCallResult;
+}
+
+export interface SimulatedPlanResult {
+    queue: SimulatedCallsResult;
+    watches: SimulatedWatchResult[];
 }
 
 export interface DecodedValue {
@@ -116,6 +126,6 @@ export interface QueuedStateSimulationClient {
     assertChain(expectedChainId: string): Promise<void>;
     getBlockNumber(): Promise<string>;
     readAtBlock(context: PlanContext, read: SimulatedRead, baseBlock: string): Promise<string>;
-    simulateCalls(context: PlanContext, calls: QueuedCall[], baseBlock?: string): Promise<SimulatedCallsResult>;
+    simulatePlan(context: PlanContext, calls: QueuedCall[], watches: WatchExpression[], baseBlock?: string): Promise<SimulatedPlanResult>;
     simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead, baseBlock?: string): Promise<SimulatedReadResult>;
 }

@@ -1,6 +1,6 @@
 import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
 import { SimulationRpcTransport } from "./types";
-import { PlanContext, QueuedCall } from "../transaction-plan/types";
+import { PlanContext, QueuedCall, WatchExpression } from "../transaction-plan/types";
 
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
@@ -17,6 +17,15 @@ const queuedCall: QueuedCall = {
     display: {kind: "raw", contractAddress: TARGET},
     editor: {kind: "raw"},
     createdAt: 1,
+};
+const abiWatch: WatchExpression = {
+    id: "abi-watch", chainId: "1", from: ACCOUNT, to: READ_TARGET, data: "0xabcd", value: "0",
+    display: {kind: "abi", functionSignature: "read()"},
+    decoder: {kind: "abi", functionFragment: "function read() view returns (uint256)"}, createdAt: 2,
+};
+const rawWatch: WatchExpression = {
+    id: "raw-watch", chainId: "1", from: ACCOUNT, to: TARGET, data: "0x5678", value: "0",
+    display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 3,
 };
 
 function clientWith(response: unknown) {
@@ -79,24 +88,38 @@ describe("SimulationClient", () => {
         }, "latest"]);
     });
 
-    it("simulates a generic ordered call sequence and retains per-call gas", async () => {
+    it("simulates the queue and all watches in one request, with raw watches last", async () => {
         const second = {...queuedCall, id: "call-2", to: READ_TARGET, data: "0xabcd"};
         const {client, send} = clientWith([{
             number: "0x65",
-            calls: [callResult("0x1", "0x", "0x40"), callResult("0x1", "0x01", "0x42", "0x50")],
+            calls: [
+                callResult("0x1", "0x", "0x40"),
+                callResult("0x1", "0x01", "0x42", "0x50"),
+                callResult("0x1", "0x02", "0x43"),
+                callResult("0x1", "0x03", "0x44"),
+            ],
         }]);
 
-        await expect(client.simulateCalls(context, [queuedCall, second], "0x64")).resolves.toMatchObject({
-            calls: [
-                {status: "0x1", returnData: "0x", gasUsed: "0x40", logs: []},
-                {status: "0x1", returnData: "0x01", gasUsed: "0x42", maxUsedGas: "0x50", logs: []},
+        await expect(client.simulatePlan(context, [queuedCall, second], [rawWatch, abiWatch], "0x64")).resolves.toMatchObject({
+            queue: {calls: [
+                {returnData: "0x", gasUsed: "0x40"},
+                {returnData: "0x01", gasUsed: "0x42", maxUsedGas: "0x50"},
+            ]},
+            watches: [
+                {watchId: "abi-watch", result: {returnData: "0x02", gasUsed: "0x43"}},
+                {watchId: "raw-watch", result: {returnData: "0x03", gasUsed: "0x44"}},
             ],
-            blockNumber: "0x65",
         });
         expect(send).toHaveBeenCalledWith("eth_simulateV1", [expect.objectContaining({
-            blockStateCalls: [{calls: expect.any(Array)}],
+            blockStateCalls: [{calls: [
+                expect.objectContaining({input: "0x1234"}),
+                expect.objectContaining({input: "0xabcd"}),
+                expect.objectContaining({input: "0xabcd"}),
+                expect.objectContaining({input: "0x5678"}),
+            ]}],
             traceTransfers: true,
         }), "0x64"]);
+        expect(send).toHaveBeenCalledTimes(1);
     });
 
     it("retains validated logs, revert errors, and raw response data", async () => {
@@ -105,14 +128,13 @@ describe("SimulationClient", () => {
         const response = [{number: "0x65", calls: [rawCall]}];
         const {client} = clientWith(response);
 
-        await expect(client.simulateCalls(context, [queuedCall])).resolves.toMatchObject({
-            calls: [{
+        await expect(client.simulatePlan(context, [queuedCall], [])).resolves.toMatchObject({
+            queue: {calls: [{
                 status: "0x0",
                 logs: [{address: TARGET, data: "0x", topics: log.topics}],
                 error: {code: 3, message: "execution reverted", data: "0xdead"},
                 raw: rawCall,
-            }],
-            raw: response,
+            }], raw: response},
         });
     });
 
@@ -155,8 +177,10 @@ describe("SimulationClient", () => {
         await expect(client.simulateRead(context, [], {to: READ_TARGET, data: "0x"})).rejects.toMatchObject({code: "INVALID_ARGUMENT"});
         await expect(client.simulateRead(context, [{...queuedCall, chainId: "10"}], {to: READ_TARGET, data: "0x"}))
             .rejects.toMatchObject({code: "PLAN_CONTEXT_MISMATCH"});
-        await expect(client.simulateCalls(context, [])).rejects.toMatchObject({code: "INVALID_ARGUMENT"});
-        await expect(client.simulateCalls(context, [{...queuedCall, from: READ_TARGET}]))
+        await expect(client.simulatePlan(context, [], [])).rejects.toMatchObject({code: "INVALID_ARGUMENT"});
+        await expect(client.simulatePlan(context, [{...queuedCall, from: READ_TARGET}], []))
+            .rejects.toMatchObject({code: "PLAN_CONTEXT_MISMATCH"});
+        await expect(client.simulatePlan(context, [queuedCall], [{...abiWatch, chainId: "10"}]))
             .rejects.toMatchObject({code: "PLAN_CONTEXT_MISMATCH"});
         expect(send).not.toHaveBeenCalled();
     });

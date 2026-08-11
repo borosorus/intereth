@@ -152,7 +152,7 @@ describe("SimulationProvider", () => {
         expect(currentSimulation.active).toBe(true);
     });
 
-    it("evaluates watches against the exact base and isolated speculative queue", async () => {
+    it("evaluates watches and the queue with one simulation request at the exact base block", async () => {
         mockWatchedPlan();
         render(<Probe />, {wrapper: Wrapper});
 
@@ -172,7 +172,28 @@ describe("SimulationProvider", () => {
         });
         const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string; params: unknown[]});
         expect(requests.find((request) => request.method === "eth_call")?.params[1]).toBe("0x64");
-        expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(2);
+        expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(1);
+    });
+
+    it("keeps the queue result and blocks watches when a queued call reverts", async () => {
+        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+            const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
+            const result = body.method === "eth_simulateV1"
+                ? [{number: "0x65", calls: [
+                    {status: "0x0", returnData: "0xdead", gasUsed: "0x5208", logs: []},
+                    {status: "0x1", returnData: "0x002b", gasUsed: "0x5208", logs: []},
+                ]}]
+                : rpcResult(body.method, body.params);
+            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result})} as Response;
+        });
+        mockWatchedPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await runDebounce();
+        expect(currentSimulation.snapshot?.calls[0].status).toBe("0x0");
+        expect(currentSimulation.watchEvaluations[watch.id]).toMatchObject({status: "blocked", base: {returnData: "0x002a"}});
+        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
+        expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(1);
     });
 
     it("evaluates a pinned watch without requiring queued writes", async () => {
@@ -180,6 +201,7 @@ describe("SimulationProvider", () => {
         render(<Probe />, {wrapper: Wrapper});
 
         await act(async () => {
+            jest.advanceTimersByTime(0);
             await Promise.resolve();
             await Promise.resolve();
             await Promise.resolve();

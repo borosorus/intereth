@@ -1,10 +1,10 @@
 import { ethers } from "ethers";
 import { isHexData, isHexQuantity, isRecord } from "../transaction-plan/rpcValidation";
-import { PlanContext, QueuedCall } from "../transaction-plan/types";
+import { PlanContext, QueuedCall, WatchExpression } from "../transaction-plan/types";
 import {
     QueuedStateSimulationClient,
     SimulatedCallResult,
-    SimulatedCallsResult,
+    SimulatedPlanResult,
     SimulatedRead,
     SimulatedReadResult,
     SimulationRpcTransport,
@@ -229,21 +229,40 @@ export class SimulationClient implements QueuedStateSimulationClient {
         return response;
     }
 
-    async simulateCalls(context: PlanContext, calls: QueuedCall[], baseBlock = "latest"): Promise<SimulatedCallsResult> {
+    async simulatePlan(context: PlanContext, calls: QueuedCall[], watches: WatchExpression[], baseBlock = "latest"): Promise<SimulatedPlanResult> {
         if (calls.length === 0) {
             throw Object.assign(new Error("Simulation requires at least one call."), {code: "INVALID_ARGUMENT"});
         }
         if (calls.some((call) => call.chainId !== context.chainId || call.from.toLowerCase() !== context.account.toLowerCase())) {
             throw Object.assign(new Error("Every simulated call must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
         }
+        if (watches.some((watch) => watch.chainId !== context.chainId || watch.from.toLowerCase() !== context.account.toLowerCase())) {
+            throw Object.assign(new Error("Every simulated watch must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
+        }
 
         const requestCalls = calls.map((call) => rpcCall(call.from, call.to, call.data, call.value));
+        const orderedWatches = [
+            ...watches.filter((watch) => watch.decoder.kind === "abi"),
+            ...watches.filter((watch) => watch.decoder.kind === "raw"),
+        ];
+        requestCalls.push(...orderedWatches.map((watch) => rpcCall(watch.from, watch.to, watch.data, watch.value)));
         const response = await this.transport.send("eth_simulateV1", [{
             blockStateCalls: [{calls: requestCalls}],
             validation: false,
             traceTransfers: true,
         }, baseBlock]);
-        return parseSimulationResponse(response, requestCalls.length);
+        const parsed = parseSimulationResponse(response, requestCalls.length);
+        return {
+            queue: {
+                calls: parsed.calls.slice(0, calls.length),
+                blockNumber: parsed.blockNumber,
+                raw: parsed.raw,
+            },
+            watches: orderedWatches.map((watch, index) => ({
+                watchId: watch.id,
+                result: parsed.calls[calls.length + index],
+            })),
+        };
     }
 
     async simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead, baseBlock = "latest"): Promise<SimulatedReadResult> {

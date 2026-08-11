@@ -117,7 +117,7 @@ export async function validateApprovalRecovery(
     const approvalCall = createErc20ApprovalCall(context, tokenAddress, requirement.spender, amount);
     const client = new SimulationClient(new HttpJsonRpcTransport(rpcUrl));
     await client.assertChain(context.chainId);
-    const result = await client.simulateCalls(context, [approvalCall, originalCall]);
+    const result = (await client.simulatePlan(context, [approvalCall, originalCall], [])).queue;
     if (result.calls.some((call) => call.status !== "0x1")) {
         throw Object.assign(new Error("The approval and transaction did not both succeed in simulation."), {
             code: "APPROVAL_RECOVERY_SIMULATION_FAILED",

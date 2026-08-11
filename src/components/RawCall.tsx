@@ -225,7 +225,11 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                 </Stack>
             )}
             {queued && <Alert severity="success">Added to transaction queue.</Alert>}
-            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
+            {watchPin.notice && (
+                <Alert severity="info" onClose={watchPin.clearNotice}>
+                    {watchPin.notice} Raw watches are treated as read-only and evaluated after ABI watches.
+                </Alert>
+            )}
             <CallResult result={result} />
         </Stack>
         <ErrorDialog error={error} onClose={() => setError(null)}/>
