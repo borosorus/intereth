@@ -417,7 +417,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     <TextField
                         label="Contract ABI"
                         multiline
-                        minRows={4}
+                        rows={6}
                         value={abi}
                         onChange={(event) => {
                             setAbi(event.target.value);
@@ -426,7 +426,13 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         error={Boolean(abiError)}
                         helperText={abiError || "Optional. Leave empty to use the raw-call fallback."}
                         fullWidth
-                        sx={inputSurfaceSx}
+                        sx={{
+                            ...inputSurfaceSx,
+                            "& textarea": {
+                                overflowY: "auto",
+                                resize: "none",
+                            },
+                        }}
                     />
                 </Stack>
             </Box>
