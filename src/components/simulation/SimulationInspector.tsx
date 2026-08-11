@@ -174,17 +174,32 @@ function CallInspector({call, label, target, chainId, metadataByAddress}: {
     );
 }
 
-function BalanceSummary({changes, chainId, metadataByAddress, resolving}: {
+function signedRawAmount(delta: bigint, asset: BalanceChange["asset"]) {
+    return `Raw amount: ${delta > BigInt(0) ? "+" : ""}${delta.toString()} ${asset === "native" ? "wei" : "base units"}`;
+}
+
+function addressRole(address: string, planAccount: string, queuedTargets: Set<string>) {
+    const normalized = address.toLowerCase();
+    if (normalized === planAccount.toLowerCase()) return {label: "Plan sender", color: "primary" as const};
+    if (queuedTargets.has(normalized)) return {label: "Queued call target", color: "info" as const};
+    return {label: "Other address", color: "default" as const};
+}
+
+function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAccount, queuedTargets}: {
     changes: BalanceChange[];
     chainId: string;
     metadataByAddress: Record<string, TokenMetadata>;
     resolving: boolean;
+    planAccount: string;
+    queuedTargets: Set<string>;
 }) {
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
             <Stack spacing={1}>
-                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Queue-wide balance changes</Typography>
-                <Typography variant="caption" color="text.secondary">Derived speculatively from supported transfer events across successful calls.</Typography>
+                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after queue</Typography>
+                <Typography variant="caption" color="text.secondary">
+                    Speculative net changes per address across successful queued calls. Positive amounts were received; negative amounts were sent.
+                </Typography>
                 {resolving && changes.some((change) => change.asset === "erc20") && (
                     <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
                 )}
@@ -194,19 +209,39 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving}: {
                         const delta = BigInt(change.delta);
                         const tokenAddress = change.tokenAddress ?? "";
                         const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, chainId, tokenAddress) : undefined;
-                        const formatted = formatBalanceChangeAmount(change, metadata, true);
+                        const formatted = formatBalanceChangeAmount(change, metadata);
+                        const role = addressRole(change.account, planAccount, queuedTargets);
+                        const showSeparateRawAmount = change.asset === "native" || Boolean(metadata);
                         return (
-                            <Box key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`} sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
+                            <Box
+                                key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`}
+                                aria-label={`${role.label} ${change.account}: ${formatted}`}
+                                sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, p: 1.25, borderRadius: 1.5, bgcolor: "action.hover"}}
+                            >
                                 <Box sx={{minWidth: 0}}>
-                                    <Typography variant="body2" sx={{fontWeight: 700}}>{change.asset === "native" ? "Native asset" : tokenLabel(tokenAddress, metadata)}</Typography>
+                                    <Chip size="small" variant="outlined" color={role.color} label={role.label} sx={{mb: 0.5, fontWeight: 700}} />
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
+                                        {change.account}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{fontWeight: 700, mt: 0.5}}>
+                                        {change.asset === "native" ? "Native asset" : tokenLabel(tokenAddress, metadata)}
+                                    </Typography>
                                     {change.asset === "erc20" && (
                                         <Typography variant="caption" color="text.secondary" display="block" sx={{overflowWrap: "anywhere"}}>
                                             {tokenDescription(tokenAddress, metadata)}
                                         </Typography>
                                     )}
-                                    <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>Account: {change.account}</Typography>
                                 </Box>
-                                <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: "monospace", textAlign: "right"}}>{formatted}</Typography>
+                                <Box sx={{flex: "0 0 auto", textAlign: "right"}}>
+                                    <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: "monospace", fontWeight: 800}}>
+                                        {formatted}
+                                    </Typography>
+                                    {showSeparateRawAmount && (
+                                        <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace"}}>
+                                            {signedRawAmount(delta, change.asset)}
+                                        </Typography>
+                                    )}
+                                </Box>
                             </Box>
                         );
                     })}
@@ -223,6 +258,7 @@ export default function SimulationInspector() {
         return <Alert severity="info">The detailed inspector will appear after the transaction plan has been simulated.</Alert>;
     }
     const callsById = new Map(state.plan.calls.map((call) => [call.id, call]));
+    const queuedTargets = new Set(state.plan.calls.map((call) => call.to.toLowerCase()));
 
     return (
         <Stack spacing={1.5}>
@@ -253,11 +289,13 @@ export default function SimulationInspector() {
                 chainId={snapshot.chainId}
                 metadataByAddress={simulation.tokenMetadataByAddress}
                 resolving={simulation.tokenMetadataResolving}
+                planAccount={snapshot.account}
+                queuedTargets={queuedTargets}
             />
             <Divider />
             <Accordion disableGutters elevation={0} sx={{"&:before": {display: "none"}}}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{px: 0}}>
-                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>Advanced raw simulation response</Typography>
+                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>Raw simulation response</Typography>
                 </AccordionSummary>
                 <AccordionDetails sx={{px: 0, pt: 0}}><CodeBlock>{safeJson(snapshot.raw)}</CodeBlock></AccordionDetails>
             </Accordion>
