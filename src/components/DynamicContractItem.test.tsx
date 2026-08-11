@@ -261,10 +261,18 @@ describe("DynamicContractItem wallet lifecycle", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText("Read functions")).toBeInTheDocument();
+        expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();
         expect(screen.getByText("Write functions")).toBeInTheDocument();
         expect(screen.getByText("View")).toBeInTheDocument();
         expect(screen.getByText("Pure")).toBeInTheDocument();
         expect(screen.getByText("Write")).toBeInTheDocument();
         expect(screen.getByText("Payable")).toBeInTheDocument();
+
+        const functionSummaries = screen.getAllByRole("button", {name: /function (balance|version|update|deposit)/});
+        const summaryIds = functionSummaries.map((summary) => summary.id);
+        const contentIds = functionSummaries.map((summary) => summary.getAttribute("aria-controls"));
+        expect(new Set(summaryIds).size).toBe(functionSummaries.length);
+        expect(new Set(contentIds).size).toBe(functionSummaries.length);
+        contentIds.forEach((contentId) => expect(contentId && document.getElementById(contentId)).toBeInTheDocument());
     });
 });

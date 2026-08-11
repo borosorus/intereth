@@ -15,8 +15,8 @@ export default function Bar(){
             backgroundColor: 'rgba(244, 247, 251, 0.78)',
           }}
         >
-            <Toolbar sx={{display: "flex", gap: {xs: 1.5, sm: 3}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1.5, sm: 0}, minHeight: {xs: 78, sm: 88}}}>
-              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: 1}}>
+            <Toolbar sx={{display: "flex", flexWrap: {xs: "wrap", sm: "nowrap"}, gap: {xs: 1.5, sm: 3}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1.5, sm: 0}, minHeight: {xs: 78, sm: 88}}}>
+              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: {xs: "1 1 160px", sm: 1}}}>
                 <Box
                   component="img"
                   src={`${process.env.PUBLIC_URL}/intereth-mark.svg`}
@@ -34,7 +34,7 @@ export default function Bar(){
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{mt: 0.35, fontSize: {xs: '0.68rem', sm: '0.875rem'}, lineHeight: 1.25}}
+                    sx={{display: {xs: "none", sm: "block"}, mt: 0.35, fontSize: '0.875rem', lineHeight: 1.25}}
                   >
                     Inspect contracts, run calls, and switch providers without leaving the page.
                   </Typography>

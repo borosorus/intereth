@@ -1,5 +1,5 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
@@ -34,6 +34,9 @@ interface DynamicFunctionItemProps {
 }
 
 export function DynamicFunctionItem({contract, frag, disabled = false, chainId}: DynamicFunctionItemProps){
+    const accordionId = useId();
+    const summaryId = `${accordionId}-summary`;
+    const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
@@ -171,11 +174,11 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
+            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
                     <Stack spacing={0.25} sx={{minWidth: 0}}>
                         <Typography sx={{fontWeight: 700}}>{frag.name || frag.format("sighash")}</Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
                             {frag.format("full")}
                         </Typography>
                     </Stack>
@@ -184,7 +187,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                     </Box>
                 </Stack>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
                 <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
                     <Stack spacing={1.5}>
                         <FunctionCallEditor
@@ -256,6 +259,9 @@ interface DynamicContractItemProps {
 }
 
 export default function DynamicContractItem({contract, walletChainId: contractChainId, del}: DynamicContractItemProps){
+    const accordionId = useId();
+    const summaryId = `${accordionId}-summary`;
+    const contentId = `${accordionId}-content`;
     const {signer, chainId: activeWalletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
     const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
@@ -285,7 +291,7 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
+            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
                         <Box sx={{m: 1, display: "flex", alignItems: "center", gap: 0.5}}>
@@ -313,7 +319,7 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
                     </Grid>
                 </Grid>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
             {!walletReady && (
                 <Alert severity="info">
                     Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
@@ -326,7 +332,9 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
             <Stack spacing={2}>
                 <ContractFunctionSection
                     title="Read functions"
-                    description="Read canonical or speculative state without modifying the contract."
+                    description={workspace.mode === "simulate"
+                        ? "Read canonical state or speculative queued state without modifying the contract."
+                        : "Read canonical on-chain state without modifying the contract."}
                     functions={readFunctions}
                     renderFunction={(fragment) => (
                         <DynamicFunctionItem

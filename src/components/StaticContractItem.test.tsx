@@ -144,6 +144,7 @@ describe("StaticFunctionItem simulated reads", () => {
         fireEvent.click(screen.getByText("Read-only contract"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
+        expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: /balance function balance/})).toBeInTheDocument();
         const writeGroup = screen.getByRole("button", {name: /Write functions · wallet required/});
         expect(writeGroup).toHaveAttribute("aria-expanded", "false");

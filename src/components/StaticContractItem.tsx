@@ -1,6 +1,6 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
@@ -26,6 +26,9 @@ interface StaticFunctionItemProps {
 }
 
 export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItemProps){
+    const accordionId = useId();
+    const summaryId = `${accordionId}-summary`;
+    const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const [loading, setLoading] = useState<ReadLoadingMode>(null);
     const [result, setResult] = useState<CallResultData | null>(null);
@@ -89,13 +92,13 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
+            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
                     <Stack spacing={0.25} sx={{minWidth: 0}}>
                         <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700}}>
                             {frag.name || frag.format("sighash")}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
                             {frag.format("full")}
                         </Typography>
                     </Stack>
@@ -104,7 +107,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                     </Box>
                 </Stack>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
                 {isDisabled ? (
                     <Typography color="text.secondary">Connect a browser wallet to make state-modifying calls.</Typography>
                 )
@@ -150,6 +153,9 @@ interface StaticContractItemProps {
 }
 
 export default function StaticContractItem({contract, del, providerDetails}: StaticContractItemProps){
+    const accordionId = useId();
+    const summaryId = `${accordionId}-summary`;
+    const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
     const [detectedChainId, setDetectedChainId] = useState<string>('');
@@ -181,7 +187,7 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
+            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
                         <Stack spacing={0.25} sx={{m: 1}}>
@@ -225,14 +231,16 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
                     </Grid>
                 </Grid>
             </AccordionSummary>
-            <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
             {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
             <Stack spacing={2}>
                 <ContractFunctionSection
                     title="Read functions"
-                    description="Read contract state without sending a transaction."
+                    description={workspace.mode === "simulate"
+                        ? "Read canonical state or speculative queued state without sending a transaction."
+                        : "Read canonical on-chain state without sending a transaction."}
                     functions={readFunctions}
                     renderFunction={(fragment) => (
                         <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />

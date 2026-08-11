@@ -123,6 +123,7 @@ export default function WorkspaceModeBanner() {
                 onClose={() => setInfoAnchor(null)}
                 anchorOrigin={{vertical: "bottom", horizontal: "center"}}
                 transformOrigin={{vertical: "top", horizontal: "center"}}
+                PaperProps={{role: "dialog", "aria-label": "About workspace modes"}}
             >
                 <Stack spacing={1.5} sx={{p: 2, maxWidth: 360}}>
                     {(Object.keys(modeDetails) as WorkspaceMode[]).map((mode) => (

@@ -28,6 +28,7 @@ describe("WorkspaceModeBanner", () => {
         renderBanner();
         fireEvent.click(screen.getByRole("button", {name: "About workspace modes"}));
 
+        expect(screen.getByRole("dialog", {name: "About workspace modes"})).toBeInTheDocument();
         expect(screen.getByText(/Use canonical on-chain reads/)).toBeInTheDocument();
         expect(screen.getByText(/Run reads and watches against the speculative state/)).toBeInTheDocument();
     });
