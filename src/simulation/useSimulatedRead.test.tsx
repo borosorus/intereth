@@ -27,6 +27,8 @@ function simulationValue(revision: string, simulateRead: jest.Mock) {
         queuedCallCount: 2,
         configured: true,
         watchEvaluations: {},
+        tokenMetadataByAddress: {},
+        tokenMetadataResolving: false,
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(true),
         simulateRead,

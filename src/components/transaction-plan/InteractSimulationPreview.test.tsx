@@ -82,6 +82,8 @@ function mockReady() {
         queuedCallCount: 2,
         configured: true,
         watchEvaluations: {},
+        tokenMetadataByAddress: {},
+        tokenMetadataResolving: false,
         retry: jest.fn(),
         canSimulateChain: jest.fn().mockReturnValue(true),
         simulateRead: jest.fn(),

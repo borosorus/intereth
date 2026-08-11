@@ -87,6 +87,15 @@ export interface BalanceChange {
     delta: string;
 }
 
+export interface TokenMetadata {
+    chainId: string;
+    address: string;
+    name?: string;
+    symbol?: string;
+    decimals: number;
+    fetchedAtBlock: string;
+}
+
 export interface PlanSimulatedCall extends SimulatedCallResult {
     callId: string;
     decodedReturn?: DecodedValue[];

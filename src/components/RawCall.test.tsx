@@ -32,6 +32,8 @@ describe("RawCall queueing", () => {
             queuedCallCount: 0,
             configured: false,
             watchEvaluations: {},
+            tokenMetadataByAddress: {},
+            tokenMetadataResolving: false,
             retry: jest.fn(),
             canSimulateChain: jest.fn().mockReturnValue(false),
             simulateRead: jest.fn(),

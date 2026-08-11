@@ -1,10 +1,13 @@
 import { act, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ReactNode } from "react";
+import { ethers } from "ethers";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../transaction-plan/reducer";
 import { QueuedCall, WatchExpression } from "../transaction-plan/types";
 import { SimulationProvider, useSimulation } from "./context";
+import { TRANSFER_TOPIC } from "./balanceChanges";
+import { tokenMetadataKey } from "./tokenMetadata";
 
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: jest.fn()})}));
@@ -98,6 +101,7 @@ async function runDebounce() {
 describe("SimulationProvider", () => {
     beforeEach(() => {
         jest.useFakeTimers();
+        window.sessionStorage.clear();
         jest.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
@@ -217,5 +221,57 @@ describe("SimulationProvider", () => {
         const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
         expect(requests.some((request) => request.method === "eth_call")).toBe(true);
         expect(requests.some((request) => request.method === "eth_simulateV1")).toBe(false);
+    });
+
+    it("lazily resolves emitted token metadata and reuses the session cache", async () => {
+        const other = "0x0000000000000000000000000000000000000002";
+        const metadataInterface = new ethers.Interface([
+            "function name() view returns (string)",
+            "function symbol() view returns (string)",
+            "function decimals() view returns (uint8)",
+        ]);
+        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+            const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
+            let result: unknown;
+            if (body.method === "eth_chainId") result = "0x1";
+            else if (body.method === "eth_blockNumber") result = "0x64";
+            else if (body.method === "eth_simulateV1") result = [{number: "0x65", calls: [{
+                status: "0x1", returnData: "0x", gasUsed: "0x5208", logs: [{
+                    address: TARGET,
+                    topics: [TRANSFER_TOPIC, ethers.zeroPadValue(other, 32), ethers.zeroPadValue(ACCOUNT, 32)],
+                    data: ethers.zeroPadValue(ethers.toBeHex(1_500_000), 32),
+                }],
+            }]}];
+            else {
+                const [{data}] = body.params as [{data: string}, string];
+                result = data === metadataInterface.getFunction("name")!.selector
+                    ? ethers.AbiCoder.defaultAbiCoder().encode(["string"], ["USD Coin"])
+                    : data === metadataInterface.getFunction("symbol")!.selector
+                        ? ethers.AbiCoder.defaultAbiCoder().encode(["string"], ["USDC"])
+                        : ethers.AbiCoder.defaultAbiCoder().encode(["uint8"], [6]);
+            }
+            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result})} as Response;
+        });
+        mockPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await runDebounce();
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        expect(currentSimulation.tokenMetadataByAddress[tokenMetadataKey("1", TARGET)]).toMatchObject({
+            name: "USD Coin", symbol: "USDC", decimals: 6, fetchedAtBlock: "0x64",
+        });
+        const metadataCalls = () => jest.mocked(global.fetch).mock.calls.filter(([, request]) => (
+            JSON.parse(String(request?.body)) as {method: string}
+        ).method === "eth_call").length;
+        expect(metadataCalls()).toBe(3);
+
+        act(() => currentSimulation.retry());
+        await runDebounce();
+        expect(metadataCalls()).toBe(3);
     });
 });

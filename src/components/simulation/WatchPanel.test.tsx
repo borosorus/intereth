@@ -44,6 +44,7 @@ describe("WatchPanel", () => {
                 base: {returnData: "0x", values: [{name: "Output 1", type: "uint256", value: "10"}]},
                 simulated: {returnData: "0x", values: [{name: "Output 1", type: "uint256", value: "42"}]},
             }},
+            tokenMetadataByAddress: {}, tokenMetadataResolving: false,
         });
 
         render(<WatchPanel />);

@@ -5,9 +5,10 @@ import { isExecutionMutable } from "../transaction-plan/executionPolicy";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createPlanSimulationSnapshot } from "./decode";
 import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
-import { PlanSimulationSnapshot, SimulatedRead, SimulatedReadResult, WatchEvaluation } from "./types";
+import { PlanSimulationSnapshot, SimulatedRead, SimulatedReadResult, TokenMetadata, WatchEvaluation } from "./types";
 import { useWorkspaceMode } from "../workspace/context";
 import { decodeWatchResult } from "./watchExpressions";
+import { tokenMetadataKey, TokenMetadataService } from "./tokenMetadata";
 
 export type SimulationStatus = "idle" | "waiting" | "simulating" | "ready" | "stale" | "error";
 
@@ -25,6 +26,8 @@ interface SimulationContextValue extends SimulationState {
     queuedCallCount: number;
     configured: boolean;
     watchEvaluations: Record<string, WatchEvaluation>;
+    tokenMetadataByAddress: Record<string, TokenMetadata>;
+    tokenMetadataResolving: boolean;
     retry: () => void;
     canSimulateChain: (chainId: string) => boolean;
     simulateRead: (chainId: string, read: SimulatedRead) => Promise<SimulatedReadResult>;
@@ -63,9 +66,13 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const workspace = useWorkspaceMode();
     const [state, setState] = useState<SimulationState>(initialState);
     const [watchEvaluations, setWatchEvaluations] = useState<Record<string, WatchEvaluation>>({});
+    const [tokenMetadataByAddress, setTokenMetadataByAddress] = useState<Record<string, TokenMetadata>>({});
+    const [tokenMetadataResolving, setTokenMetadataResolving] = useState(false);
+    const [metadataService] = useState(() => new TokenMetadataService());
     const [retryCount, setRetryCount] = useState(0);
     const clientRef = useRef<SimulationClient | null>(null);
     const requestIdRef = useRef(0);
+    const metadataRequestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
     const calls = transactionPlan.state.plan.calls;
     const watches = transactionPlan.state.plan.watches;
@@ -248,6 +255,57 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         }
     }, [canSimulateChain, state.snapshot, transactionPlan.state.plan.calls, transactionPlan.state.plan.context]);
 
+    useEffect(() => {
+        const requestId = ++metadataRequestIdRef.current;
+        const snapshot = state.snapshot;
+        if (!snapshot) {
+            setTokenMetadataResolving(false);
+            return;
+        }
+        const addresses = Array.from(new Set(snapshot.balanceChanges.flatMap((change) => (
+            change.asset === "erc20" && change.tokenAddress ? [change.tokenAddress] : []
+        ))));
+        if (addresses.length === 0) {
+            setTokenMetadataResolving(false);
+            return;
+        }
+
+        const cached = Object.fromEntries(addresses.flatMap((address) => {
+            const metadata = metadataService.getCached(snapshot.chainId, address);
+            return metadata ? [[tokenMetadataKey(snapshot.chainId, address), metadata]] : [];
+        }));
+        if (Object.keys(cached).length > 0) {
+            setTokenMetadataByAddress((current) => ({...current, ...cached}));
+        }
+        const missingAddresses = addresses.filter((address) => !metadataService.getCached(snapshot.chainId, address));
+        if (missingAddresses.length === 0) {
+            setTokenMetadataResolving(false);
+            return;
+        }
+        setTokenMetadataResolving(true);
+        let transport: HttpJsonRpcTransport;
+        try {
+            transport = new HttpJsonRpcTransport(chainRpcUrl(snapshot.chainId));
+        } catch {
+            setTokenMetadataResolving(false);
+            return;
+        }
+        void metadataService.resolve(snapshot.chainId, missingAddresses, snapshot.baseBlockNumber, transport)
+            .then((metadata) => {
+                if (requestId !== metadataRequestIdRef.current) return;
+                setTokenMetadataByAddress((current) => ({...current, ...metadata}));
+            })
+            .catch(() => {
+                // Metadata enrichment is optional and must not affect simulation.
+            })
+            .finally(() => {
+                if (requestId === metadataRequestIdRef.current) setTokenMetadataResolving(false);
+            });
+        return () => {
+            if (requestId === metadataRequestIdRef.current) metadataRequestIdRef.current += 1;
+        };
+    }, [metadataService, state.snapshot]);
+
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,
         active,
@@ -256,10 +314,12 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         queuedCallCount: calls.length,
         configured,
         watchEvaluations,
+        tokenMetadataByAddress,
+        tokenMetadataResolving,
         retry,
         canSimulateChain,
         simulateRead,
-    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state, watchActive, watchEvaluations]);
+    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state, tokenMetadataByAddress, tokenMetadataResolving, watchActive, watchEvaluations]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }
