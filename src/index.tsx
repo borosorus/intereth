@@ -12,6 +12,7 @@ import { TransactionPlanProvider } from './transaction-plan/context';
 import { SimulationProvider } from './simulation/context';
 import { TransactionPlanUiProvider } from './transaction-plan/uiContext';
 import { WorkspaceModeProvider } from './workspace/context';
+import WorkspaceModeBanner from './components/WorkspaceModeBanner';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -62,6 +63,7 @@ root.render(
               <SimulationProvider>
                 <TransactionPlanUiProvider>
                   <Bar/>
+                  <WorkspaceModeBanner/>
                   <App/>
                 </TransactionPlanUiProvider>
               </SimulationProvider>
