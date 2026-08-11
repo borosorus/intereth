@@ -1,6 +1,6 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
@@ -17,6 +17,7 @@ import { useSimulatedRead } from "../simulation/useSimulatedRead";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
+import ContractFunctionSection, { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -89,13 +90,18 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Stack spacing={0.25}>
-                    <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700}}>
-                        {frag.name || frag.format("sighash")}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {frag.format("full")}
-                    </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
+                    <Stack spacing={0.25} sx={{minWidth: 0}}>
+                        <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700}}>
+                            {frag.name || frag.format("sighash")}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {frag.format("full")}
+                        </Typography>
+                    </Stack>
+                    <Box sx={{pr: 0.5}}>
+                        <FunctionMutabilityBadge fragment={frag} />
+                    </Box>
                 </Stack>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
@@ -166,6 +172,12 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
     }, [contract, providerDetails?.chainId]);
 
     const chainId = providerDetails?.chainId || detectedChainId;
+    const functions = useMemo(
+        () => contract.interface.fragments.filter((fragment): fragment is ethers.FunctionFragment => fragment.type === "function"),
+        [contract.interface],
+    );
+    const readFunctions = functions.filter(isReadFunction);
+    const writeFunctions = functions.filter((fragment) => !isReadFunction(fragment));
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -217,13 +229,26 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
             {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
-            <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
-              <Stack spacing={1.5}>
-                {contract.interface.fragments
-                    .filter((f) => f.type === "function")
-                    .map((f)=> <StaticFunctionItem key={f.format("minimal")} frag={f as ethers.FunctionFragment} contract={contract} chainId={chainId}/>)}
-              </Stack>
-            </Paper>
+            <Stack spacing={2}>
+                <ContractFunctionSection
+                    title="Read functions"
+                    description="Read contract state without sending a transaction."
+                    functions={readFunctions}
+                    renderFunction={(fragment) => (
+                        <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />
+                    )}
+                />
+                <ContractFunctionSection
+                    title="Write functions · wallet required"
+                    description="Add this contract using Browser Wallet to call these functions."
+                    functions={writeFunctions}
+                    collapsible
+                    defaultExpanded={false}
+                    renderFunction={(fragment) => (
+                        <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />
+                    )}
+                />
+            </Stack>
             <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />

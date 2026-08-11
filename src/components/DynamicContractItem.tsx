@@ -24,6 +24,7 @@ import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
+import ContractFunctionSection, { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -171,11 +172,16 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls="panel2d-content" id="panel2d-header" expandIcon={<ExpandMoreIcon />}>
-                <Stack spacing={0.25}>
-                    <Typography sx={{fontWeight: 700}}>{frag.name || frag.format("sighash")}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {frag.format("full")}
-                    </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
+                    <Stack spacing={0.25} sx={{minWidth: 0}}>
+                        <Typography sx={{fontWeight: 700}}>{frag.name || frag.format("sighash")}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {frag.format("full")}
+                        </Typography>
+                    </Stack>
+                    <Box sx={{pr: 0.5}}>
+                        <FunctionMutabilityBadge fragment={frag} />
+                    </Box>
                 </Stack>
             </AccordionSummary>
             <AccordionDetails sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
@@ -261,6 +267,12 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
         () => contract.connect(walletReady ? signer : null),
         [contract, signer, walletReady],
     );
+    const functions = useMemo(
+        () => contract.interface.fragments.filter((fragment): fragment is ethers.FunctionFragment => fragment.type === "function"),
+        [contract.interface],
+    );
+    const readFunctions = functions.filter(isReadFunction);
+    const writeFunctions = functions.filter((fragment) => !isReadFunction(fragment));
 
     useEffect(() => {
         contract.getAddress()
@@ -311,21 +323,36 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
             {workspace.mode === "simulate" && simulation.active && simulation.chainId !== contractChainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
-            <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
-              <Stack spacing={1.5}>
-                {contract.interface.fragments
-                    .filter((f) => f.type === "function")
-                    .map((f)=> (
+            <Stack spacing={2}>
+                <ContractFunctionSection
+                    title="Read functions"
+                    description="Read canonical or speculative state without modifying the contract."
+                    functions={readFunctions}
+                    renderFunction={(fragment) => (
                         <DynamicFunctionItem
-                            key={f.format("minimal")}
-                            frag={f as ethers.FunctionFragment}
+                            key={fragment.format("minimal")}
+                            frag={fragment}
                             contract={activeContract}
                             disabled={!walletReady}
                             chainId={contractChainId}
                         />
-                    ))}
-              </Stack>
-            </Paper>
+                    )}
+                />
+                <ContractFunctionSection
+                    title="Write functions"
+                    description="These calls can modify state and may require wallet confirmation."
+                    functions={writeFunctions}
+                    renderFunction={(fragment) => (
+                        <DynamicFunctionItem
+                            key={fragment.format("minimal")}
+                            frag={fragment}
+                            contract={activeContract}
+                            disabled={!walletReady}
+                            chainId={contractChainId}
+                        />
+                    )}
+                />
+            </Stack>
             <RawCall contract={activeContract} disabled={!walletReady} chainId={contractChainId}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {

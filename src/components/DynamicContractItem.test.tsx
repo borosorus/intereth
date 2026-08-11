@@ -233,4 +233,38 @@ describe("DynamicContractItem wallet lifecycle", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
         expect(screen.getByText(/simulation belongs to chain 10; this contract is on chain 1/)).toBeInTheDocument();
     });
+
+    it("groups read and write functions while preserving mutability labels", async () => {
+        const signer = {call: jest.fn(), sendTransaction: jest.fn()};
+        mockedWalletSession.mockReturnValue({
+            status: "ready", provider: null, signer: signer as unknown as ethers.JsonRpcSigner,
+            account: "0x0000000000000000000000000000000000000001", chainId: "1",
+            error: null, clearError: jest.fn(), connectWallet: jest.fn(), switchChain: jest.fn(),
+        });
+        mockedTransactionPlan.mockReturnValue({
+            state: createEmptyTransactionPlanState(), dispatch: jest.fn(), sessionStatus: "empty", canEdit: true,
+        });
+        const iface = new ethers.Interface([
+            "function balance() view returns (uint256)",
+            "function version() pure returns (uint256)",
+            "function update()",
+            "function deposit() payable",
+        ]);
+        const activeContract = {
+            interface: iface, runner: signer,
+            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+        };
+        const contract = {...activeContract, connect: jest.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
+
+        render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
+        await screen.findByText("0x0000000000000000000000000000000000000010");
+
+        expect(screen.getByText("Read functions")).toBeInTheDocument();
+        expect(screen.getByText("Write functions")).toBeInTheDocument();
+        expect(screen.getByText("View")).toBeInTheDocument();
+        expect(screen.getByText("Pure")).toBeInTheDocument();
+        expect(screen.getByText("Write")).toBeInTheDocument();
+        expect(screen.getByText("Payable")).toBeInTheDocument();
+    });
 });

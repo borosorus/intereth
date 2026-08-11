@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { ethers } from "ethers";
 import { useSimulation } from "../simulation/context";
-import { StaticFunctionItem } from "./StaticContractItem";
+import StaticContractItem, { StaticFunctionItem } from "./StaticContractItem";
 import { useWorkspaceMode } from "../workspace/context";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
@@ -114,5 +114,43 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(await screen.findByText("false")).toBeInTheDocument();
         expect(screen.getByText("On-chain")).toBeInTheDocument();
         expect(simulateRead).not.toHaveBeenCalled();
+    });
+
+    it("shows reads and collapses write functions that require a wallet", async () => {
+        mockedSimulation.mockReturnValue({
+            active: false, watchActive: false, status: "idle", chainId: null, error: null, snapshot: null,
+            revision: "disabled", queuedCallCount: 0, configured: false, watchEvaluations: {},
+            tokenMetadataByAddress: {}, tokenMetadataResolving: false, retry: jest.fn(),
+            canSimulateChain: jest.fn().mockReturnValue(false), simulateRead: jest.fn(),
+        });
+        const iface = new ethers.Interface([
+            "function balance() view returns (uint256)",
+            "function update()",
+        ]);
+        const contract = {
+            interface: iface,
+            runner: {call: jest.fn()},
+            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getFunction: jest.fn(),
+        } as unknown as ethers.BaseContract;
+
+        render(
+            <StaticContractItem
+                contract={contract}
+                del={jest.fn()}
+                providerDetails={{label: "Test RPC", url: "https://rpc.test", chainId: "1"}}
+            />,
+        );
+        fireEvent.click(screen.getByText("Read-only contract"));
+        await screen.findByText("0x0000000000000000000000000000000000000010");
+
+        expect(screen.getByRole("button", {name: /balance function balance/})).toBeInTheDocument();
+        const writeGroup = screen.getByRole("button", {name: /Write functions · wallet required/});
+        expect(writeGroup).toHaveAttribute("aria-expanded", "false");
+        expect(screen.queryByRole("button", {name: /update function update/})).not.toBeInTheDocument();
+
+        fireEvent.click(writeGroup);
+        expect(screen.getByRole("button", {name: /update function update/})).toBeInTheDocument();
+        expect(screen.getByText(/Connect a browser wallet to make state-modifying calls/)).toBeInTheDocument();
     });
 });
