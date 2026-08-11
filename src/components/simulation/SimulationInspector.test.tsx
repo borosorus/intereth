@@ -82,4 +82,20 @@ describe("SimulationInspector", () => {
         render(<SimulationInspector />);
         expect(screen.getByText(/last successful snapshot/)).toBeInTheDocument();
     });
+
+    it("shows formatted token values while preserving raw amounts and addresses", () => {
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            tokenMetadataByAddress: {"1:0x0000000000000000000000000000000000000020": {
+                chainId: "1", address: token, name: "Test Token", symbol: "TKN", decimals: 6, fetchedAtBlock: "0x64",
+            }},
+        });
+        render(<SimulationInspector />);
+        fireEvent.click(screen.getByRole("button", {name: /1\. mint\(\)/}));
+
+        expect(screen.getByText("0.000005 TKN (5 raw units)")).toBeInTheDocument();
+        expect(screen.getByText("+0.000005 TKN (+5 raw units)")).toBeInTheDocument();
+        expect(screen.getAllByText(/Test Token · TKN · 0x0000000000000000000000000000000000000020/)).toHaveLength(2);
+        expect(screen.getAllByText(/Account: 0x/)).toHaveLength(2);
+    });
 });

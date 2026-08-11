@@ -116,4 +116,29 @@ describe("InteractSimulationPreview", () => {
         fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
         expect(screen.getByText("This preview is stale and does not match the current queue.")).toBeInTheDocument();
     });
+
+    it("formats ERC-20 events and account deltas with lazily resolved metadata", () => {
+        mockReady();
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            tokenMetadataByAddress: {"1:0x0000000000000000000000000000000000000020": {
+                chainId: "1", address: TOKEN, name: "Test Token", symbol: "TKN", decimals: 6, fetchedAtBlock: "0x64",
+            }},
+        });
+        render(<InteractSimulationPreview />);
+        fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
+
+        expect(screen.getByText(/value: 0\.000007 TKN/)).toBeInTheDocument();
+        expect(screen.getByText("-0.000007 TKN")).toBeInTheDocument();
+        expect(screen.getByText(/TKN · 0x000000/)).toBeInTheDocument();
+    });
+
+    it("shows metadata resolution without hiding raw simulation results", () => {
+        mockReady();
+        mockedSimulation.mockReturnValue({...mockedSimulation(), tokenMetadataResolving: true});
+        render(<InteractSimulationPreview />);
+        fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
+        expect(screen.getByText("Resolving token metadata…")).toBeInTheDocument();
+        expect(screen.getByText("-7 raw units")).toBeInTheDocument();
+    });
 });

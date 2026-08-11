@@ -13,8 +13,15 @@ import {
 } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
-import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall } from "../../simulation/types";
+import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import {
+    formatBalanceChangeAmount,
+    formatEventArgument,
+    metadataForToken,
+    tokenDescription,
+    tokenLabel,
+} from "../../simulation/tokenFormatting";
 
 function safeJson(value: unknown) {
     const seen = new WeakSet<object>();
@@ -55,21 +62,26 @@ function CodeBlock({children}: {children: string}) {
     );
 }
 
-function ValueRows({values, empty}: {values: DecodedValue[]; empty: string}) {
+function ValueRows({values, empty, format}: {values: DecodedValue[]; empty: string; format?: (value: DecodedValue) => string}) {
     if (values.length === 0) return <Typography variant="caption" color="text.secondary">{empty}</Typography>;
     return (
         <Stack spacing={0.5}>
             {values.map((value, index) => (
                 <Box key={`${value.name}:${index}`} sx={{pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
                     <Typography variant="caption" color="text.secondary">{value.name} · {value.type}</Typography>
-                    <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{value.value}</Typography>
+                    <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{format ? format(value) : value.value}</Typography>
                 </Box>
             ))}
         </Stack>
     );
 }
 
-function EventDetails({event}: {event: DecodedEvent}) {
+function EventDetails({event, chainId, metadataByAddress}: {
+    event: DecodedEvent;
+    chainId: string;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
+    const metadata = metadataForToken(metadataByAddress, chainId, event.address);
     return (
         <Paper variant="outlined" sx={{p: 1.25, borderRadius: 1.5}}>
             <Stack spacing={0.75}>
@@ -78,13 +90,23 @@ function EventDetails({event}: {event: DecodedEvent}) {
                     <Chip size="small" variant="outlined" label={event.kind === "abi" ? "ABI" : event.kind === "erc20-transfer" ? "ERC-20" : "Native"} />
                 </Box>
                 <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>{event.signature} · {event.address}</Typography>
-                <ValueRows values={event.arguments} empty="No event arguments" />
+                <ValueRows
+                    values={event.arguments}
+                    empty="No event arguments"
+                    format={(argument) => formatEventArgument(event, argument, metadata, true)}
+                />
             </Stack>
         </Paper>
     );
 }
 
-function CallInspector({call, label, target}: {call: PlanSimulatedCall; label: string; target: string}) {
+function CallInspector({call, label, target, chainId, metadataByAddress}: {
+    call: PlanSimulatedCall;
+    label: string;
+    target: string;
+    chainId: string;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
     return (
         <Accordion disableGutters elevation={0} sx={{border: "1px solid", borderColor: "divider", borderRadius: "8px !important", "&:before": {display: "none"}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -119,7 +141,14 @@ function CallInspector({call, label, target}: {call: PlanSimulatedCall; label: s
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800, mb: 0.75}}>Events</Typography>
                         {call.decodedEvents.length > 0
-                            ? <Stack spacing={0.75}>{call.decodedEvents.map((event, index) => <EventDetails key={`${event.address}:${event.signature}:${index}`} event={event} />)}</Stack>
+                            ? <Stack spacing={0.75}>{call.decodedEvents.map((event, index) => (
+                                <EventDetails
+                                    key={`${event.address}:${event.signature}:${index}`}
+                                    event={event}
+                                    chainId={chainId}
+                                    metadataByAddress={metadataByAddress}
+                                />
+                            ))}</Stack>
                             : <Typography variant="caption" color="text.secondary">No decoded events.</Typography>}
                         {call.logs.length > call.decodedEvents.length && (
                             <Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.75}}>
@@ -145,24 +174,37 @@ function CallInspector({call, label, target}: {call: PlanSimulatedCall; label: s
     );
 }
 
-function BalanceSummary({changes}: {changes: BalanceChange[]}) {
+function BalanceSummary({changes, chainId, metadataByAddress, resolving}: {
+    changes: BalanceChange[];
+    chainId: string;
+    metadataByAddress: Record<string, TokenMetadata>;
+    resolving: boolean;
+}) {
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
             <Stack spacing={1}>
                 <Typography variant="subtitle2" sx={{fontWeight: 800}}>Queue-wide balance changes</Typography>
                 <Typography variant="caption" color="text.secondary">Derived speculatively from supported transfer events across successful calls.</Typography>
+                {resolving && changes.some((change) => change.asset === "erc20") && (
+                    <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
+                )}
                 {changes.length === 0
                     ? <Typography variant="body2" color="text.secondary">No supported balance changes detected.</Typography>
                     : changes.map((change) => {
                         const delta = BigInt(change.delta);
-                        const formatted = change.asset === "native"
-                            ? `${delta > BigInt(0) ? "+" : ""}${ethers.formatEther(delta)} native`
-                            : `${delta > BigInt(0) ? "+" : ""}${delta.toString()} raw units`;
+                        const tokenAddress = change.tokenAddress ?? "";
+                        const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, chainId, tokenAddress) : undefined;
+                        const formatted = formatBalanceChangeAmount(change, metadata, true);
                         return (
                             <Box key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`} sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
                                 <Box sx={{minWidth: 0}}>
-                                    <Typography variant="body2" sx={{fontWeight: 700}}>{change.asset === "native" ? "Native asset" : `Token ${shortAddress(change.tokenAddress ?? "")}`}</Typography>
-                                    <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>{change.account}</Typography>
+                                    <Typography variant="body2" sx={{fontWeight: 700}}>{change.asset === "native" ? "Native asset" : tokenLabel(tokenAddress, metadata)}</Typography>
+                                    {change.asset === "erc20" && (
+                                        <Typography variant="caption" color="text.secondary" display="block" sx={{overflowWrap: "anywhere"}}>
+                                            {tokenDescription(tokenAddress, metadata)}
+                                        </Typography>
+                                    )}
+                                    <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>Account: {change.account}</Typography>
                                 </Box>
                                 <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: "monospace", textAlign: "right"}}>{formatted}</Typography>
                             </Box>
@@ -200,11 +242,18 @@ export default function SimulationInspector() {
                             call={call}
                             label={`${index + 1}. ${queuedCall?.display.functionSignature ?? "Previous raw transaction"}`}
                             target={queuedCall?.to ?? call.logs[0]?.address ?? snapshot.account}
+                            chainId={snapshot.chainId}
+                            metadataByAddress={simulation.tokenMetadataByAddress}
                         />
                     );
                 })}
             </Stack>
-            <BalanceSummary changes={snapshot.balanceChanges} />
+            <BalanceSummary
+                changes={snapshot.balanceChanges}
+                chainId={snapshot.chainId}
+                metadataByAddress={simulation.tokenMetadataByAddress}
+                resolving={simulation.tokenMetadataResolving}
+            />
             <Divider />
             <Accordion disableGutters elevation={0} sx={{"&:before": {display: "none"}}}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{px: 0}}>

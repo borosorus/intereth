@@ -13,8 +13,9 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
-import { BalanceChange, PlanSimulatedCall } from "../../simulation/types";
+import { BalanceChange, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import { formatBalanceChangeAmount, formatEventArgument, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
 
 const statusLabels = {
     idle: "Unavailable",
@@ -37,7 +38,17 @@ function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
-function CallPreview({call, label}: {call: PlanSimulatedCall; label: string}) {
+function CallPreview({
+    call,
+    label,
+    chainId,
+    metadataByAddress,
+}: {
+    call: PlanSimulatedCall;
+    label: string;
+    chainId: string;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
     return (
         <Box sx={{py: 1.25}}>
             <Stack spacing={0.75}>
@@ -58,16 +69,19 @@ function CallPreview({call, label}: {call: PlanSimulatedCall; label: string}) {
                 {call.decodedEvents.length > 0 && (
                     <Stack spacing={0.5}>
                         <Typography variant="caption" color="text.secondary">Emitted events</Typography>
-                        {call.decodedEvents.map((event, index) => (
+                        {call.decodedEvents.map((event, index) => {
+                            const metadata = metadataForToken(metadataByAddress, chainId, event.address);
+                            return (
                             <Box key={`${event.address}:${event.signature}:${index}`} sx={{pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
                                 <Typography variant="caption" sx={{fontWeight: 700}}>{event.name}</Typography>
                                 {event.arguments.length > 0 && (
                                     <Typography variant="caption" color="text.secondary" display="block" sx={{overflowWrap: "anywhere"}}>
-                                        {event.arguments.map((argument) => `${argument.name}: ${argument.value}`).join(" · ")}
+                                        {event.arguments.map((argument) => `${argument.name}: ${formatEventArgument(event, argument, metadata)}`).join(" · ")}
                                     </Typography>
                                 )}
                             </Box>
-                        ))}
+                            );
+                        })}
                     </Stack>
                 )}
                 {call.logs.length > call.decodedEvents.length && (
@@ -80,18 +94,20 @@ function CallPreview({call, label}: {call: PlanSimulatedCall; label: string}) {
     );
 }
 
-function BalanceChangeRow({change}: {change: BalanceChange}) {
-    const delta = BigInt(change.delta);
-    const signed = delta > BigInt(0) ? `+${delta}` : delta.toString();
+function BalanceChangeRow({change, chainId, metadataByAddress}: {
+    change: BalanceChange;
+    chainId: string;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
+    const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, chainId, change.tokenAddress) : undefined;
+    const tokenAddress = change.tokenAddress ?? "";
     return (
         <Box sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
             <Typography variant="caption" color="text.secondary">
-                {change.asset === "native" ? "Native asset" : `Token ${shortAddress(change.tokenAddress ?? "")}`}
+                {change.asset === "native" ? "Native asset" : `${tokenLabel(tokenAddress, metadata)} · ${shortAddress(tokenAddress)}`}
             </Typography>
             <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", textAlign: "right"}}>
-                {change.asset === "native"
-                    ? `${delta > BigInt(0) ? "+" : ""}${ethers.formatEther(delta)} native`
-                    : `${signed} raw units`}
+                {formatBalanceChangeAmount(change, metadata)}
             </Typography>
         </Box>
     );
@@ -160,14 +176,30 @@ export default function InteractSimulationPreview() {
                         <>
                             <Stack divider={<Divider flexItem />}>
                                 {snapshot.calls.map((call, index) => (
-                                    <CallPreview key={call.callId} call={call} label={labels.get(call.callId) ?? `${index + 1}. Previous queued call`} />
+                                    <CallPreview
+                                        key={call.callId}
+                                        call={call}
+                                        label={labels.get(call.callId) ?? `${index + 1}. Previous queued call`}
+                                        chainId={snapshot.chainId}
+                                        metadataByAddress={simulation.tokenMetadataByAddress}
+                                    />
                                 ))}
                             </Stack>
                             <Divider />
                             <Stack spacing={0.75}>
                                 <Typography variant="subtitle2" sx={{fontWeight: 800}}>Plan account balance changes</Typography>
+                                {simulation.tokenMetadataResolving && accountChanges.some((change) => change.asset === "erc20") && (
+                                    <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
+                                )}
                                 {accountChanges.length > 0
-                                    ? accountChanges.map((change) => <BalanceChangeRow key={`${change.asset}:${change.tokenAddress ?? "native"}`} change={change} />)
+                                    ? accountChanges.map((change) => (
+                                        <BalanceChangeRow
+                                            key={`${change.asset}:${change.tokenAddress ?? "native"}`}
+                                            change={change}
+                                            chainId={snapshot.chainId}
+                                            metadataByAddress={simulation.tokenMetadataByAddress}
+                                        />
+                                    ))
                                     : <Typography variant="caption" color="text.secondary">No supported balance changes detected.</Typography>}
                             </Stack>
                         </>
