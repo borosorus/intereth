@@ -18,6 +18,7 @@ function Probe() {
 function simulationValue(revision: string, simulateRead: jest.Mock) {
     return {
         active: true,
+        watchActive: true,
         status: "ready" as const,
         chainId: "1",
         error: null,

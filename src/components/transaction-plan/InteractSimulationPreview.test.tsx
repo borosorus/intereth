@@ -73,6 +73,7 @@ function mockReady() {
     mockedPlan.mockReturnValue({state: planState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
     mockedSimulation.mockReturnValue({
         active: true,
+        watchActive: true,
         status: "ready",
         chainId: "1",
         error: null,

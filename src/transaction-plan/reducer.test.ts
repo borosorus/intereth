@@ -99,14 +99,17 @@ describe("transactionPlanReducer", () => {
         expect(state.plan.context).toBeNull();
     });
 
-    it("adds plan-scoped watches, rejects duplicates, and clears them with the last call", () => {
-        const draft = addCalls(call());
-        const withWatch = transactionPlanReducer(draft, {type: "ADD_WATCH", watch: watch()});
+    it("establishes context from a watch and preserves watches when the queue becomes empty", () => {
+        const withWatch = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: watch()});
+        expect(withWatch.plan.context).toEqual({account: ACCOUNT, chainId: "1"});
         expect(withWatch.plan.watches).toEqual([watch()]);
         expect(transactionPlanReducer(withWatch, {type: "ADD_WATCH", watch: watch({id: "duplicate"})})).toBe(withWatch);
         expect(transactionPlanReducer(withWatch, {type: "ADD_WATCH", watch: watch({id: "wrong-chain", chainId: "10"})})).toBe(withWatch);
 
-        const empty = transactionPlanReducer(withWatch, {type: "REMOVE_CALL", callId: "call-1"});
+        const queued = transactionPlanReducer(withWatch, {type: "ADD_CALL", call: call()});
+        const watchOnly = transactionPlanReducer(queued, {type: "REMOVE_CALL", callId: "call-1"});
+        expect(watchOnly.plan).toEqual(withWatch.plan);
+        const empty = transactionPlanReducer(watchOnly, {type: "REMOVE_WATCH", watchId: "watch-1"});
         expect(empty.plan).toEqual({context: null, calls: [], watches: []});
     });
 

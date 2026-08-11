@@ -41,6 +41,7 @@ function WatchCard({watch}: {watch: WatchExpression}) {
     const evaluation = simulation.watchEvaluations[watch.id];
     const label = watch.display.functionSignature ?? "Raw read";
     const status = evaluation?.status ?? (simulation.status === "ready" ? "loading" : "stale");
+    const hasQueuedCalls = simulation.queuedCallCount > 0;
 
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
@@ -78,10 +79,13 @@ function WatchCard({watch}: {watch: WatchExpression}) {
                         <Typography variant="caption" color="text.secondary">On-chain at base block</Typography>
                         <ResultValue result={evaluation?.base} emptyLabel="Not evaluated" />
                     </Box>
-                    <Box>
+                    {hasQueuedCalls ? <Box>
                         <Typography variant="caption" color="secondary.main" sx={{fontWeight: 700}}>Speculative after queue</Typography>
                         <ResultValue result={evaluation?.simulated} emptyLabel={evaluation?.status === "blocked" ? "Blocked" : "Not evaluated"} />
-                    </Box>
+                    </Box> : <Box>
+                        <Typography variant="caption" color="text.secondary">Speculative value</Typography>
+                        <Typography variant="body2" color="text.secondary">No queued writes</Typography>
+                    </Box>}
                 </Box>
             </Stack>
         </Paper>
@@ -94,6 +98,7 @@ export default function WatchPanel() {
     const simulation = useSimulation();
     const watches = transactionPlan.state.plan.watches;
     if (workspace.mode !== "simulate") return null;
+    const watchBaseBlock = Object.values(simulation.watchEvaluations).find((evaluation) => evaluation.baseBlockNumber)?.baseBlockNumber;
 
     return (
         <Paper
@@ -105,12 +110,12 @@ export default function WatchPanel() {
                     <Box>
                         <Typography variant="h6" sx={{fontWeight: 800}}>Watch expressions</Typography>
                         <Typography variant="caption" color="text.secondary">
-                            {simulation.snapshot
-                                ? `Base block ${blockLabel(simulation.snapshot.baseBlockNumber)} · speculative values recompute with the queue`
+                            {simulation.snapshot || watchBaseBlock
+                                ? `Base block ${blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)} · ${simulation.queuedCallCount > 0 ? "speculative values recompute with the queue" : "canonical watches refresh together"}`
                                 : "Pin read-only calls to compare canonical and speculative values"}
                         </Typography>
                     </Box>
-                    <Button size="small" startIcon={<Refresh />} disabled={!simulation.active || watches.length === 0} onClick={simulation.retry}>
+                    <Button size="small" startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
                         Refresh
                     </Button>
                 </Box>

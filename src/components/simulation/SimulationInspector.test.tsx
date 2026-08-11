@@ -56,7 +56,7 @@ describe("SimulationInspector", () => {
     beforeEach(() => {
         mockedPlan.mockReturnValue({state: planState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
-            active: true, status: "ready", chainId: "1", error: null, snapshot: snapshot(), revision: "queue", queuedCallCount: 2,
+            active: true, watchActive: true, status: "ready", chainId: "1", error: null, snapshot: snapshot(), revision: "queue", queuedCallCount: 2,
             configured: true, watchEvaluations: {}, retry: jest.fn(), canSimulateChain: jest.fn().mockReturnValue(true), simulateRead: jest.fn(),
         });
     });

@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { prepareAbiCall, prepareRawCall } from "./prepareCall";
+import { decoderAbiForInterface, prepareAbiCall, prepareRawCall } from "./prepareCall";
 
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
@@ -114,5 +114,19 @@ describe("prepared calls", () => {
             chainId: "1",
             argumentValues: [],
         })).toThrow("only event and error");
+    });
+
+    it("does not let non-round-trippable decoder metadata block a transaction", () => {
+        const contractInterface = new ethers.Interface(["function pause()", "event Paused(address account)"]);
+        const pause = contractInterface.getFunction("pause")!;
+        const invalidDecoder = {type: "event", format: () => "event Broken(address) leftover"};
+        Object.defineProperty(contractInterface, "fragments", {
+            value: [contractInterface.getFunction("pause")!, invalidDecoder],
+        });
+        expect(decoderAbiForInterface(contractInterface)).toEqual([]);
+        expect(() => prepareAbiCall({
+            fragment: pause, decoderAbi: decoderAbiForInterface(contractInterface),
+            target: TARGET, account: ACCOUNT, chainId: "8453", argumentValues: [],
+        })).not.toThrow();
     });
 });

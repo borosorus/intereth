@@ -23,6 +23,7 @@ beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jes
 function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
     mockedSimulation.mockReturnValue({
         active: false,
+        watchActive: false,
         status: "idle",
         chainId: null,
         error: null,

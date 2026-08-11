@@ -42,8 +42,7 @@ function establishPlan(state: TransactionPlanState, call: QueuedCall): Transacti
 
 function watchMatchesPlan(state: TransactionPlanState, watch: TransactionPlanState["plan"]["watches"][number]) {
     const context = state.plan.context;
-    return Boolean(context
-        && context.chainId === watch.chainId
+    return !context || (context.chainId === watch.chainId
         && context.account.toLowerCase() === watch.from.toLowerCase());
 }
 
@@ -85,8 +84,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                 plan: {
                     ...state.plan,
                     calls,
-                    context: calls.length === 0 ? null : state.plan.context,
-                    watches: calls.length === 0 ? [] : state.plan.watches,
+                    context: calls.length === 0 && state.plan.watches.length === 0 ? null : state.plan.context,
                 },
             };
         }
@@ -123,11 +121,26 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                 || state.plan.watches.some((watch) => watch.id === action.watch.id || sameWatch(watch, action.watch))) {
                 return state;
             }
-            return {...state, plan: {...state.plan, watches: [...state.plan.watches, action.watch]}};
-        case "REMOVE_WATCH":
-            return isExecutionMutable(state.execution)
-                ? {...state, plan: {...state.plan, watches: state.plan.watches.filter((watch) => watch.id !== action.watchId)}}
-                : state;
+            return {
+                ...state,
+                plan: {
+                    ...state.plan,
+                    context: state.plan.context ?? {account: ethers.getAddress(action.watch.from), chainId: action.watch.chainId},
+                    watches: [...state.plan.watches, action.watch],
+                },
+            };
+        case "REMOVE_WATCH": {
+            if (!isExecutionMutable(state.execution)) return state;
+            const watches = state.plan.watches.filter((watch) => watch.id !== action.watchId);
+            return {
+                ...state,
+                plan: {
+                    ...state.plan,
+                    watches,
+                    context: watches.length === 0 && state.plan.calls.length === 0 ? null : state.plan.context,
+                },
+            };
+        }
         case "FORGET_TRACKED_PLAN":
             return canForgetTrackedExecution(state.execution) ? createEmptyTransactionPlanState() : state;
         case "START_BATCH_SUBMISSION":

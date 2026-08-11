@@ -57,6 +57,11 @@ function mockWatchedPlan() {
     mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
 }
 
+function mockWatchOnlyPlan() {
+    const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+}
+
 function rpcResult(method: string, params: unknown[]) {
     if (method === "eth_chainId") return "0x1";
     if (method === "eth_blockNumber") return "0x64";
@@ -168,5 +173,27 @@ describe("SimulationProvider", () => {
         const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string; params: unknown[]});
         expect(requests.find((request) => request.method === "eth_call")?.params[1]).toBe("0x64");
         expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(2);
+    });
+
+    it("evaluates a pinned watch without requiring queued writes", async () => {
+        mockWatchOnlyPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(currentSimulation.watchEvaluations[watch.id]).toMatchObject({
+            status: "ready",
+            baseBlockNumber: "0x64",
+            base: {returnData: "0x002a"},
+        });
+        expect(currentSimulation.watchEvaluations[watch.id].simulated).toBeUndefined();
+        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
+        expect(requests.some((request) => request.method === "eth_call")).toBe(true);
+        expect(requests.some((request) => request.method === "eth_simulateV1")).toBe(false);
     });
 });

@@ -6,7 +6,7 @@ import {
     selectShouldClearForSession,
 } from "./selectors";
 import { TransactionPlanState } from "./types";
-import { QueuedCall } from "./types";
+import { QueuedCall, WatchExpression } from "./types";
 
 const call: QueuedCall = {
     id: "call-1",
@@ -38,6 +38,16 @@ describe("transaction plan selectors", () => {
         const wallet = {account: call.from, chainId: "1"};
         expect(selectPlanSessionStatus(draft, wallet)).toBe("ready");
         expect(selectCanEditPlan(draft, wallet)).toBe(true);
+    });
+
+    it("applies session identity rules to a watch-only plan", () => {
+        const watch: WatchExpression = {
+            id: "watch-1", chainId: call.chainId, from: call.from, to: call.to,
+            data: "0x1234", value: "0", display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 2,
+        };
+        const watchOnly = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch});
+        expect(selectPlanSessionStatus(watchOnly, {account: call.from, chainId: "1"})).toBe("ready");
+        expect(selectPlanSessionStatus(watchOnly, {account: call.from, chainId: "10"})).toBe("chain_mismatch");
     });
 
     it("clears safe records on identity mismatch but preserves unresolved batches", () => {

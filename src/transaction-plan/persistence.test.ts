@@ -57,6 +57,16 @@ describe("transaction plan persistence", () => {
         expect(parseTransactionPlan(JSON.stringify({...watched, plan: oldPlan}))).toBeNull();
     });
 
+    it("round-trips a watch-only plan", () => {
+        const storage = memoryStorage();
+        const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: {
+            id: "watch-only", chainId: "1", from: queuedCall.from, to: queuedCall.to,
+            data: "0x1234", value: "0", display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 2,
+        }});
+        saveTransactionPlan(state, storage);
+        expect(loadTransactionPlan(storage)).toEqual(state);
+    });
+
     it("preserves tracked batches and recovers a submission interrupted before an ID was saved", () => {
         const storage = memoryStorage();
         const draft = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: queuedCall});

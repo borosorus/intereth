@@ -21,7 +21,21 @@ interface PrepareAbiCallOptions extends PreparedCallIdentity {
 export function decoderAbiForInterface(contractInterface: ethers.Interface) {
     return contractInterface.fragments
         .filter((fragment) => fragment.type === "event" || fragment.type === "error")
-        .map((fragment) => fragment.format("full"));
+        .flatMap((fragment) => {
+            // Decoder metadata improves previews, but must never prevent a valid
+            // transaction from being prepared. Some JSON ABI fragments do not
+            // round-trip through ethers' human-readable `full` format.
+            for (const format of ["full", "minimal"] as const) {
+                try {
+                    const formatted = fragment.format(format);
+                    ethers.Fragment.from(formatted);
+                    return [formatted];
+                } catch {
+                    // Try the less descriptive representation, then omit it.
+                }
+            }
+            return [];
+        });
 }
 
 function normalizeDecoderAbi(fragments: readonly string[] | undefined) {

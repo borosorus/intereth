@@ -6,6 +6,7 @@ import { StaticFunctionItem } from "./StaticContractItem";
 import { useWorkspaceMode } from "../workspace/context";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
+import { useWalletSession } from "../wallet/WalletSessionContext";
 
 jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
 jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
@@ -15,9 +16,14 @@ jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
 const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
 const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
+const mockedWallet = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
 
 describe("StaticFunctionItem simulated reads", () => {
     beforeEach(() => {
+        mockedWallet.mockReturnValue({
+            status: "ready", account: "0x0000000000000000000000000000000000000001", chainId: "1",
+            provider: null, signer: null, error: null, clearError: jest.fn(), connectWallet: jest.fn(), switchChain: jest.fn(),
+        });
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
@@ -33,6 +39,7 @@ describe("StaticFunctionItem simulated reads", () => {
         });
         mockedSimulation.mockReturnValue({
             active: true,
+            watchActive: true,
             status: "ready",
             chainId: "1",
             error: null,
@@ -75,6 +82,7 @@ describe("StaticFunctionItem simulated reads", () => {
         const simulateRead = jest.fn();
         mockedSimulation.mockReturnValue({
             active: true,
+            watchActive: true,
             status: "ready",
             chainId: "1",
             error: null,

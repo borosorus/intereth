@@ -78,6 +78,7 @@ describe("TransactionQueuePanel", () => {
         mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
+            watchActive: false,
             status: "idle",
             chainId: null,
             error: null,
@@ -162,6 +163,7 @@ describe("TransactionQueuePanel", () => {
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
             active: true,
+            watchActive: true,
             status: "waiting",
             chainId: "1",
             configured: true,

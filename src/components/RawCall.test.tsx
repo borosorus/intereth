@@ -23,6 +23,7 @@ describe("RawCall queueing", () => {
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
+            watchActive: false,
             status: "idle",
             chainId: null,
             error: null,

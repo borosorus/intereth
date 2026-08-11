@@ -216,7 +216,7 @@ function parsePlan(value: unknown): TransactionPlanState["plan"] | null {
         return null;
     }
     const context = value.context;
-    if (value.calls.length > 0) {
+    if (value.calls.length > 0 || value.watches.length > 0) {
         if (!isRecord(context)
             || typeof context.account !== "string"
             || !ethers.isAddress(context.account)
@@ -301,7 +301,7 @@ export function saveTransactionPlan(state: TransactionPlanState, storage: WriteS
         return;
     }
     try {
-        if (state.plan.calls.length === 0) {
+        if (state.plan.calls.length === 0 && state.plan.watches.length === 0) {
             storage.removeItem(TRANSACTION_PLAN_STORAGE_KEY);
             return;
         }

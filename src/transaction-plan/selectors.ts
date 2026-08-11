@@ -15,7 +15,7 @@ export interface ActiveWalletIdentity {
 
 export function selectPlanSessionStatus(state: TransactionPlanState, wallet: ActiveWalletIdentity): PlanSessionStatus {
     const context = state.plan.context;
-    if (!context || state.plan.calls.length === 0) {
+    if (!context || (state.plan.calls.length === 0 && state.plan.watches.length === 0)) {
         return "empty";
     }
     if (!wallet.account || !wallet.chainId) {

@@ -20,6 +20,7 @@ interface SimulationState {
 
 interface SimulationContextValue extends SimulationState {
     active: boolean;
+    watchActive: boolean;
     revision: string;
     queuedCallCount: number;
     configured: boolean;
@@ -74,6 +75,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const planAvailable = Boolean(context && calls.length > 0 && isExecutionMutable(transactionPlan.state.execution) && sessionAllowed);
     const configured = rpcUrl.length > 0;
     const active = planAvailable && configured;
+    const watchActive = Boolean(context && configured && sessionAllowed && isExecutionMutable(transactionPlan.state.execution));
     const revision = useMemo(() => [
         context?.chainId,
         context?.account,
@@ -172,13 +174,15 @@ export function SimulationProvider({children}: {children: ReactNode}) {
 
     useEffect(() => {
         const requestId = ++watchRequestIdRef.current;
-        const snapshot = state.snapshot;
-        const client = clientRef.current;
         if (watches.length === 0) {
             setWatchEvaluations({});
             return;
         }
-        if (workspace.mode !== "simulate" || state.status !== "ready" || !snapshot || !context || !client || snapshot.revision !== revision) {
+        const hasQueuedCalls = calls.length > 0;
+        const queueSnapshotReady = state.status === "ready"
+            && state.snapshot?.revision === revision
+            && clientRef.current !== null;
+        if (workspace.mode !== "simulate" || !watchActive || !context || (hasQueuedCalls && !queueSnapshotReady)) {
             setWatchEvaluations((current) => Object.fromEntries(watches
                 .filter((watch) => current[watch.id])
                 .map((watch) => {
@@ -191,75 +195,92 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         }
 
         const watchRevision = `${revision}|${watches.map((watch) => `${watch.id}:${watch.to}:${watch.data}:${watch.value}`).join("|")}`;
-        setWatchEvaluations((current) => Object.fromEntries(watches.map((watch) => [watch.id, {
-            ...(current[watch.id] ?? {}),
-            watchId: watch.id,
-            revision: watchRevision,
-            baseBlockNumber: snapshot.baseBlockNumber,
-            status: "loading" as const,
-        }])));
-
-        const queueSucceeded = snapshot.calls.every((call) => call.status === "0x1");
-        const evaluate = async (watch: typeof watches[number]) => {
+        void (async () => {
+            let client = clientRef.current;
+            let baseBlockNumber = state.snapshot?.baseBlockNumber;
             try {
-                const read = {to: watch.to, data: watch.data, value: watch.value};
-                const baseData = await client.readAtBlock(context, read, snapshot.baseBlockNumber);
-                const base = decodeWatchResult(watch, baseData);
-                if (!queueSucceeded) {
-                    return {evaluation: {
-                        watchId: watch.id,
-                        revision: watchRevision,
-                        baseBlockNumber: snapshot.baseBlockNumber,
-                        status: "blocked" as const,
-                        base,
-                    }};
+                if (!hasQueuedCalls) {
+                    client = new SimulationClient(new HttpJsonRpcTransport(rpcUrl));
+                    await client.assertChain(context.chainId);
+                    baseBlockNumber = await client.getBlockNumber();
                 }
-                const simulatedResult = await client.simulateRead(context, calls, read, snapshot.baseBlockNumber);
-                return {evaluation: {
+                if (!client || !baseBlockNumber) return;
+                const evaluationBlock = baseBlockNumber;
+                setWatchEvaluations((current) => Object.fromEntries(watches.map((watch) => [watch.id, {
+                    ...(current[watch.id] ?? {}),
                     watchId: watch.id,
                     revision: watchRevision,
-                    baseBlockNumber: snapshot.baseBlockNumber,
-                    status: "ready" as const,
-                    base,
-                    simulated: decodeWatchResult(watch, simulatedResult.returnData),
-                }};
-            } catch (watchError) {
-                const normalized = normalizeError(watchError, "Watch evaluation failed");
-                return {
-                    evaluation: {
-                        watchId: watch.id,
-                        revision: watchRevision,
-                        baseBlockNumber: snapshot.baseBlockNumber,
-                        status: "error" as const,
-                        error: {code: normalized.code, message: normalized.message},
-                    },
-                    sourceError: watchError,
-                };
-            }
-        };
+                    baseBlockNumber: evaluationBlock,
+                    status: "loading" as const,
+                }])));
 
-        void mapWithConcurrency(watches, 4, evaluate).then((results) => {
-            if (requestId !== watchRequestIdRef.current) return;
-            setWatchEvaluations(Object.fromEntries(results.map(({evaluation}) => [evaluation.watchId, evaluation])));
-            const endpointFailure = results.find(({sourceError}) => sourceError && isEndpointError(sourceError));
-            if (endpointFailure?.sourceError) {
-                clientRef.current = null;
-                setState((current) => ({
-                    ...current,
-                    status: "error",
-                    error: normalizeError(endpointFailure.sourceError, "Simulation unavailable"),
-                }));
+                const queueSucceeded = !hasQueuedCalls || state.snapshot!.calls.every((call) => call.status === "0x1");
+                const evaluate = async (watch: typeof watches[number]) => {
+                    try {
+                        const read = {to: watch.to, data: watch.data, value: watch.value};
+                        const baseData = await client!.readAtBlock(context, read, evaluationBlock);
+                        const base = decodeWatchResult(watch, baseData);
+                        if (!queueSucceeded) {
+                            return {evaluation: {
+                                watchId: watch.id, revision: watchRevision, baseBlockNumber: evaluationBlock,
+                                status: "blocked" as const, base,
+                            }};
+                        }
+                        if (!hasQueuedCalls) {
+                            return {evaluation: {
+                                watchId: watch.id, revision: watchRevision, baseBlockNumber: evaluationBlock,
+                                status: "ready" as const, base,
+                            }};
+                        }
+                        const simulatedResult = await client!.simulateRead(context, calls, read, evaluationBlock);
+                        return {evaluation: {
+                            watchId: watch.id, revision: watchRevision, baseBlockNumber: evaluationBlock,
+                            status: "ready" as const, base,
+                            simulated: decodeWatchResult(watch, simulatedResult.returnData),
+                        }};
+                    } catch (watchError) {
+                        const normalized = normalizeError(watchError, "Watch evaluation failed");
+                        return {evaluation: {
+                            watchId: watch.id, revision: watchRevision, baseBlockNumber: evaluationBlock,
+                            status: "error" as const,
+                            error: {code: normalized.code, message: normalized.message},
+                        }, sourceError: watchError};
+                    }
+                };
+                const results = await mapWithConcurrency(watches, 4, evaluate);
+                if (requestId !== watchRequestIdRef.current) return;
+                setWatchEvaluations(Object.fromEntries(results.map(({evaluation}) => [evaluation.watchId, evaluation])));
+                const endpointFailure = results.find(({sourceError}) => sourceError && isEndpointError(sourceError));
+                if (hasQueuedCalls && endpointFailure?.sourceError) {
+                    clientRef.current = null;
+                    setState((current) => ({
+                        ...current,
+                        status: "error",
+                        error: normalizeError(endpointFailure.sourceError, "Simulation unavailable"),
+                    }));
+                }
+            } catch (watchError) {
+                if (requestId !== watchRequestIdRef.current) return;
+                const normalized = normalizeError(watchError, "Watch evaluation failed");
+                setWatchEvaluations(Object.fromEntries(watches.map((watch) => [watch.id, {
+                    watchId: watch.id,
+                    revision: watchRevision,
+                    baseBlockNumber: baseBlockNumber ?? "latest",
+                    status: "error" as const,
+                    error: {code: normalized.code, message: normalized.message},
+                }])));
             }
-        });
+        })();
 
         return () => {
             if (requestId === watchRequestIdRef.current) watchRequestIdRef.current += 1;
         };
-    }, [calls, context, revision, state.snapshot, state.status, watches, workspace.mode]);
+    }, [calls, context, retryCount, revision, rpcUrl, state.snapshot, state.status, watchActive, watches, workspace.mode]);
 
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,
         active,
+        watchActive,
         revision,
         queuedCallCount: calls.length,
         configured,
@@ -267,7 +288,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         retry,
         canSimulateChain,
         simulateRead,
-    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state, watchEvaluations]);
+    }), [active, calls.length, canSimulateChain, configured, retry, revision, simulateRead, state, watchActive, watchEvaluations]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }

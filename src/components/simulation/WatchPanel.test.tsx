@@ -36,7 +36,7 @@ describe("WatchPanel", () => {
         mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
         mockedPlan.mockReturnValue({state: watchedState(), dispatch, sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
-            active: true, status: "ready", chainId: "1", error: null, revision: "queue", queuedCallCount: 1,
+            active: true, watchActive: true, status: "ready", chainId: "1", error: null, revision: "queue", queuedCallCount: 1,
             configured: true, retry, canSimulateChain: jest.fn().mockReturnValue(true), simulateRead: jest.fn(),
             snapshot: {revision: "queue", chainId: "1", account, baseBlockNumber: "0x64", calls: [], balanceChanges: [], raw: {}},
             watchEvaluations: {"watch-1": {
