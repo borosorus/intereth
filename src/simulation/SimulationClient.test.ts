@@ -1,4 +1,4 @@
-import { HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
+import { BrowserProviderRpcTransport, HttpJsonRpcTransport, SimulationClient } from "./SimulationClient";
 import { SimulationRpcTransport } from "./types";
 import { PlanContext, QueuedCall, WatchExpression } from "../transaction-plan/types";
 
@@ -52,6 +52,32 @@ describe("SimulationClient", () => {
         await expect(client.getBlockNumber()).resolves.toBe("0x64");
         expect(send).toHaveBeenCalledWith("eth_blockNumber", []);
         await expect(clientWith("100").client.getBlockNumber()).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
+    });
+
+    it("probes eth_simulateV1 with a harmless identity-precompile call", async () => {
+        const send = jest.fn()
+            .mockResolvedValueOnce("0x1")
+            .mockResolvedValueOnce([{calls: [callResult("0x1")]}]);
+        const client = new SimulationClient({send});
+
+        await expect(client.assertSimulationSupport("1", ACCOUNT)).resolves.toBeUndefined();
+        expect(send).toHaveBeenNthCalledWith(1, "eth_chainId", []);
+        expect(send).toHaveBeenNthCalledWith(2, "eth_simulateV1", [{
+            blockStateCalls: [{calls: [{
+                from: ACCOUNT,
+                to: "0x0000000000000000000000000000000000000004",
+                input: "0x",
+                value: "0x0",
+            }]}],
+            validation: false,
+            traceTransfers: false,
+        }, "latest"]);
+
+        const malformed = new SimulationClient({send: jest.fn()
+            .mockResolvedValueOnce("0x1")
+            .mockResolvedValueOnce([])});
+        await expect(malformed.assertSimulationSupport("1", ACCOUNT))
+            .rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
     });
 
     it("runs canonical watch reads at the exact simulation base block", async () => {
@@ -218,5 +244,27 @@ describe("HttpJsonRpcTransport", () => {
     it("rejects missing and non-http endpoint configuration", () => {
         expect(() => new HttpJsonRpcTransport("")).toThrow("No valid simulation RPC");
         expect(() => new HttpJsonRpcTransport("ws://simulate.example")).toThrow("No valid simulation RPC");
+    });
+});
+
+describe("BrowserProviderRpcTransport", () => {
+    it("forwards JSON-RPC requests through the browser provider", async () => {
+        const send = jest.fn().mockResolvedValue("0x1");
+        const transport = new BrowserProviderRpcTransport({send});
+
+        await expect(transport.send("eth_chainId", [])).resolves.toBe("0x1");
+        expect(send).toHaveBeenCalledWith("eth_chainId", []);
+    });
+
+    it("distinguishes unsupported methods from other provider failures", async () => {
+        const unsupported = new BrowserProviderRpcTransport({
+            send: jest.fn().mockRejectedValue({code: "UNKNOWN_ERROR", error: {code: -32601, message: "Method not found"}}),
+        });
+        const rejected = new BrowserProviderRpcTransport({
+            send: jest.fn().mockRejectedValue({code: 4001, message: "User rejected the request"}),
+        });
+
+        await expect(unsupported.send("eth_simulateV1", [])).rejects.toMatchObject({code: "SIMULATION_UNSUPPORTED"});
+        await expect(rejected.send("eth_simulateV1", [])).rejects.toMatchObject({code: "SIMULATION_RPC_UNAVAILABLE"});
     });
 });

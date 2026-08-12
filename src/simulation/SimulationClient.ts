@@ -80,6 +80,45 @@ export class HttpJsonRpcTransport implements SimulationRpcTransport {
     }
 }
 
+function nestedRpcError(value: unknown, seen = new WeakSet<object>()): {code?: string | number; message?: string} | null {
+    if (!isRecord(value) || seen.has(value)) return null;
+    seen.add(value);
+    const code = typeof value.code === "string" || typeof value.code === "number" ? value.code : undefined;
+    const message = typeof value.message === "string" ? value.message : undefined;
+    if (code !== undefined || message !== undefined) {
+        if (code === -32601 || code === "-32601") return {code, message};
+        for (const nested of Object.values(value)) {
+            const result = nestedRpcError(nested, seen);
+            if (result?.code === -32601 || result?.code === "-32601") return result;
+        }
+        return {code, message};
+    }
+    for (const nested of Object.values(value)) {
+        const result = nestedRpcError(nested, seen);
+        if (result) return result;
+    }
+    return null;
+}
+
+export class BrowserProviderRpcTransport implements SimulationRpcTransport {
+    constructor(private readonly provider: Pick<ethers.BrowserProvider, "send">) {}
+
+    async send(method: string, params: unknown[]): Promise<unknown> {
+        try {
+            return await this.provider.send(method, params);
+        } catch (error) {
+            if (isRecord(error) && typeof error.code === "string" && error.code.startsWith("SIMULATION_")) {
+                throw error;
+            }
+            const rpcError = nestedRpcError(error);
+            if (rpcError?.code === -32601 || rpcError?.code === "-32601") {
+                throw simulationError("SIMULATION_UNSUPPORTED", rpcError.message ?? "The browser RPC does not support eth_simulateV1.");
+            }
+            throw simulationError("SIMULATION_RPC_UNAVAILABLE", rpcError?.message ?? "The browser RPC could not complete the simulation request.");
+        }
+    }
+}
+
 function decimalChainId(value: unknown) {
     if (!isHexQuantity(value)) {
         throw simulationError("SIMULATION_RESPONSE_INVALID", "The simulation RPC returned an invalid chain ID.");
@@ -214,6 +253,21 @@ export class SimulationClient implements QueuedStateSimulationClient {
             throw simulationError("SIMULATION_RESPONSE_INVALID", "The simulation RPC returned an invalid block number.");
         }
         return blockNumber;
+    }
+
+    async assertSimulationSupport(expectedChainId: string, from: string) {
+        await this.assertChain(expectedChainId);
+        const response = await this.transport.send("eth_simulateV1", [{
+            blockStateCalls: [{calls: [rpcCall(
+                from,
+                "0x0000000000000000000000000000000000000004",
+                "0x",
+                "0",
+            )]}],
+            validation: false,
+            traceTransfers: false,
+        }, "latest"]);
+        parseSimulationResponse(response, 1);
     }
 
     async readAtBlock(context: PlanContext, read: SimulatedRead, baseBlock: string) {

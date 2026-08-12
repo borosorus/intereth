@@ -133,6 +133,7 @@ export interface WatchEvaluation {
 
 export interface QueuedStateSimulationClient {
     assertChain(expectedChainId: string): Promise<void>;
+    assertSimulationSupport(expectedChainId: string, from: string): Promise<void>;
     getBlockNumber(): Promise<string>;
     readAtBlock(context: PlanContext, read: SimulatedRead, baseBlock: string): Promise<string>;
     simulatePlan(context: PlanContext, calls: QueuedCall[], watches: WatchExpression[], baseBlock?: string): Promise<SimulatedPlanResult>;
