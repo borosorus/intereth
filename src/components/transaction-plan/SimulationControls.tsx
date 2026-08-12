@@ -1,6 +1,7 @@
 import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+import SimulationEndpointStatus from "../simulation/SimulationEndpointStatus";
 
 const statusLabels = {
     idle: "Idle",
@@ -35,9 +36,7 @@ export default function SimulationControls() {
                         Speculative snapshot from base block {ethers.getBigInt(simulation.snapshot.baseBlockNumber).toString()}.
                     </Typography>
                 )}
-                {!simulation.configured && (
-                    <Alert severity="info">No simulation RPC is configured for this network.</Alert>
-                )}
+                <SimulationEndpointStatus />
                 {simulation.error && (
                     <Alert
                         severity="error"

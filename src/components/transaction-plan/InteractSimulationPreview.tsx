@@ -151,7 +151,11 @@ export default function InteractSimulationPreview() {
                     <Typography variant="caption" color="text.secondary">
                         Speculative results only. Execution still uses the connected wallet.
                     </Typography>
-                    {!simulation.configured && <Alert severity="info">No simulation RPC is configured for this network.</Alert>}
+                    {!simulation.configured && (
+                        <Alert severity="info">
+                            No compatible simulation RPC is available. Switch to Simulate to check the connected wallet RPC.
+                        </Alert>
+                    )}
                     {(simulation.status === "waiting" || simulation.status === "simulating") && !snapshot && (
                         <Typography variant="body2">Preparing the queue preview…</Typography>
                     )}

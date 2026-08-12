@@ -65,4 +65,20 @@ describe("WatchPanel", () => {
         const {container} = render(<WatchPanel />);
         expect(container).toBeEmptyDOMElement();
     });
+
+    it("shows browser RPC capability checks beside watches", () => {
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedPlan.mockReturnValue({state: watchedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedSimulation.mockReturnValue({
+            active: false, watchActive: false, status: "idle", chainId: "999", error: null, revision: "queue", queuedCallCount: 1,
+            configured: false, endpointStatus: "checking",
+            browserCapability: {status: "checking", chainId: "999", error: null},
+            retry: jest.fn(), canSimulateChain: jest.fn().mockReturnValue(false), simulateRead: jest.fn(),
+            snapshot: null, watchEvaluations: {}, tokenMetadataByAddress: {}, tokenMetadataResolving: false,
+        });
+
+        render(<WatchPanel />);
+
+        expect(screen.getByText(/Checking the connected wallet RPC for eth_simulateV1 support/)).toBeInTheDocument();
+    });
 });

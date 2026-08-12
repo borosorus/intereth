@@ -36,7 +36,7 @@ Changing accounts on the same network keeps wallet-backed contract cards, rebind
 
 **Simulate** is the technical workspace. Reads can run after the queued writes without sending anything, and an explicit **Run on-chain** action remains available. Writes can be added to the shared queue, but transaction submission stays in Interact. Read calls can also be pinned as watches; Intereth recomputes their base-block and speculative values whenever the queue changes. The transaction-plan drawer provides decoded per-call results, events, reverts, gas, balance changes, and optional raw RPC details. All simulated values are speculative and are labeled separately from canonical values.
 
-The predefined chain `rpcUrl` endpoints are also the simulation endpoints and must support `eth_simulateV1`. Queue previews and watches use one pinned base block per snapshot so their comparisons share the same canonical starting state.
+Predefined chain `rpcUrl` endpoints are preferred for simulation and must support `eth_simulateV1`. In Simulate mode, Intereth also checks the connected wallet's RPC and uses it as a fallback, including on networks outside the predefined list. Queue previews and watches use one pinned base block per snapshot so their comparisons share the same canonical starting state.
 
 ## Atomic transaction plans
 

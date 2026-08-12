@@ -6,6 +6,7 @@ import { WatchResultValue } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
 import { useWorkspaceMode } from "../../workspace/context";
+import SimulationEndpointStatus from "./SimulationEndpointStatus";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -119,6 +120,7 @@ export default function WatchPanel() {
                         Refresh
                     </Button>
                 </Box>
+                <SimulationEndpointStatus showReady={false} />
                 {watches.length === 0
                     ? <Typography variant="body2" color="text.secondary">Open a read-only function and choose “Pin watch”.</Typography>
                     : <Stack spacing={1}>{watches.map((watch) => <WatchCard key={watch.id} watch={watch} />)}</Stack>}
