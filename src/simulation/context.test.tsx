@@ -8,14 +8,17 @@ import { QueuedCall, WatchExpression } from "../transaction-plan/types";
 import { SimulationProvider, useSimulation } from "./context";
 import { TRANSFER_TOPIC } from "./balanceChanges";
 import { tokenMetadataKey } from "./tokenMetadata";
+import { useWalletSession } from "../wallet/WalletSessionContext";
 
 jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: jest.fn()})}));
+jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
 jest.mock("../chainConfig", () => ({
     chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),
 }));
 
 const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
+const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 const call: QueuedCall = {
@@ -53,6 +56,11 @@ function mockPlan(sessionStatus: "ready" | "disconnected" = "ready", execution =
         sessionStatus,
         canEdit: sessionStatus === "ready",
     });
+}
+
+function mockPlanCall(nextCall: QueuedCall) {
+    const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: nextCall});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
 }
 
 function mockWatchedPlan() {
@@ -102,6 +110,17 @@ describe("SimulationProvider", () => {
     beforeEach(() => {
         jest.useFakeTimers();
         window.sessionStorage.clear();
+        mockedWalletSession.mockReturnValue({
+            status: "disconnected",
+            provider: null,
+            signer: null,
+            account: null,
+            chainId: null,
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
         jest.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
@@ -154,6 +173,139 @@ describe("SimulationProvider", () => {
         expect(screen.getByText("error")).toBeInTheDocument();
         expect(currentSimulation.error?.code).toBe("SIMULATION_RPC_UNAVAILABLE");
         expect(currentSimulation.active).toBe(true);
+    });
+
+    it("uses a compatible browser RPC for a chain without a configured endpoint", async () => {
+        const browserSend = jest.fn(async (method: string, params: unknown[]) => (
+            method === "eth_chainId" ? "0xa" : rpcResult(method, params)
+        ));
+        mockedWalletSession.mockReturnValue({
+            status: "ready",
+            provider: {send: browserSend} as unknown as ethers.BrowserProvider,
+            signer: null,
+            account: ACCOUNT,
+            chainId: "10",
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockPlanCall({...call, chainId: "10"});
+        render(<Probe />, {wrapper: Wrapper});
+
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        await runDebounce();
+
+        expect(screen.getByText("ready")).toBeInTheDocument();
+        expect(currentSimulation.endpointSource).toBe("browser");
+        expect(currentSimulation.browserCapability?.status).toBe("supported");
+        expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(true);
+        expect(jest.mocked(global.fetch)).not.toHaveBeenCalled();
+    });
+
+    it("falls back from a failing configured endpoint to a compatible browser RPC", async () => {
+        jest.mocked(global.fetch).mockResolvedValue({ok: false, status: 503} as Response);
+        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        mockedWalletSession.mockReturnValue({
+            status: "ready",
+            provider: {send: browserSend} as unknown as ethers.BrowserProvider,
+            signer: null,
+            account: ACCOUNT,
+            chainId: "1",
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        await runDebounce();
+
+        expect(screen.getByText("ready")).toBeInTheDocument();
+        expect(currentSimulation.endpointSource).toBe("browser");
+        expect(jest.mocked(global.fetch)).toHaveBeenCalled();
+        expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(true);
+    });
+
+    it("keeps the configured endpoint ahead of a compatible browser RPC", async () => {
+        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        mockedWalletSession.mockReturnValue({
+            status: "ready",
+            provider: {send: browserSend} as unknown as ethers.BrowserProvider,
+            signer: null,
+            account: ACCOUNT,
+            chainId: "1",
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        await runDebounce();
+
+        expect(currentSimulation.endpointSource).toBe("fixed");
+        expect(jest.mocked(global.fetch)).toHaveBeenCalled();
+        expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(false);
+    });
+
+    it("switches a speculative read to the browser when the selected endpoint goes down", async () => {
+        let fixedAvailable = true;
+        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+            if (!fixedAvailable) return {ok: false, status: 503} as Response;
+            const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
+            return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
+        });
+        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        mockedWalletSession.mockReturnValue({
+            status: "ready",
+            provider: {send: browserSend} as unknown as ethers.BrowserProvider,
+            signer: null,
+            account: ACCOUNT,
+            chainId: "1",
+            error: null,
+            clearError: jest.fn(),
+            connectWallet: jest.fn(),
+            switchChain: jest.fn(),
+        });
+        mockPlan();
+        render(<Probe />, {wrapper: Wrapper});
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+        await runDebounce();
+        expect(currentSimulation.endpointSource).toBe("fixed");
+
+        fixedAvailable = false;
+        await act(async () => {
+            await expect(currentSimulation.simulateRead("1", {to: TARGET, data: "0xabcd"}))
+                .resolves.toMatchObject({returnData: "0x002b"});
+        });
+
+        expect(currentSimulation.endpointSource).toBe("browser");
+        expect(browserSend.mock.calls.filter(([method]) => method === "eth_simulateV1")).toHaveLength(2);
     });
 
     it("evaluates watches and the queue with one simulation request at the exact base block", async () => {
