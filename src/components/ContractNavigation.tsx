@@ -1,5 +1,6 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { DynamicContract } from "../App";
@@ -13,12 +14,13 @@ function chainId(contract: DynamicContract) {
     return contract.isStatic ? contract.providerDetails?.chainId ?? "Unknown chain" : contract.walletChainId;
 }
 
-export default function ContractNavigation({contracts, selectedId, onSelect, onRename, onDelete}: {
+export default function ContractNavigation({contracts, selectedId, onSelect, onRename, onDelete, onAdd}: {
     contracts: DynamicContract[];
     selectedId: string;
     onSelect: (id: string) => void;
     onRename: (id: string, label: string) => void;
     onDelete: (id: string) => void;
+    onAdd: () => void;
 }) {
     const [renaming, setRenaming] = useState<DynamicContract | null>(null);
     const [label, setLabel] = useState("");
@@ -40,14 +42,15 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                     ))}
                 </Select>
                 {selected && <>
+                    <IconButton color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>
                     <IconButton aria-label={`Rename ${selected.label}`} onClick={() => setRenaming(selected)}><EditOutlinedIcon /></IconButton>
                     <IconButton aria-label={`Delete ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon /></IconButton>
                 </>}
             </Box>
             <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 108}}>
-                <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider"}}>
-                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contracts</Typography>
-                    <Typography variant="caption" color="text.secondary">{contracts.length} open {contracts.length === 1 ? "instance" : "instances"}</Typography>
+                <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
+                    <Box><Typography variant="subtitle2" sx={{fontWeight: 800}}>Contracts</Typography><Typography variant="caption" color="text.secondary">{contracts.length} open {contracts.length === 1 ? "instance" : "instances"}</Typography></Box>
+                    <IconButton size="small" color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>
                 </Box>
                 <List disablePadding>
                     {contracts.map((contract) => (

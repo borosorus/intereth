@@ -13,7 +13,10 @@ describe("ContractNavigation", () => {
     it("selects and renames labeled contract instances", () => {
         const onSelect = jest.fn();
         const onRename = jest.fn();
-        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onRename={onRename} onDelete={jest.fn()} />);
+        const onAdd = jest.fn();
+        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onRename={onRename} onDelete={jest.fn()} onAdd={onAdd} />);
+        fireEvent.click(screen.getAllByRole("button", {name: "Add contract"})[0]);
+        expect(onAdd).toHaveBeenCalledTimes(1);
         fireEvent.click(screen.getByText("Vault"));
         expect(onSelect).toHaveBeenCalledWith("two");
         fireEvent.click(screen.getAllByRole("button", {name: "Rename Token"})[0]);

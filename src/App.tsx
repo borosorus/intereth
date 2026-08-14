@@ -1,5 +1,5 @@
 import ContractManager from './components/ContractManager';
-import { Alert, Box, Container, Paper, Snackbar, Stack } from '@mui/material';
+import { Alert, Box, Container, DialogContent, DialogTitle, Paper, Snackbar, Stack } from '@mui/material';
 import { ethers } from 'ethers';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
@@ -11,6 +11,7 @@ import { useTransactionPlan } from './transaction-plan/context';
 import { reconcileWalletWorkspace, WalletIdentity } from './wallet/workspaceLifecycle';
 import WatchPanel from './components/simulation/WatchPanel';
 import ContractNavigation from './components/ContractNavigation';
+import ResponsiveDialog from './components/ResponsiveDialog';
 
 interface ContractInstanceBase {
   id: string;
@@ -27,6 +28,8 @@ export type DynamicContract = ContractInstanceBase & (
 export default function App(){
     const [contracts, setContracts] = useState<DynamicContract[]>([]);
     const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
+    const [addContractOpen, setAddContractOpen] = useState(false);
+    const [managerGeneration, setManagerGeneration] = useState(0);
     const [interactionAccount, setInteractionAccount] = useState<string | null>(null);
     const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
     const wallet = useWalletSession();
@@ -62,6 +65,12 @@ export default function App(){
     const addContract = (contract: DynamicContract) => {
       setContracts((current) => current.concat([contract]));
       setSelectedContractId(contract.id);
+    };
+
+    const addFromDialog = (contract: DynamicContract) => {
+      addContract(contract);
+      setAddContractOpen(false);
+      setManagerGeneration((current) => current + 1);
     };
 
     const deleteContract = (id: string) => {
@@ -111,6 +120,7 @@ export default function App(){
                   onSelect={setSelectedContractId}
                   onRename={(id, label) => setContracts((current) => current.map((contract) => contract.id === id ? {...contract, label} : contract))}
                   onDelete={deleteContract}
+                  onAdd={() => setAddContractOpen(true)}
                 />
                 <Box sx={{minWidth: 0}}>
                   {selectedContract.isStatic ?
@@ -127,6 +137,12 @@ export default function App(){
           </Stack>
         </Container>
         <TransactionQueuePanel />
+        <ResponsiveDialog open={addContractOpen} onClose={() => setAddContractOpen(false)} maxWidth="md">
+          <DialogTitle>Add contract</DialogTitle>
+          <DialogContent dividers sx={{pt: 2}}>
+            <ContractManager key={managerGeneration} addContract={addFromDialog} showExamples={false} />
+          </DialogContent>
+        </ResponsiveDialog>
         <Snackbar
           open={Boolean(workspaceNotice)}
           autoHideDuration={7000}
