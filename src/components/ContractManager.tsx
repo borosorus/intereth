@@ -107,6 +107,7 @@ function ProviderSummary({details}: {details: ProviderDetails}) {
 
 export default function ContractManager({addContract, showExamples}: ContractManagerProps) {
     const [address, setAddress] = useState('');
+    const [label, setLabel] = useState('');
     const [abi, setAbi] = useState('');
     const [abiPreset, setAbiPreset] = useState<AbiPresetSelection>("custom");
     const [providerIndex, setProviderIndex] = useState(0);
@@ -282,6 +283,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const getInterface = () => abi.trim()
         ? new ethers.Interface(abi)
         : new ethers.Interface(["fallback(bytes calldata data) external view"]);
+    const contractLabel = () => label.trim() || `Contract ${address.slice(0, 8)}…${address.slice(-6)}`;
 
     const handleAddContract = async () => {
         if (!canAddInstance) {
@@ -294,6 +296,8 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             if (useBrowserWallet && signer && walletChainId) {
                 addContract({
                     id: crypto.randomUUID(),
+                    label: contractLabel(),
+                    address: ethers.getAddress(address),
                     contract: new ethers.BaseContract(address, getInterface(), signer),
                     isStatic: false,
                     walletChainId,
@@ -320,6 +324,8 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
                 addContract({
                     id: crypto.randomUUID(),
+                    label: contractLabel(),
+                    address: ethers.getAddress(address),
                     contract: new ethers.BaseContract(address, getInterface(), provider),
                     isStatic: true,
                     providerDetails: selectedProviderDetails,
@@ -349,6 +355,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const selectExample = (example: ContractExample) => {
         const ethereumIndex = chains.findIndex((chain) => chain.id === '1');
         setAddress(example.address);
+        setLabel(example.label);
         setAbi(formatAbi(example.abi));
         setAbiPreset("custom");
         setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
@@ -377,6 +384,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         onChange={(event) => setAddress(event.target.value.trim())}
                         error={address !== '' && !isAddressValid}
                         helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
+                        fullWidth
+                        sx={inputSurfaceSx}
+                    />
+                    <TextField
+                        label="Contract label"
+                        value={label}
+                        onChange={(event) => setLabel(event.target.value)}
+                        helperText="Optional name used in workspace navigation."
                         fullWidth
                         sx={inputSurfaceSx}
                     />

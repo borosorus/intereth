@@ -127,7 +127,7 @@ describe("DynamicFunctionItem queueing", () => {
             data: fragment.selector,
         }));
         expect(await screen.findByText("42")).toBeInTheDocument();
-        expect(screen.getByText("Simulated")).toBeInTheDocument();
+        expect(screen.getByText("Speculative")).toBeInTheDocument();
         expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
     });
 });
