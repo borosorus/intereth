@@ -12,6 +12,7 @@ import { reconcileWalletWorkspace, WalletIdentity } from './wallet/workspaceLife
 import WatchPanel from './components/simulation/WatchPanel';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
+import WorkspaceEmptyGuidance from './components/WorkspaceEmptyGuidance';
 
 interface ContractInstanceBase {
   id: string;
@@ -122,7 +123,8 @@ export default function App(){
                   onDelete={deleteContract}
                   onAdd={() => setAddContractOpen(true)}
                 />
-                <Box sx={{minWidth: 0}}>
+                <Stack spacing={2} sx={{minWidth: 0}}>
+                  <WorkspaceEmptyGuidance />
                   {selectedContract.isStatic ?
                       <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails}/> :
                       <DynamicContractItem
@@ -131,7 +133,7 @@ export default function App(){
                         contract={selectedContract.contract}
                         walletChainId={selectedContract.walletChainId}
                       />}
-                </Box>
+                </Stack>
               </Box>
             )}
           </Stack>
