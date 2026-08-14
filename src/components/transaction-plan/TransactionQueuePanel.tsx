@@ -1,4 +1,7 @@
 import {
+    Accordion,
+    AccordionDetails,
+    AccordionSummary,
     Alert,
     Box,
     Button,
@@ -14,6 +17,7 @@ import {
     TextField,
     Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -40,15 +44,13 @@ import ResponsiveDialog from "../ResponsiveDialog";
 import { useWorkspaceMode } from "../../workspace/context";
 import InteractSimulationPreview from "./InteractSimulationPreview";
 import SimulationInspector from "../simulation/SimulationInspector";
+import CopyButton from "../CopyButton";
+import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../calls/displayValues";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : ethers.id(`${Date.now()}-${Math.random()}`);
-}
-
-function shortAddress(address: string) {
-    return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
 function duplicateCall(call: QueuedCall): QueuedCall {
@@ -68,6 +70,7 @@ function duplicateCall(call: QueuedCall): QueuedCall {
 }
 
 function CallSummary({call, index}: {call: QueuedCall; index: number}) {
+    const nativeValue = summarizeNativeValue(call.value);
     return (
         <Stack spacing={1}>
             <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
@@ -76,41 +79,47 @@ function CallSummary({call, index}: {call: QueuedCall; index: number}) {
                 </Typography>
                 <Chip size="small" variant="outlined" label={call.display.kind === "abi" ? "ABI" : "Raw"} />
             </Box>
-            <Box>
-                <Typography variant="caption" color="text.secondary">Contract</Typography>
-                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>
-                    {call.to}
-                </Typography>
+            <Box sx={{display: "flex", alignItems: "center", gap: 0.25}}>
+                <Typography variant="caption" color="text.secondary">Contract {shortAddress(call.to)}</Typography>
+                <CopyButton value={call.to} label={`Copy destination for call ${index + 1}`} />
             </Box>
             {call.display.arguments && call.display.arguments.length > 0 && (
                 <Stack spacing={0.5}>
                     <Typography variant="caption" color="text.secondary">Arguments</Typography>
-                    {call.display.arguments.map((argument, argumentIndex) => (
-                        <Box key={`${argument.name}-${argumentIndex}`} sx={{pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
-                            <Typography variant="caption" color="text.secondary">{argument.name} · {argument.type}</Typography>
-                            <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>
-                                {argument.value}
-                            </Typography>
-                        </Box>
-                    ))}
+                    {call.display.arguments.map((argument, argumentIndex) => {
+                        const summary = summarizeArgument(argument);
+                        const showSecondary = summary.secondary?.match(/^\d+ bytes?$/);
+                        return (
+                            <Box key={`${argument.name}-${argumentIndex}`} sx={{display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
+                                <Typography variant="caption" color="text.secondary">{argument.name}</Typography>
+                                <Box sx={{minWidth: 0, textAlign: "right"}}>
+                                    <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>{summary.primary}</Typography>
+                                    {showSecondary && <Typography variant="caption" color="text.secondary">{summary.secondary}</Typography>}
+                                </Box>
+                            </Box>
+                        );
+                    })}
                 </Stack>
             )}
-            <Stack direction={{xs: "column", sm: "row"}} spacing={1.5}>
-                <Box sx={{minWidth: 120}}>
-                    <Typography variant="caption" color="text.secondary">Value</Typography>
-                    <Typography variant="body2">{call.value} wei</Typography>
-                </Box>
-                <Box sx={{minWidth: 0}}>
-                    <Typography variant="caption" color="text.secondary">Calldata</Typography>
-                    <Typography
-                        variant="body2"
-                        title={call.data}
-                        sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}
-                    >
-                        {call.data}
-                    </Typography>
-                </Box>
-            </Stack>
+            {call.value !== "0" && <Typography variant="body2"><strong>Native value:</strong> {nativeValue.primary}</Typography>}
+            <Accordion disableGutters elevation={0} sx={{"&:before": {display: "none"}, bgcolor: "transparent"}}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{px: 0, minHeight: 36, "& .MuiAccordionSummary-content": {my: 0.5}}}>
+                    <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700}}>Technical details</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{px: 0, pt: 0}}>
+                    <Stack spacing={1}>
+                        <Box><Typography variant="caption" color="text.secondary">Destination</Typography><Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{call.to}</Typography></Box>
+                        <Box><Typography variant="caption" color="text.secondary">Value</Typography><Typography variant="body2" sx={{fontFamily: "monospace"}}>{nativeValue.secondary}</Typography></Box>
+                        {call.display.arguments?.map((argument, argumentIndex) => (
+                            <Box key={`raw-${argument.name}-${argumentIndex}`}>
+                                <Typography variant="caption" color="text.secondary">{argument.name} · {argument.type}</Typography>
+                                <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{argument.value}</Typography>
+                            </Box>
+                        ))}
+                        <Box><Typography variant="caption" color="text.secondary">Calldata</Typography><Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{call.data}</Typography></Box>
+                    </Stack>
+                </AccordionDetails>
+            </Accordion>
         </Stack>
     );
 }
