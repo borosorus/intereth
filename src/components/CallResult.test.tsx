@@ -22,7 +22,7 @@ describe("CallResult", () => {
 
     it("labels speculative results with their queue context", () => {
         render(<CallResult result={{kind: "raw", data: "0x1234", source: {kind: "simulated", queuedCallCount: 2}}} />);
-        expect(screen.getByText("Simulated")).toBeInTheDocument();
+        expect(screen.getByText("Speculative")).toBeInTheDocument();
         expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
     });
 });

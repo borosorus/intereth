@@ -1,5 +1,6 @@
-import { Alert, Button, Chip, Stack, Typography } from "@mui/material";
+import { Alert, Button, Stack, Typography } from "@mui/material";
 import { BrowserSimulationCapabilityStatus, useSimulation } from "../../simulation/context";
+import { StateBadge } from "../StateBadge";
 
 function unavailableMessage(status: BrowserSimulationCapabilityStatus | undefined) {
     if (status === "unsupported") {
@@ -37,7 +38,7 @@ export default function SimulationEndpointStatus({showReady = true}: {showReady?
     return (
         <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
             <Typography variant="caption" color="text.secondary">Simulation RPC</Typography>
-            <Chip size="small" variant="outlined" color={browser ? "secondary" : "default"} label={browser ? "Wallet RPC" : "Configured RPC"} />
+            <StateBadge kind={browser ? "wallet" : "onchain"} label={browser ? "Wallet RPC" : "Configured RPC"} />
             <Typography variant="caption" color="text.secondary">
                 {browser ? "Provided by the connected wallet" : "Provided by Intereth for this chain"}
             </Typography>

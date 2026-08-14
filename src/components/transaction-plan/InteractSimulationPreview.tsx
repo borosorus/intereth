@@ -16,15 +16,7 @@ import { useSimulation } from "../../simulation/context";
 import { BalanceChange, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { formatBalanceChangeAmount, formatEventArgument, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
-
-const statusLabels = {
-    idle: "Unavailable",
-    waiting: "Queued",
-    simulating: "Previewing",
-    ready: "Ready",
-    stale: "Stale",
-    error: "Unavailable",
-} as const;
+import { StateBadge, simulationPresentation } from "../StateBadge";
 
 function decimalQuantity(value: string) {
     try {
@@ -124,6 +116,7 @@ export default function InteractSimulationPreview() {
     const accountChanges = snapshot?.balanceChanges.filter(
         (change) => change.account.toLowerCase() === snapshot.account.toLowerCase(),
     ) ?? [];
+    const presentation = simulationPresentation(simulation.status);
 
     return (
         <Accordion
@@ -139,11 +132,7 @@ export default function InteractSimulationPreview() {
                             {snapshot ? `Base block ${decimalQuantity(snapshot.baseBlockNumber)}` : "Queued writes only"}
                         </Typography>
                     </Box>
-                    <Chip
-                        size="small"
-                        label={statusLabels[simulation.status]}
-                        color={simulation.status === "ready" ? "success" : simulation.status === "error" ? "error" : "default"}
-                    />
+                    <StateBadge {...presentation} />
                 </Box>
             </AccordionSummary>
             <AccordionDetails id="interact-preview-content" sx={{pt: 0}}>

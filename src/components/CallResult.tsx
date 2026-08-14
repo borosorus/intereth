@@ -1,7 +1,8 @@
-import { Box, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Box, Divider, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { CallResultData, formatAbiValue, valuesForOutputs } from "../callUtils";
 import CopyButton from "./CopyButton";
+import { StateBadge } from "./StateBadge";
 
 function ValueTree({param, value}: {param: ethers.ParamType; value: unknown}) {
     if (param.baseType === "array") {
@@ -83,20 +84,12 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                     <Typography variant="subtitle2" sx={{fontWeight: 800}}>
                         {result.kind === "transaction" ? "Transaction result" : result.kind === "raw" ? "Raw call result" : "Call result"}
                     </Typography>
-                    {result.kind === "transaction" && (
-                        <Chip
-                            size="small"
-                            label={({submitted: "Submitted", pending: "Pending", confirmed: "Confirmed", failed: "Failed"} as const)[result.status]}
-                            color={result.status === "failed" ? "error" : result.status === "confirmed" ? "success" : "default"}
-                        />
-                    )}
+                    {result.kind === "transaction" && <StateBadge
+                        kind={result.status === "failed" ? "error" : result.status === "confirmed" ? "success" : result.status === "submitted" ? "wallet" : "warning"}
+                        label={({submitted: "Submitted to wallet", pending: "Awaiting confirmation", confirmed: "Confirmed", failed: "Failed"} as const)[result.status]}
+                    />}
                     {result.kind !== "transaction" && (
-                        <Chip
-                            size="small"
-                            label={result.source.kind === "simulated" ? "Simulated" : "On-chain"}
-                            color={result.source.kind === "simulated" ? "secondary" : "default"}
-                            variant={result.source.kind === "simulated" ? "filled" : "outlined"}
-                        />
+                        <StateBadge kind={result.source.kind === "simulated" ? "speculative" : "onchain"} label={result.source.kind === "simulated" ? "Speculative" : "On-chain"} />
                     )}
                 </Box>
                 {result.kind !== "transaction" && result.source.kind === "simulated" && (

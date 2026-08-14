@@ -1,5 +1,5 @@
 import { DeleteOutline, Refresh } from "@mui/icons-material";
-import { Alert, Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
 import { WatchResultValue } from "../../simulation/types";
@@ -7,6 +7,7 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
 import { useWorkspaceMode } from "../../workspace/context";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
+import { StateBadge, watchPresentation } from "../StateBadge";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -42,6 +43,7 @@ function WatchCard({watch}: {watch: WatchExpression}) {
     const evaluation = simulation.watchEvaluations[watch.id];
     const label = watch.display.functionSignature ?? "Raw read";
     const status = evaluation?.status ?? (simulation.status === "ready" ? "loading" : "stale");
+    const presentation = watchPresentation(status);
     const hasQueuedCalls = simulation.queuedCallCount > 0;
 
     return (
@@ -53,11 +55,7 @@ function WatchCard({watch}: {watch: WatchExpression}) {
                         <Typography variant="caption" color="text.secondary">{shortAddress(watch.to)}</Typography>
                     </Box>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Chip
-                            size="small"
-                            label={status === "ready" ? "Ready" : status === "loading" ? "Evaluating" : status === "blocked" ? "Blocked" : status === "error" ? "Error" : "Stale"}
-                            color={status === "ready" ? "success" : status === "error" ? "error" : status === "blocked" ? "warning" : "default"}
-                        />
+                        <StateBadge {...presentation} />
                         <IconButton
                             size="small"
                             aria-label={`Remove watch ${label}`}

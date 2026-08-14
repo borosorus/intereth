@@ -1,19 +1,12 @@
-import { Alert, Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
 import SimulationEndpointStatus from "../simulation/SimulationEndpointStatus";
-
-const statusLabels = {
-    idle: "Idle",
-    waiting: "Queued",
-    simulating: "Simulating",
-    ready: "Ready",
-    stale: "Stale",
-    error: "Unavailable",
-} as const;
+import { StateBadge, simulationPresentation } from "../StateBadge";
 
 export default function SimulationControls() {
     const simulation = useSimulation();
+    const presentation = simulationPresentation(simulation.status);
 
     return (
         <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
@@ -25,11 +18,7 @@ export default function SimulationControls() {
                             Automatically refreshed after queue changes.
                         </Typography>
                     </Box>
-                    <Chip
-                        size="small"
-                        label={statusLabels[simulation.status]}
-                        color={simulation.status === "ready" ? "success" : simulation.status === "error" ? "error" : "default"}
-                    />
+                    <StateBadge {...presentation} />
                 </Box>
                 {simulation.snapshot && (
                     <Typography variant="caption" color="text.secondary">

@@ -2,7 +2,6 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
     CircularProgress,
     DialogActions,
     DialogContent,
@@ -27,6 +26,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import CopyButton from "../CopyButton";
 import ErrorDialog from "../ErrorDialog";
 import ResponsiveDialog from "../ResponsiveDialog";
+import { executionPresentation, StateBadge } from "../StateBadge";
 
 type CapabilityState = AtomicCapabilityProbe | {status: "unchecked" | "checking"};
 
@@ -173,24 +173,6 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
     };
 }
 
-const STATUS_LABELS: Record<BatchExecutionState["status"], string> = {
-    idle: "Draft",
-    submitting: "Awaiting wallet",
-    pending: "Pending",
-    confirmed: "Confirmed",
-    offchain_failed: "Not submitted",
-    reverted: "Reverted",
-    partially_reverted: "Partially reverted",
-    invalid: "Invalid response",
-};
-
-function statusColor(status: BatchExecutionState["status"]): "default" | "success" | "error" | "warning" {
-    if (status === "confirmed") return "success";
-    if (status === "pending" || status === "submitting") return "warning";
-    if (status !== "idle") return "error";
-    return "default";
-}
-
 function CapabilityControls({controller}: {controller: AtomicBatchController}) {
     const capability = controller.capability;
     if (capability.status === "unchecked" || capability.status === "checking") {
@@ -277,6 +259,7 @@ function ReceiptList({execution}: {execution: BatchExecutionState}) {
 
 function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
     const execution = controller.execution;
+    const presentation = executionPresentation(execution.status);
     const [confirmRetry, setConfirmRetry] = useState(false);
     const canRetry = execution.status === "offchain_failed" || execution.status === "reverted";
     const message = execution.status === "pending"
@@ -300,7 +283,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
                 <Stack spacing={0.75}>
                     <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center"}}>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Batch status</Typography>
-                        <Chip size="small" label={STATUS_LABELS[execution.status]} color={statusColor(execution.status)} />
+                        <StateBadge {...presentation} />
                     </Box>
                     {execution.batchId && (
                         <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start"}}>
