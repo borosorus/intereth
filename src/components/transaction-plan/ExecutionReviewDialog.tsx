@@ -86,7 +86,11 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
     const accountChanges = fresh && snapshot
         ? snapshot.balanceChanges.filter((change) => change.account.toLowerCase() === snapshot.account.toLowerCase())
         : [];
-    const simulationState = simulationPresentation(simulation.status);
+    const simulationState = fresh
+        ? simulationPresentation("ready")
+        : simulation.status === "ready"
+            ? {label: "Preview stale", kind: "warning" as const}
+            : simulationPresentation(simulation.status);
 
     return (
         <ResponsiveDialog open={open} onClose={onClose} maxWidth="sm" aria-labelledby="execution-review-title">
