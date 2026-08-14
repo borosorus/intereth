@@ -4,7 +4,6 @@ import { useWorkspaceMode } from "../workspace/context";
 export type ReadLoadingMode = "simulated" | "onchain" | null;
 
 interface ReadActionsProps {
-    simulationEnabled: boolean;
     simulationAvailable: boolean;
     onChainAvailable: boolean;
     loading: ReadLoadingMode;
@@ -45,7 +44,7 @@ export default function ReadActions({
             <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
                 <Button
                     variant="contained"
-                    color="info"
+                    color="secondary"
                     fullWidth
                     disabled={!onChainAvailable || loading !== null}
                     onClick={onOnChain}

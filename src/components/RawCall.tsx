@@ -190,7 +190,6 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             </Stack>
             {staticCall ? (
                 <ReadActions
-                    simulationEnabled={simulatedRead.enabled}
                     simulationAvailable={simulationAvailable}
                     onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
                     loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}

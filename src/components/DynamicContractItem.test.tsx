@@ -173,7 +173,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
             canEdit: true,
         });
 
-        const {rerender} = render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        const {rerender} = render(<DynamicContractItem contract={contract} walletChainId="1" />);
         fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         const calldata = screen.getByLabelText("Hex calldata");
@@ -185,7 +185,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         expect(connect).toHaveBeenCalledWith(currentRunner);
 
         mockedWalletSession.mockReturnValue({...walletSession, status: "disconnected", signer: null, account: null, chainId: null});
-        rerender(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        rerender(<DynamicContractItem contract={contract} walletChainId="1" />);
 
         expect(screen.getByLabelText("Hex calldata")).toHaveValue("0x1234");
         expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
@@ -228,7 +228,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
             connect: jest.fn().mockReturnValue(activeContract),
         } as unknown as ethers.BaseContract;
 
-        render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        render(<DynamicContractItem contract={contract} walletChainId="1" />);
         fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         expect(screen.getByText(/simulation belongs to chain 10; this contract is on chain 1/)).toBeInTheDocument();
@@ -256,7 +256,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         };
         const contract = {...activeContract, connect: jest.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
 
-        render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
+        render(<DynamicContractItem contract={contract} walletChainId="1" />);
         fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
 

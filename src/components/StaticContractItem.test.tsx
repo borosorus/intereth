@@ -137,11 +137,9 @@ describe("StaticFunctionItem simulated reads", () => {
         render(
             <StaticContractItem
                 contract={contract}
-                del={jest.fn()}
                 providerDetails={{label: "Test RPC", url: "https://rpc.test", chainId: "1"}}
             />,
         );
-        fireEvent.click(screen.getByText("Read-only contract"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();

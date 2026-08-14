@@ -1,5 +1,5 @@
 import ContractManager from './components/ContractManager';
-import { Alert, Box, Container, DialogContent, DialogTitle, Paper, Snackbar, Stack } from '@mui/material';
+import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack } from '@mui/material';
 import { ethers } from 'ethers';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
@@ -124,13 +124,12 @@ export default function App(){
                 />
                 <Box sx={{minWidth: 0}}>
                   {selectedContract.isStatic ?
-                      <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails} del={() => deleteContract(selectedContract.id)}/> :
+                      <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails}/> :
                       <DynamicContractItem
                         key={`${selectedContract.id}:${interactionAccount ?? "disconnected"}`}
                         contractId={selectedContract.id}
                         contract={selectedContract.contract}
                         walletChainId={selectedContract.walletChainId}
-                        del={() => deleteContract(selectedContract.id)}
                       />}
                 </Box>
               </Box>
@@ -143,6 +142,7 @@ export default function App(){
           <DialogContent dividers sx={{pt: 2}}>
             <ContractManager key={managerGeneration} addContract={addFromDialog} showExamples={false} />
           </DialogContent>
+          <DialogActions><Button onClick={() => setAddContractOpen(false)}>Cancel</Button></DialogActions>
         </ResponsiveDialog>
         <Snackbar
           open={Boolean(workspaceNotice)}

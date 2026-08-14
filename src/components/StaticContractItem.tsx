@@ -124,7 +124,6 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 />
                             ))}
                             <ReadActions
-                                simulationEnabled={simulatedRead.enabled}
                                 simulationAvailable={simulationAvailable}
                                 onChainAvailable={typeof contract.runner?.call === "function"}
                                 loading={simulatedRead.loading ? "simulated" : loading}
@@ -147,7 +146,6 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
 interface StaticContractItemProps {
     contractId?: string;
     contract: ethers.BaseContract; 
-    del: () => void;
     providerDetails?: ProviderDetails;
 }
 

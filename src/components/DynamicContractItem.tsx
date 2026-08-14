@@ -223,7 +223,6 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                             </Stack>
                         ) : (
                             <ReadActions
-                                simulationEnabled={simulatedRead.enabled}
                                 simulationAvailable={simulationAvailable}
                                 onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
                                 loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
@@ -252,7 +251,6 @@ interface DynamicContractItemProps {
     contractId?: string;
     contract: ethers.BaseContract; 
     walletChainId: string;
-    del: () => void;
 }
 
 export default function DynamicContractItem({contractId = "wallet-contract", contract, walletChainId: contractChainId}: DynamicContractItemProps){

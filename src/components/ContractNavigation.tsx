@@ -36,7 +36,7 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
     return (
         <>
             <Box sx={{display: {xs: "flex", md: "none"}, gap: 0.5, alignItems: "center"}}>
-                <Select fullWidth size="small" value={selectedId} onChange={(event) => onSelect(event.target.value)} aria-label="Selected contract">
+                <Select fullWidth size="small" value={selected.id} onChange={(event) => onSelect(event.target.value)} aria-label="Selected contract">
                     {contracts.map((contract) => (
                         <MenuItem key={contract.id} value={contract.id}>{contract.label} · {shortAddress(contract.address)}</MenuItem>
                     ))}

@@ -14,7 +14,6 @@ describe("ReadActions workspace modes", () => {
 
         render(
             <ReadActions
-                simulationEnabled
                 simulationAvailable
                 onChainAvailable
                 loading={null}
@@ -37,7 +36,6 @@ describe("ReadActions workspace modes", () => {
 
         render(
             <ReadActions
-                simulationEnabled
                 simulationAvailable
                 onChainAvailable
                 loading={null}
