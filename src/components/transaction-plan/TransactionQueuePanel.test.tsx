@@ -8,6 +8,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import { useSimulation } from "../../simulation/context";
 import TransactionQueuePanel from "./TransactionQueuePanel";
 import { useWorkspaceMode } from "../../workspace/context";
+import { TRANSFER_TOPIC } from "../../simulation/balanceChanges";
 
 jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
 jest.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
@@ -182,6 +183,40 @@ describe("TransactionQueuePanel", () => {
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
         expect(screen.getByText("Automatically refreshed after queue changes.")).toBeInTheDocument();
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    });
+
+    it("shows current per-call status and prioritized balance effects", () => {
+        const state = queuedState();
+        const token = "0x0000000000000000000000000000000000000020";
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            active: true,
+            status: "ready",
+            chainId: "1",
+            configured: true,
+            revision: "current",
+            tokenMetadataByAddress: {"1:0x0000000000000000000000000000000000000020": {
+                chainId: "1", address: token, symbol: "TKN", decimals: 0, fetchedAtBlock: "0x64",
+            }},
+            snapshot: {
+                revision: "current", chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {}, balanceChanges: [],
+                calls: [{
+                    callId: "abi-call", status: "0x1", returnData: "0x", gasUsed: "0x5208", raw: {}, decodedRevert: undefined,
+                    logs: [{address: token, topics: [TRANSFER_TOPIC, ethers.zeroPadValue(ACCOUNT, 32), ethers.zeroPadValue(TARGET, 32)], data: ethers.zeroPadValue(ethers.toBeHex(5), 32), raw: {}}],
+                    decodedEvents: [{address: token, name: "Transfer", signature: "Transfer(address,address,uint256)", kind: "erc20-transfer", raw: {address: token, topics: [], data: "0x", raw: {}}, arguments: []}],
+                }],
+            },
+        });
+        mockWallet();
+        mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+
+        expect(screen.getByText("21,000 gas")).toBeInTheDocument();
+        expect(screen.getByText("1 decoded event")).toBeInTheDocument();
+        expect(screen.getByText("Plan sender · TKN")).toBeInTheDocument();
+        expect(screen.getByText("-5 TKN")).toBeInTheDocument();
     });
 
     it("keeps execution controls out of Simulate mode", () => {

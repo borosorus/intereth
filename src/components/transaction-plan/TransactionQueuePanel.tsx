@@ -46,6 +46,10 @@ import InteractSimulationPreview from "./InteractSimulationPreview";
 import SimulationInspector from "../simulation/SimulationInspector";
 import CopyButton from "../CopyButton";
 import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../calls/displayValues";
+import { useSimulation } from "../../simulation/context";
+import { CallImpact, prioritizeBalanceChanges, selectCallImpact } from "../../simulation/callImpact";
+import { TokenMetadata } from "../../simulation/types";
+import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -121,6 +125,64 @@ function CallSummary({call, index}: {call: QueuedCall; index: number}) {
                 </AccordionDetails>
             </Accordion>
         </Stack>
+    );
+}
+
+function decimalQuantity(value: string) {
+    try {
+        return ethers.getBigInt(value).toLocaleString("en-US");
+    } catch {
+        return value;
+    }
+}
+
+function CallImpactSummary({impact, call, metadataByAddress}: {
+    impact: CallImpact;
+    call: QueuedCall;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
+    const [showAll, setShowAll] = useState(false);
+    if (impact.state !== "ready") {
+        const label = impact.state === "refreshing" ? "Refreshing preview" : impact.state === "stale" ? "Preview stale" : "Preview unavailable";
+        return <Chip size="small" variant="outlined" label={label} color={impact.state === "stale" ? "warning" : "default"} sx={{alignSelf: "flex-start"}} />;
+    }
+
+    const ordered = prioritizeBalanceChanges(impact.balanceChanges, call.from, call.to);
+    const visible = showAll ? ordered : ordered.slice(0, 2);
+    return (
+        <Box sx={{p: 1.25, borderRadius: 1.5, bgcolor: "action.hover"}}>
+            <Stack spacing={0.75}>
+                <Box sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.75}}>
+                    <Chip size="small" label={impact.call.status === "0x1" ? "Success" : "Reverted"} color={impact.call.status === "0x1" ? "success" : "error"} />
+                    <Typography variant="caption" color="text.secondary">{decimalQuantity(impact.call.gasUsed)} gas</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {impact.call.decodedEvents.length} decoded {impact.call.decodedEvents.length === 1 ? "event" : "events"}
+                    </Typography>
+                </Box>
+                {impact.call.decodedRevert && (
+                    <Typography variant="caption" color="error.main" sx={{overflowWrap: "anywhere"}}>
+                        {impact.call.decodedRevert.name}: {impact.call.decodedRevert.message}
+                    </Typography>
+                )}
+                {visible.map((change) => {
+                    const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, call.chainId, change.tokenAddress) : undefined;
+                    return (
+                        <Box key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`} sx={{display: "flex", justifyContent: "space-between", gap: 1}}>
+                            <Typography variant="caption" color="text.secondary">
+                                {change.account.toLowerCase() === call.from.toLowerCase() ? "Plan sender" : change.account.toLowerCase() === call.to.toLowerCase() ? "Call target" : shortAddress(change.account)}
+                                {" · "}{change.asset === "native" ? "Native asset" : tokenLabel(change.tokenAddress ?? "", metadata)}
+                            </Typography>
+                            <Typography variant="caption" sx={{fontFamily: "monospace", fontWeight: 700}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
+                        </Box>
+                    );
+                })}
+                {ordered.length > 2 && (
+                    <Button size="small" sx={{alignSelf: "flex-start", p: 0, minWidth: 0, textTransform: "none"}} onClick={() => setShowAll((current) => !current)}>
+                        {showAll ? "Show fewer effects" : `Show ${ordered.length - 2} more ${ordered.length - 2 === 1 ? "effect" : "effects"}`}
+                    </Button>
+                )}
+            </Stack>
+        </Box>
     );
 }
 
@@ -323,7 +385,13 @@ function SessionNotice() {
     );
 }
 
-function QueuedCallItem({call, index, total}: {call: QueuedCall; index: number; total: number}) {
+function QueuedCallItem({call, index, total, impact, metadataByAddress}: {
+    call: QueuedCall;
+    index: number;
+    total: number;
+    impact: CallImpact;
+    metadataByAddress: Record<string, TokenMetadata>;
+}) {
     const {dispatch, canEdit} = useTransactionPlan();
     const [editing, setEditing] = useState(false);
 
@@ -341,6 +409,7 @@ function QueuedCallItem({call, index, total}: {call: QueuedCall; index: number; 
             ) : (
                 <Stack spacing={1.5}>
                     <CallSummary call={call} index={index} />
+                    <CallImpactSummary impact={impact} call={call} metadataByAddress={metadataByAddress} />
                     <Divider />
                     <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
                         <IconButton
@@ -392,6 +461,7 @@ export default function TransactionQueuePanel() {
     const [confirmClear, setConfirmClear] = useState(false);
     const {reviewRequest} = useTransactionPlanUi();
     const workspace = useWorkspaceMode();
+    const simulation = useSimulation();
     const batchController = useAtomicBatchExecution(open && workspace.mode === "interact");
     const calls = state.plan.calls;
     const context = state.plan.context;
@@ -462,7 +532,14 @@ export default function TransactionQueuePanel() {
                         <Stack spacing={2}>
                             <SessionNotice />
                             {calls.map((call, index) => (
-                                <QueuedCallItem key={call.id} call={call} index={index} total={calls.length} />
+                                <QueuedCallItem
+                                    key={call.id}
+                                    call={call}
+                                    index={index}
+                                    total={calls.length}
+                                    impact={selectCallImpact({callId: call.id, revision: simulation.revision, status: simulation.status, snapshot: simulation.snapshot})}
+                                    metadataByAddress={simulation.tokenMetadataByAddress}
+                                />
                             ))}
                             {workspace.mode === "simulate" && (
                                 <>
