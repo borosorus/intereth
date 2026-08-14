@@ -29,6 +29,7 @@ function snapshot(): PlanSimulationSnapshot {
     const rawLog = {address: TOKEN, data: "0x", topics: [], raw: {}};
     return {
         revision: "queue",
+        capturedAt: 1,
         chainId: "1",
         account: ACCOUNT,
         baseBlockNumber: "0x64",

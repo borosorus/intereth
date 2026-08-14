@@ -27,6 +27,7 @@ import CopyButton from "../CopyButton";
 import ErrorDialog from "../ErrorDialog";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { executionPresentation, StateBadge } from "../StateBadge";
+import ExecutionReviewDialog, { ExecutionMechanism } from "./ExecutionReviewDialog";
 
 type CapabilityState = AtomicCapabilityProbe | {status: "unchecked" | "checking"};
 
@@ -173,7 +174,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
     };
 }
 
-function CapabilityControls({controller}: {controller: AtomicBatchController}) {
+function CapabilityControls({controller, onReview}: {controller: AtomicBatchController; onReview: (mechanism: ExecutionMechanism) => void}) {
     const capability = controller.capability;
     if (capability.status === "unchecked" || capability.status === "checking") {
         return (
@@ -192,7 +193,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
         return (
             <Stack spacing={1}>
                 <Alert severity="success">This wallet supports atomic transaction batches on the plan network.</Alert>
-                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
+                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => onReview("atomic-batch")}>
                     Send atomic batch
                 </Button>
             </Stack>
@@ -205,7 +206,7 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
                 <Alert severity="warning">
                     The wallet can enable atomic execution, potentially by installing a persistent EIP-7702 delegation on this account. Review the wallet request carefully.
                 </Alert>
-                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => void controller.submit()}>
+                <Button disabled={!controller.walletReady} variant="contained" color="secondary" fullWidth startIcon={<SendIcon />} onClick={() => onReview("smart-account")}>
                     Enable smart account and send
                 </Button>
             </Stack>
@@ -338,6 +339,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
 }
 
 export default function AtomicBatchExecution({controller}: {controller: AtomicBatchController}) {
+    const [reviewMechanism, setReviewMechanism] = useState<ExecutionMechanism | null>(null);
     return (
         <Stack spacing={1.5}>
             <Divider />
@@ -348,7 +350,7 @@ export default function AtomicBatchExecution({controller}: {controller: AtomicBa
             {controller.execution.status === "idle" && controller.execution.error && (
                 <Alert severity="warning">{controller.execution.error.message}</Alert>
             )}
-            {controller.execution.status === "idle" && <CapabilityControls controller={controller} />}
+            {controller.execution.status === "idle" && <CapabilityControls controller={controller} onReview={setReviewMechanism} />}
             {controller.execution.status === "submitting" && (
                 <Button variant="contained" color="secondary" fullWidth disabled startIcon={<CircularProgress size={18} color="inherit" />}>
                     Awaiting wallet
@@ -358,6 +360,17 @@ export default function AtomicBatchExecution({controller}: {controller: AtomicBa
                 <SubmittedBatch controller={controller} />
             )}
             <ErrorDialog error={controller.error} onClose={controller.clearError} />
+            {reviewMechanism && (
+                <ExecutionReviewDialog
+                    open
+                    mechanism={reviewMechanism}
+                    onClose={() => setReviewMechanism(null)}
+                    onConfirm={() => {
+                        setReviewMechanism(null);
+                        void controller.submit();
+                    }}
+                />
+            )}
         </Stack>
     );
 }

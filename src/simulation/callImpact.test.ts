@@ -5,7 +5,7 @@ const call = {
     callId: "call-1", status: "0x1" as const, returnData: "0x", gasUsed: "0x5208", logs: [], decodedEvents: [], raw: {},
 };
 const snapshot: PlanSimulationSnapshot = {
-    revision: "current", chainId: "1", account: "0x0000000000000000000000000000000000000001",
+    revision: "current", capturedAt: 1, chainId: "1", account: "0x0000000000000000000000000000000000000001",
     baseBlockNumber: "0x64", calls: [call], balanceChanges: [], raw: {},
 };
 

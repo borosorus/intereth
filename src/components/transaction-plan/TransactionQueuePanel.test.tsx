@@ -74,6 +74,24 @@ function stateWithExecution(execution: ReturnType<typeof queuedState>["execution
     return {...queuedState(), execution};
 }
 
+function mockFreshSimulation(statuses: Array<"0x0" | "0x1"> = ["0x1", "0x1"]) {
+    mockedSimulation.mockReturnValue({
+        ...mockedSimulation(),
+        active: true,
+        status: "ready",
+        chainId: "1",
+        configured: true,
+        revision: "current-review",
+        snapshot: {
+            revision: "current-review", capturedAt: Date.now(), chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {}, balanceChanges: [],
+            calls: ["abi-call", "raw-call"].map((callId, index) => ({
+                callId, status: statuses[index], returnData: statuses[index] === "0x1" ? "0x" : "0xdead", gasUsed: "0x5208", logs: [], decodedEvents: [], raw: {},
+                decodedRevert: statuses[index] === "0x0" ? {name: "Denied", message: "Denied()", arguments: [], data: "0xdead", kind: "custom" as const} : undefined,
+            })),
+        },
+    });
+}
+
 describe("TransactionQueuePanel", () => {
     beforeEach(() => {
         mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
@@ -199,7 +217,7 @@ describe("TransactionQueuePanel", () => {
                 chainId: "1", address: token, symbol: "TKN", decimals: 0, fetchedAtBlock: "0x64",
             }},
             snapshot: {
-                revision: "current", chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {}, balanceChanges: [],
+                revision: "current", capturedAt: 1, chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {}, balanceChanges: [],
                 calls: [{
                     callId: "abi-call", status: "0x1", returnData: "0x", gasUsed: "0x5208", raw: {}, decodedRevert: undefined,
                     logs: [{address: token, topics: [TRANSFER_TOPIC, ethers.zeroPadValue(ACCOUNT, 32), ethers.zeroPadValue(TARGET, 32)], data: ethers.zeroPadValue(ethers.toBeHex(5), 32), raw: {}}],
@@ -314,6 +332,7 @@ describe("TransactionQueuePanel", () => {
             throw new Error(`Unexpected method ${method}`);
         });
         mockRpcWallet(send);
+        mockFreshSimulation();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
             dispatch,
@@ -327,6 +346,10 @@ describe("TransactionQueuePanel", () => {
         expect(await screen.findByText(/supports atomic transaction batches/)).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", {name: "Send atomic batch"}));
+        const review = screen.getByRole("dialog", {name: "Review wallet submission"});
+        expect(within(review).getByText(/Base block 100/)).toBeInTheDocument();
+        expect(within(review).queryByRole("checkbox", {name: /does not have a fresh successful simulation/})).not.toBeInTheDocument();
+        fireEvent.click(within(review).getByRole("button", {name: "Submit atomic batch"}));
         await waitFor(() => expect(send).toHaveBeenCalledWith("wallet_sendCalls", [expect.objectContaining({
             version: "2.0.0",
             chainId: "0x1",
@@ -350,7 +373,42 @@ describe("TransactionQueuePanel", () => {
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
         expect(await screen.findByText(/persistent EIP-7702 delegation/)).toBeInTheDocument();
-        expect(screen.getByRole("button", {name: "Enable smart account and send"})).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Enable smart account and send"}));
+        const review = screen.getByRole("dialog", {name: "Review wallet submission"});
+        expect(within(review).getByRole("checkbox", {name: /persistent smart-account delegation/})).toBeInTheDocument();
+        expect(within(review).getByRole("button", {name: "Enable and submit"})).toBeDisabled();
+    });
+
+    it("requires explicit risk acceptance without a fresh simulation", async () => {
+        const send = jest.fn(async (method: string) => method === "wallet_getCapabilities"
+            ? {"0x1": {atomic: {status: "supported"}}}
+            : {id: "0x1234"});
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
+        const review = screen.getByRole("dialog", {name: "Review wallet submission"});
+        const submit = within(review).getByRole("button", {name: "Submit atomic batch"});
+        expect(submit).toBeDisabled();
+        fireEvent.click(within(review).getByRole("checkbox", {name: /does not have a fresh successful simulation/}));
+        expect(submit).toBeEnabled();
+    });
+
+    it("blocks submission when the current simulation contains a revert", async () => {
+        const send = jest.fn().mockResolvedValue({"0x1": {atomic: {status: "supported"}}});
+        mockRpcWallet(send);
+        mockFreshSimulation(["0x1", "0x0"]);
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
+        const review = screen.getByRole("dialog", {name: "Review wallet submission"});
+        expect(within(review).getByText(/contains 1 reverting call/)).toBeInTheDocument();
+        expect(within(review).getByRole("button", {name: "Submit atomic batch"})).toBeDisabled();
+        expect(send).not.toHaveBeenCalledWith("wallet_sendCalls", expect.anything());
     });
 
     it("keeps manual sending as the fallback when wallet batching is unavailable", async () => {

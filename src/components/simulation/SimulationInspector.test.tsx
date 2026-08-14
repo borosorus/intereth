@@ -29,7 +29,7 @@ function planState() {
 function snapshot(): PlanSimulationSnapshot {
     const rawLog = {address: token, data: "0x", topics: [], raw: {log: "raw"}};
     return {
-        revision: "queue", chainId: "1", account, baseBlockNumber: "0x64", raw: {block: "raw"},
+        revision: "queue", capturedAt: 1, chainId: "1", account, baseBlockNumber: "0x64", raw: {block: "raw"},
         calls: [
             {
                 callId: "call-1", status: "0x1", gasUsed: "0x5208", returnData: "0x01", raw: {call: 1}, logs: [rawLog],

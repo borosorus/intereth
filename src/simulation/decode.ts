@@ -153,6 +153,7 @@ export function createPlanSimulationSnapshot(
     }));
     return {
         revision,
+        capturedAt: Date.now(),
         chainId: context.chainId,
         account: context.account,
         baseBlockNumber,

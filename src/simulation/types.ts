@@ -105,6 +105,7 @@ export interface PlanSimulatedCall extends SimulatedCallResult {
 
 export interface PlanSimulationSnapshot {
     revision: string;
+    capturedAt: number;
     chainId: string;
     account: string;
     baseBlockNumber: string;
