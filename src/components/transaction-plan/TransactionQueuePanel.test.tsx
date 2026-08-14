@@ -331,7 +331,7 @@ describe("TransactionQueuePanel", () => {
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
         expect(await screen.findByText(/Atomic batching is unavailable/)).toBeInTheDocument();
-        expect(screen.getByText(/Use Send immediately from individual function or raw-call forms/)).toBeInTheDocument();
+        expect(screen.getByText(/Use Send now from individual function or raw-call forms/)).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: /send atomic batch/i})).not.toBeInTheDocument();
     });
 

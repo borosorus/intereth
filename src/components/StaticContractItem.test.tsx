@@ -63,8 +63,8 @@ describe("StaticFunctionItem simulated reads", () => {
         } as unknown as ethers.BaseContract;
 
         const view = render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
-        fireEvent.click(screen.getByRole("button", {name: /active function active/}));
-        fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
+        fireEvent.click(screen.getByRole("button", {name: /active\(\) View/}));
+        fireEvent.click(screen.getByRole("button", {name: "Run speculative"}));
 
         await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {
             to: "0x0000000000000000000000000000000000000010",
@@ -77,7 +77,7 @@ describe("StaticFunctionItem simulated reads", () => {
         mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
         view.rerender(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         expect(screen.queryByText("Simulated")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", {name: "Run call"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
     });
 
     it("keeps an explicit ordinary on-chain action", async () => {
@@ -107,7 +107,7 @@ describe("StaticFunctionItem simulated reads", () => {
         } as unknown as ethers.BaseContract;
 
         render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
-        fireEvent.click(screen.getByRole("button", {name: /active function active/}));
+        fireEvent.click(screen.getByRole("button", {name: /active\(\) View/}));
         fireEvent.click(screen.getByRole("button", {name: "Run on-chain"}));
 
         await waitFor(() => expect(onChainRead).toHaveBeenCalledWith());
@@ -145,13 +145,13 @@ describe("StaticFunctionItem simulated reads", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();
-        expect(screen.getByRole("button", {name: /balance function balance/})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: /balance\(\) View/})).toBeInTheDocument();
         const writeGroup = screen.getByRole("button", {name: /Write functions · wallet required/});
         expect(writeGroup).toHaveAttribute("aria-expanded", "false");
-        expect(screen.queryByRole("button", {name: /update function update/})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: /update\(\) Write/})).not.toBeInTheDocument();
 
         fireEvent.click(writeGroup);
-        expect(screen.getByRole("button", {name: /update function update/})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: /update\(\) Write/})).toBeInTheDocument();
         expect(screen.getByText(/Connect a browser wallet to make state-modifying calls/)).toBeInTheDocument();
     });
 });

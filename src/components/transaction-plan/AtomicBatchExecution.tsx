@@ -216,9 +216,9 @@ function CapabilityControls({controller}: {controller: AtomicBatchController}) {
         <Stack spacing={1}>
             <Alert severity={capability.status === "error" ? "error" : "info"}>
                 {capability.status === "unsupported"
-                    ? "This wallet does not support atomic batching on the plan network. Use Send immediately from individual function or raw-call forms."
+                    ? "This wallet does not support atomic batching on the plan network. Use Send now from individual function or raw-call forms."
                     : capability.status === "unavailable"
-                        ? "Atomic batching is unavailable in this wallet. Use Send immediately from individual function or raw-call forms."
+                        ? "Atomic batching is unavailable in this wallet. Use Send now from individual function or raw-call forms."
                         : ("error" in capability ? capability.error?.message : undefined) ?? "The wallet capability response could not be read."}
             </Alert>
             <Button disabled={!controller.walletReady} variant="outlined" fullWidth startIcon={<RefreshIcon />} onClick={() => void controller.checkCapability()}>

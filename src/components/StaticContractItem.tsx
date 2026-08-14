@@ -1,8 +1,7 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, IconButton, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
@@ -95,20 +94,18 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
-                    <Stack spacing={0.25} sx={{minWidth: 0}}>
-                        <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700}}>
-                            {frag.name || frag.format("sighash")}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
-                            {frag.format("full")}
-                        </Typography>
-                    </Stack>
+                    <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700, overflowWrap: "anywhere"}}>
+                        {frag.format("sighash")}
+                    </Typography>
                     <Box sx={{pr: 0.5}}>
                         <FunctionMutabilityBadge fragment={frag} />
                     </Box>
                 </Stack>
             </AccordionSummary>
-            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 1}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 1, pt: 0}}>
+                <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
+                    {frag.format("full")}
+                </Typography>
                 {isDisabled ? (
                     <Typography color="text.secondary">Connect a browser wallet to make state-modifying calls.</Typography>
                 )
@@ -154,11 +151,7 @@ interface StaticContractItemProps {
     providerDetails?: ProviderDetails;
 }
 
-export default function StaticContractItem({contractId = "static-contract", contract, del, providerDetails}: StaticContractItemProps){
-    const accordionId = useId();
-    const summaryId = `${accordionId}-summary`;
-    const contentId = `${accordionId}-content`;
-    const [expanded, setExpanded] = useState(false);
+export default function StaticContractItem({contractId = "static-contract", contract, providerDetails}: StaticContractItemProps){
     const [address, setAddress] = useState('loading...');
     const [detectedChainId, setDetectedChainId] = useState<string>('');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
@@ -186,8 +179,8 @@ export default function StaticContractItem({contractId = "static-contract", cont
     );
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
+        <Paper variant="outlined" sx={{borderRadius: 2.5, overflow: 'hidden'}}>
+            <Box sx={{p: 1.5, borderBottom: 1, borderColor: "divider"}}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
                         <Stack spacing={0.25} sx={{m: 1}}>
@@ -212,26 +205,14 @@ export default function StaticContractItem({contractId = "static-contract", cont
                             )}
                         </Stack>
                     </Grid>
-                    <Grid item xs={10} md={2}>
+                    <Grid item xs={12} md={3}>
                         <Box sx={{m: 1}}>
                             <Chip label={chainId ? `Chain ID ${chainId}` : "Detecting chain"} size="small" variant="outlined" />
                         </Box>
                     </Grid>
-                    <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
-                        <IconButton
-                          size="small"
-                          aria-label="Delete contract instance"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            del();
-                          }}
-                        >
-                            <DeleteIcon fontSize="small"/>
-                        </IconButton>
-                    </Grid>
                 </Grid>
-            </AccordionSummary>
-            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            </Box>
+            <Stack spacing={2} sx={{p: {xs: 1.5, md: 2}}}>
             {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
@@ -249,7 +230,7 @@ export default function StaticContractItem({contractId = "static-contract", cont
                     writeCollapsible
                 />
             <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>
-            </AccordionDetails>
+            </Stack>
             <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
-      </Accordion>);
+      </Paper>);
 }

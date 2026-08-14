@@ -77,7 +77,7 @@ describe("RawCall queueing", () => {
         render(<RawCall contract={contract} isStaticOnly chainId="1" disabled />);
         fireEvent.change(screen.getByRole("textbox"), {target: {value: "0xabcd"}});
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeDisabled();
-        fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
+        fireEvent.click(screen.getByRole("button", {name: "Run speculative"}));
 
         await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {
             to: "0x0000000000000000000000000000000000000010",
@@ -112,7 +112,7 @@ describe("RawCall queueing", () => {
         } as unknown as ethers.BaseContract;
 
         render(<RawCall contract={contract} />);
-        expect(screen.queryByRole("button", {name: "Send immediately"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Send now"})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));

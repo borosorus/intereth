@@ -1,7 +1,6 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, CircularProgress, Grid, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { ethers } from "ethers";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
@@ -24,7 +23,7 @@ import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
-import { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
+import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
 
 interface DynamicFunctionItemProps {
@@ -177,20 +176,17 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
-                    <Stack spacing={0.25} sx={{minWidth: 0}}>
-                        <Typography sx={{fontWeight: 700}}>{frag.name || frag.format("sighash")}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
-                            {frag.format("full")}
-                        </Typography>
-                    </Stack>
+                    <Typography sx={{fontWeight: 700, overflowWrap: "anywhere"}}>{frag.format("sighash")}</Typography>
                     <Box sx={{pr: 0.5}}>
                         <FunctionMutabilityBadge fragment={frag} />
                     </Box>
                 </Stack>
             </AccordionSummary>
-            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
-                <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 1.5, pt: 0}}>
                     <Stack spacing={1.5}>
+                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere"}}>
+                            {frag.format("full")}
+                        </Typography>
                         <FunctionCallEditor
                             fragment={frag}
                             arguments={args}
@@ -202,9 +198,21 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                         />
                         {isStateModifying ? (
                             <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                                {workspace.mode === "interact" && (
+                                    <Button
+                                        variant="contained"
+                                        color="secondary"
+                                        fullWidth
+                                        disabled={disabled || isResponseLoading || isQueueing}
+                                        onClick={() => call()}
+                                        sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                                    >
+                                        {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send now"}
+                                    </Button>
+                                )}
                                 <Button
-                                    variant="contained"
-                                    color="secondary"
+                                    variant={workspace.mode === "simulate" ? "contained" : "outlined"}
+                                    color={workspace.mode === "simulate" ? "info" : "secondary"}
                                     fullWidth
                                     disabled={disabled || isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
                                     onClick={addToQueue}
@@ -212,18 +220,6 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 >
                                     {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
                                 </Button>
-                                {workspace.mode === "interact" && (
-                                    <Button
-                                        variant="outlined"
-                                        color="secondary"
-                                        fullWidth
-                                        disabled={disabled || isResponseLoading || isQueueing}
-                                        onClick={() => call()}
-                                        sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                                    >
-                                        {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
-                                    </Button>
-                                )}
                             </Stack>
                         ) : (
                             <ReadActions
@@ -240,7 +236,6 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                         {queued && <Alert severity="success">Added to transaction queue.</Alert>}
                         {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
                     </Stack>
-                </Paper>
                 <CallResult result={result} />
             </AccordionDetails>
             <ErrorDialog error={error} onClose={() => setError(null)}/>
@@ -260,12 +255,8 @@ interface DynamicContractItemProps {
     del: () => void;
 }
 
-export default function DynamicContractItem({contractId = "wallet-contract", contract, walletChainId: contractChainId, del}: DynamicContractItemProps){
-    const accordionId = useId();
-    const summaryId = `${accordionId}-summary`;
-    const contentId = `${accordionId}-content`;
+export default function DynamicContractItem({contractId = "wallet-contract", contract, walletChainId: contractChainId}: DynamicContractItemProps){
     const {signer, chainId: activeWalletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
-    const [expanded, setExpanded] = useState(false);
     const [address, setAddress] = useState('loading...');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
@@ -290,8 +281,8 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
     }, [contract]);
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
-            <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
+        <Paper variant="outlined" sx={{borderRadius: 2.5, overflow: 'hidden'}}>
+            <Box sx={{p: 1.5, borderBottom: 1, borderColor: "divider"}}>
                 <Grid container spacing={1}>
                     <Grid item xs={12} md={6}>
                         <Box sx={{m: 1, display: "flex", alignItems: "center", gap: 0.5}}>
@@ -302,24 +293,12 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                     <Grid item xs={12} md={3}>
                         <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
                     </Grid>
-                    <Grid item xs={10} md={2}>
+                    <Grid item xs={12} md={3}>
                         <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {contractChainId}</Typography>
                     </Grid>
-                    <Grid item xs={2} md={1} sx={{display: 'flex', justifyContent: 'flex-end'}}>
-                        <IconButton
-                          size="small"
-                          aria-label="Delete contract instance"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            del();
-                          }}
-                        >
-                            <DeleteIcon fontSize="small"/>
-                        </IconButton>
-                    </Grid>
                 </Grid>
-            </AccordionSummary>
-            <AccordionDetails id={contentId} aria-labelledby={summaryId} sx={{display: 'flex', flexDirection: 'column', gap: 2}}>
+            </Box>
+            <Stack spacing={2} sx={{p: {xs: 1.5, md: 2}}}>
             {!walletReady && (
                 <Alert severity="info">
                     Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
@@ -335,15 +314,7 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                         ? "Read canonical state or speculative queued state without modifying the contract."
                         : "Read canonical on-chain state without modifying the contract."}
                     functions={functions}
-                    renderFunction={(fragment) => isReadFunction(fragment) ? (
-                        <DynamicFunctionItem
-                            key={fragment.format("minimal")}
-                            frag={fragment}
-                            contract={activeContract}
-                            disabled={!walletReady}
-                            chainId={contractChainId}
-                        />
-                    ) : (
+                    renderFunction={(fragment) => (
                         <DynamicFunctionItem
                             key={fragment.format("minimal")}
                             frag={fragment}
@@ -355,10 +326,10 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                     writeDescription="These calls can modify state and may require wallet confirmation."
                 />
             <RawCall contract={activeContract} disabled={!walletReady} chainId={contractChainId}/>
-            </AccordionDetails>
+            </Stack>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {
                 setMetadataError(null);
                 clearWalletError();
             }} />
-      </Accordion>);
+      </Paper>);
 }

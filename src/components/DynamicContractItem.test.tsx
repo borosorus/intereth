@@ -71,8 +71,8 @@ describe("DynamicFunctionItem queueing", () => {
         } as unknown as ethers.BaseContract;
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} />);
-        fireEvent.click(screen.getByRole("button", {name: /pause function pause/}));
-        expect(screen.queryByRole("button", {name: "Send immediately"})).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: /pause\(\) Write/}));
+        expect(screen.queryByRole("button", {name: "Send now"})).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
@@ -118,9 +118,9 @@ describe("DynamicFunctionItem queueing", () => {
         } as unknown as ethers.BaseContract;
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} chainId="1" disabled />);
-        fireEvent.click(screen.getByRole("button", {name: /count function count/}));
+        fireEvent.click(screen.getByRole("button", {name: /count\(\) View/}));
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeDisabled();
-        fireEvent.click(screen.getByRole("button", {name: "Run simulated"}));
+        fireEvent.click(screen.getByRole("button", {name: "Run speculative"}));
 
         await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {
             to: "0x0000000000000000000000000000000000000010",
@@ -178,7 +178,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
         const calldata = screen.getByLabelText("Hex calldata");
         fireEvent.change(calldata, {target: {value: "0x1234"}});
-        fireEvent.click(screen.getByRole("button", {name: "Send immediately"}));
+        fireEvent.click(screen.getByRole("button", {name: "Send now"}));
 
         await waitFor(() => expect(sendTransaction).toHaveBeenCalledTimes(1));
         expect(oldSendTransaction).not.toHaveBeenCalled();
@@ -189,7 +189,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
 
         expect(screen.getByLabelText("Hex calldata")).toHaveValue("0x1234");
         expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
-        expect(screen.getByRole("button", {name: "Send immediately"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Send now"})).toBeDisabled();
     });
 
     it("explains when queued-state simulation belongs to another chain", async () => {
@@ -268,7 +268,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         expect(screen.getByText("Write")).toBeInTheDocument();
         expect(screen.getByText("Payable")).toBeInTheDocument();
 
-        const functionSummaries = screen.getAllByRole("button", {name: /function (balance|version|update|deposit)/});
+        const functionSummaries = screen.getAllByRole("button", {name: /(balance|version|update|deposit)\(\) (View|Pure|Write|Payable)/});
         const summaryIds = functionSummaries.map((summary) => summary.id);
         const contentIds = functionSummaries.map((summary) => summary.getAttribute("aria-controls"));
         expect(new Set(summaryIds).size).toBe(functionSummaries.length);

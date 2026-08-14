@@ -15,7 +15,6 @@ interface ReadActionsProps {
 }
 
 export default function ReadActions({
-    simulationEnabled,
     simulationAvailable,
     onChainAvailable,
     loading,
@@ -36,7 +35,7 @@ export default function ReadActions({
                 onClick={onOnChain}
                 sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
             >
-                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run call"}
+                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
             </Button>
         );
     }
@@ -46,16 +45,16 @@ export default function ReadActions({
             <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
                 <Button
                     variant="contained"
-                    color="secondary"
+                    color="info"
                     fullWidth
                     disabled={!onChainAvailable || loading !== null}
                     onClick={onOnChain}
                     sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
                 >
-                    {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : simulationEnabled ? "Run on-chain" : "Run call"}
+                    {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
                 </Button>
                 {onPinWatch && (
-                    <Button variant="outlined" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
+                    <Button variant="text" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
                         Pin watch
                     </Button>
                 )}
@@ -67,13 +66,13 @@ export default function ReadActions({
         <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
             <Button
                 variant="contained"
-                color="secondary"
+                color="info"
                 fullWidth
                 disabled={loading !== null}
                 onClick={onSimulated}
                 sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
             >
-                {loading === "simulated" ? <CircularProgress size={20} color="inherit" /> : "Run simulated"}
+                {loading === "simulated" ? <CircularProgress size={20} color="inherit" /> : "Run speculative"}
             </Button>
             <Button
                 variant="outlined"
@@ -86,7 +85,7 @@ export default function ReadActions({
                 {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
             </Button>
             {onPinWatch && (
-                <Button variant="outlined" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
+                <Button variant="text" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={{textTransform: "none", fontWeight: 700}}>
                     Pin watch
                 </Button>
             )}

@@ -201,9 +201,21 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                 />
             ) : (
                 <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                    {workspace.mode === "interact" && (
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            fullWidth
+                            disabled={disabled || isResponseLoading || isQueueing}
+                            onClick={() => call()}
+                            sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
+                        >
+                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send now"}
+                        </Button>
+                    )}
                     <Button
-                        variant="contained"
-                        color="secondary"
+                        variant={workspace.mode === "simulate" ? "contained" : "outlined"}
+                        color={workspace.mode === "simulate" ? "info" : "secondary"}
                         fullWidth
                         disabled={disabled || isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
                         onClick={addToQueue}
@@ -211,18 +223,6 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     >
                         {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
                     </Button>
-                    {workspace.mode === "interact" && (
-                        <Button
-                            variant="outlined"
-                            color="secondary"
-                            fullWidth
-                            disabled={disabled || isResponseLoading || isQueueing}
-                            onClick={() => call()}
-                            sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                        >
-                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send immediately"}
-                        </Button>
-                    )}
                 </Stack>
             )}
             {queued && <Alert severity="success">Added to transaction queue.</Alert>}

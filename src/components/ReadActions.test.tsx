@@ -25,9 +25,9 @@ describe("ReadActions workspace modes", () => {
             />,
         );
 
-        expect(screen.queryByRole("button", {name: "Run simulated"})).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Run speculative"})).not.toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Pin watch"})).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Run call"}));
+        fireEvent.click(screen.getByRole("button", {name: "Run on-chain"}));
         expect(onChain).toHaveBeenCalled();
     });
 
@@ -48,7 +48,7 @@ describe("ReadActions workspace modes", () => {
             />,
         );
 
-        expect(screen.getByRole("button", {name: "Run simulated"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Run speculative"})).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Pin watch"}));
         expect(onPinWatch).toHaveBeenCalled();
