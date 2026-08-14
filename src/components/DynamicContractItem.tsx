@@ -24,7 +24,8 @@ import { QueuedCall } from "../transaction-plan/types";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
-import ContractFunctionSection, { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
+import { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
+import ContractFunctionBrowser from "./ContractFunctionBrowser";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -253,12 +254,13 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
 }
 
 interface DynamicContractItemProps {
+    contractId?: string;
     contract: ethers.BaseContract; 
     walletChainId: string;
     del: () => void;
 }
 
-export default function DynamicContractItem({contract, walletChainId: contractChainId, del}: DynamicContractItemProps){
+export default function DynamicContractItem({contractId = "wallet-contract", contract, walletChainId: contractChainId, del}: DynamicContractItemProps){
     const accordionId = useId();
     const summaryId = `${accordionId}-summary`;
     const contentId = `${accordionId}-content`;
@@ -277,8 +279,6 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
         () => contract.interface.fragments.filter((fragment): fragment is ethers.FunctionFragment => fragment.type === "function"),
         [contract.interface],
     );
-    const readFunctions = functions.filter(isReadFunction);
-    const writeFunctions = functions.filter((fragment) => !isReadFunction(fragment));
 
     useEffect(() => {
         contract.getAddress()
@@ -329,14 +329,21 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
             {workspace.mode === "simulate" && simulation.active && simulation.chainId !== contractChainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
-            <Stack spacing={2}>
-                <ContractFunctionSection
-                    title="Read functions"
-                    description={workspace.mode === "simulate"
+            <ContractFunctionBrowser
+                    contractId={contractId}
+                    readDescription={workspace.mode === "simulate"
                         ? "Read canonical state or speculative queued state without modifying the contract."
                         : "Read canonical on-chain state without modifying the contract."}
-                    functions={readFunctions}
-                    renderFunction={(fragment) => (
+                    functions={functions}
+                    renderFunction={(fragment) => isReadFunction(fragment) ? (
+                        <DynamicFunctionItem
+                            key={fragment.format("minimal")}
+                            frag={fragment}
+                            contract={activeContract}
+                            disabled={!walletReady}
+                            chainId={contractChainId}
+                        />
+                    ) : (
                         <DynamicFunctionItem
                             key={fragment.format("minimal")}
                             frag={fragment}
@@ -345,22 +352,8 @@ export default function DynamicContractItem({contract, walletChainId: contractCh
                             chainId={contractChainId}
                         />
                     )}
+                    writeDescription="These calls can modify state and may require wallet confirmation."
                 />
-                <ContractFunctionSection
-                    title="Write functions"
-                    description="These calls can modify state and may require wallet confirmation."
-                    functions={writeFunctions}
-                    renderFunction={(fragment) => (
-                        <DynamicFunctionItem
-                            key={fragment.format("minimal")}
-                            frag={fragment}
-                            contract={activeContract}
-                            disabled={!walletReady}
-                            chainId={contractChainId}
-                        />
-                    )}
-                />
-            </Stack>
             <RawCall contract={activeContract} disabled={!walletReady} chainId={contractChainId}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {

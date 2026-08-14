@@ -176,7 +176,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         const {rerender} = render(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
         fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
-        const calldata = screen.getAllByRole("textbox")[0];
+        const calldata = screen.getByLabelText("Hex calldata");
         fireEvent.change(calldata, {target: {value: "0x1234"}});
         fireEvent.click(screen.getByRole("button", {name: "Send immediately"}));
 
@@ -187,7 +187,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         mockedWalletSession.mockReturnValue({...walletSession, status: "disconnected", signer: null, account: null, chainId: null});
         rerender(<DynamicContractItem contract={contract} walletChainId="1" del={jest.fn()} />);
 
-        expect(screen.getAllByRole("textbox")[0]).toHaveValue("0x1234");
+        expect(screen.getByLabelText("Hex calldata")).toHaveValue("0x1234");
         expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "Send immediately"})).toBeDisabled();
     });

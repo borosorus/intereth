@@ -17,7 +17,8 @@ import { useSimulatedRead } from "../simulation/useSimulatedRead";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
-import ContractFunctionSection, { FunctionMutabilityBadge, isReadFunction } from "./ContractFunctionSection";
+import { FunctionMutabilityBadge } from "./ContractFunctionSection";
+import ContractFunctionBrowser from "./ContractFunctionBrowser";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract; 
@@ -147,12 +148,13 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
 }
 
 interface StaticContractItemProps {
+    contractId?: string;
     contract: ethers.BaseContract; 
     del: () => void;
     providerDetails?: ProviderDetails;
 }
 
-export default function StaticContractItem({contract, del, providerDetails}: StaticContractItemProps){
+export default function StaticContractItem({contractId = "static-contract", contract, del, providerDetails}: StaticContractItemProps){
     const accordionId = useId();
     const summaryId = `${accordionId}-summary`;
     const contentId = `${accordionId}-content`;
@@ -182,8 +184,6 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
         () => contract.interface.fragments.filter((fragment): fragment is ethers.FunctionFragment => fragment.type === "function"),
         [contract.interface],
     );
-    const readFunctions = functions.filter(isReadFunction);
-    const writeFunctions = functions.filter((fragment) => !isReadFunction(fragment));
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -235,28 +235,19 @@ export default function StaticContractItem({contract, del, providerDetails}: Sta
             {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
-            <Stack spacing={2}>
-                <ContractFunctionSection
-                    title="Read functions"
-                    description={workspace.mode === "simulate"
+            <ContractFunctionBrowser
+                    contractId={contractId}
+                    readDescription={workspace.mode === "simulate"
                         ? "Read canonical state or speculative queued state without sending a transaction."
                         : "Read canonical on-chain state without sending a transaction."}
-                    functions={readFunctions}
+                    functions={functions}
                     renderFunction={(fragment) => (
                         <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />
                     )}
+                    writeTitle="Write functions · wallet required"
+                    writeDescription="Add this contract using Browser Wallet to call these functions."
+                    writeCollapsible
                 />
-                <ContractFunctionSection
-                    title="Write functions · wallet required"
-                    description="Add this contract using Browser Wallet to call these functions."
-                    functions={writeFunctions}
-                    collapsible
-                    defaultExpanded={false}
-                    renderFunction={(fragment) => (
-                        <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />
-                    )}
-                />
-            </Stack>
             <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>
             </AccordionDetails>
             <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />

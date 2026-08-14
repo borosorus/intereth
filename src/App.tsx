@@ -124,9 +124,10 @@ export default function App(){
                 />
                 <Box sx={{minWidth: 0}}>
                   {selectedContract.isStatic ?
-                      <StaticContractItem key={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails} del={() => deleteContract(selectedContract.id)}/> :
+                      <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails} del={() => deleteContract(selectedContract.id)}/> :
                       <DynamicContractItem
                         key={`${selectedContract.id}:${interactionAccount ?? "disconnected"}`}
+                        contractId={selectedContract.id}
                         contract={selectedContract.contract}
                         walletChainId={selectedContract.walletChainId}
                         del={() => deleteContract(selectedContract.id)}

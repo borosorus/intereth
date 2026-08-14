@@ -1,6 +1,6 @@
 import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress, Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import TransactionValueInput from "./TransactionValueInput";
 import CallResult from "./CallResult";
@@ -21,6 +21,7 @@ import { prepareRawWatch } from "../simulation/watchExpressions";
 import { usePinWatch } from "../simulation/usePinWatch";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
+    const dataInputId = useId();
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
     const [queued, setQueued] = useState(false);
@@ -174,8 +175,8 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             </Box>
             <Stack spacing={1.5}>
                 <FormControl fullWidth>
-                    <InputLabel>Hex calldata</InputLabel>
-                    <Input value={data} onChange={(e) => setData(e.target.value)} />
+                    <InputLabel htmlFor={dataInputId}>Hex calldata</InputLabel>
+                    <Input id={dataInputId} value={data} onChange={(e) => setData(e.target.value)} />
                 </FormControl>
                 {!staticCall && (
                     <TransactionValueInput
