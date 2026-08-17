@@ -568,7 +568,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     >
                                         <Stack spacing={1.5} sx={{height: "100%"}}>
                                             <Box>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
                                                     <Typography variant="subtitle1" sx={{fontWeight: 800}}>{example.label}</Typography>
                                                     <Chip label="Ethereum" size="small" color="primary" variant="outlined" />
                                                 </Stack>

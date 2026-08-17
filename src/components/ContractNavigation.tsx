@@ -35,17 +35,26 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
 
     return (
         <>
-            <Box sx={{display: {xs: "flex", md: "none"}, gap: 0.5, alignItems: "center"}}>
-                <Select fullWidth size="small" value={selected.id} onChange={(event) => onSelect(event.target.value)} aria-label="Selected contract">
-                    {contracts.map((contract) => (
-                        <MenuItem key={contract.id} value={contract.id}>{contract.label} · {shortAddress(contract.address)}</MenuItem>
-                    ))}
-                </Select>
-                {selected && <>
+            <Box sx={{display: {xs: "block", md: "none"}, minWidth: 0}}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Select sx={{minWidth: 0, flex: 1}} size="small" value={selected.id} onChange={(event) => onSelect(event.target.value)} aria-label="Selected contract">
+                        {contracts.map((contract) => (
+                            <MenuItem key={contract.id} value={contract.id}>{contract.label} · {shortAddress(contract.address)}</MenuItem>
+                        ))}
+                    </Select>
                     <IconButton color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>
-                    <IconButton aria-label={`Rename ${selected.label}`} onClick={() => setRenaming(selected)}><EditOutlinedIcon /></IconButton>
-                    <IconButton aria-label={`Delete ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon /></IconButton>
-                </>}
+                </Stack>
+                {selected && (
+                    <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="space-between" sx={{mt: 0.5, pl: 1}} aria-label="Selected contract actions">
+                        <Typography variant="caption" color="text.secondary" noWrap sx={{minWidth: 0}}>
+                            Chain {chainId(selected)} · {selected.isStatic ? "Read-only" : "Wallet"}
+                        </Typography>
+                        <Box sx={{display: "flex", flex: "0 0 auto"}}>
+                            <IconButton size="small" aria-label={`Rename ${selected.label}`} onClick={() => setRenaming(selected)}><EditOutlinedIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" aria-label={`Delete ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                        </Box>
+                    </Stack>
+                )}
             </Box>
             <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 108}}>
                 <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>

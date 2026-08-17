@@ -94,7 +94,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
-                    <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700, overflowWrap: "anywhere"}}>
+                    <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700, overflowWrap: "anywhere", minWidth: 0, flex: 1}}>
                         {frag.format("sighash")}
                     </Typography>
                     <Box sx={{pr: 0.5}}>

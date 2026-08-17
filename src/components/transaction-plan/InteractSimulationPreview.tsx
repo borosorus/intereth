@@ -44,8 +44,8 @@ function CallPreview({
     return (
         <Box sx={{py: 1.25}}>
             <Stack spacing={0.75}>
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
-                    <Typography variant="body2" sx={{fontWeight: 700, overflowWrap: "anywhere"}}>{label}</Typography>
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
+                    <Typography variant="body2" sx={{fontWeight: 700, overflowWrap: "anywhere", minWidth: 0}}>{label}</Typography>
                     <Chip
                         size="small"
                         label={call.status === "0x1" ? "Success" : "Reverted"}
@@ -94,11 +94,11 @@ function BalanceChangeRow({change, chainId, metadataByAddress}: {
     const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, chainId, change.tokenAddress) : undefined;
     const tokenAddress = change.tokenAddress ?? "";
     return (
-        <Box sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
+        <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "flex-start"}, justifyContent: "space-between", gap: {xs: 0.25, sm: 1}}}>
             <Typography variant="caption" color="text.secondary">
                 {change.asset === "native" ? "Native asset" : `${tokenLabel(tokenAddress, metadata)} · ${shortAddress(tokenAddress)}`}
             </Typography>
-            <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", textAlign: "right"}}>
+            <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", textAlign: {xs: "left", sm: "right"}, overflowWrap: "anywhere"}}>
                 {formatBalanceChangeAmount(change, metadata)}
             </Typography>
         </Box>

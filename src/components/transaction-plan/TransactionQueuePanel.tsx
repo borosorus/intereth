@@ -167,12 +167,12 @@ function CallImpactSummary({impact, call, metadataByAddress}: {
                 {visible.map((change) => {
                     const metadata = change.asset === "erc20" ? metadataForToken(metadataByAddress, call.chainId, change.tokenAddress) : undefined;
                     return (
-                        <Box key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`} sx={{display: "flex", justifyContent: "space-between", gap: 1}}>
+                        <Box key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`} sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, justifyContent: "space-between", gap: {xs: 0.25, sm: 1}}}>
                             <Typography variant="caption" color="text.secondary">
                                 {change.account.toLowerCase() === call.from.toLowerCase() ? "Plan sender" : change.account.toLowerCase() === call.to.toLowerCase() ? "Call target" : shortAddress(change.account)}
                                 {" · "}{change.asset === "native" ? "Native asset" : tokenLabel(change.tokenAddress ?? "", metadata)}
                             </Typography>
-                            <Typography variant="caption" sx={{fontFamily: "monospace", fontWeight: 700}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
+                            <Typography variant="caption" sx={{fontFamily: "monospace", fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
                         </Box>
                     );
                 })}
@@ -279,6 +279,19 @@ function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (
     );
 }
 
+const sessionAlertSx = {
+    flexDirection: {xs: "column", sm: "row"},
+    alignItems: {xs: "stretch", sm: "center"},
+    "& .MuiAlert-message": {minWidth: 0, width: {xs: "100%", sm: "auto"}},
+    "& .MuiAlert-action": {
+        alignSelf: {xs: "flex-end", sm: "center"},
+        ml: {xs: 0, sm: "auto"},
+        mr: 0,
+        pt: {xs: 1, sm: 0},
+        pl: {xs: 0, sm: 2},
+    },
+};
+
 function SessionNotice() {
     const {state, dispatch, sessionStatus} = useTransactionPlan();
     const wallet = useWalletSession();
@@ -315,7 +328,8 @@ function SessionNotice() {
             <>
                 <Alert
                     severity="error"
-                    action={<Stack direction="row" spacing={0.5}>
+                    sx={sessionAlertSx}
+                    action={<Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap justifyContent="flex-end">
                         <Button
                             color="inherit"
                             size="small"
@@ -341,7 +355,8 @@ function SessionNotice() {
             <>
                 <Alert
                     severity="error"
-                    action={<Stack direction="row" spacing={0.5}>
+                    sx={sessionAlertSx}
+                    action={<Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap justifyContent="flex-end">
                         <Button
                             color="inherit"
                             size="small"
@@ -366,6 +381,7 @@ function SessionNotice() {
         <>
             <Alert
                 severity="warning"
+                sx={sessionAlertSx}
                 action={(
                     <Button
                         color="inherit"

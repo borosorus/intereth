@@ -11,8 +11,8 @@ export default function SimulationControls() {
     return (
         <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
             <Stack spacing={1.25}>
-                <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
-                    <Box>
+                <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap"}}>
+                    <Box sx={{minWidth: 0}}>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Queued-state simulation</Typography>
                         <Typography variant="caption" color="text.secondary">
                             Automatically refreshed after queue changes.

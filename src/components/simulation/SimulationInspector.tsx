@@ -85,7 +85,7 @@ function EventDetails({event, chainId, metadataByAddress}: {
     return (
         <Paper variant="outlined" sx={{p: 1.25, borderRadius: 1.5}}>
             <Stack spacing={0.75}>
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
                     <Typography variant="subtitle2" sx={{fontWeight: 700}}>{event.name}</Typography>
                     <Chip size="small" variant="outlined" label={event.kind === "abi" ? "ABI" : event.kind === "erc20-transfer" ? "ERC-20" : "Native"} />
                 </Box>
@@ -110,7 +110,7 @@ function CallInspector({call, label, target, chainId, metadataByAddress}: {
     return (
         <Accordion disableGutters elevation={0} sx={{border: "1px solid", borderColor: "divider", borderRadius: "8px !important", "&:before": {display: "none"}}}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, width: 1, pr: 1}}>
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, width: 1, pr: 1, flexWrap: "wrap"}}>
                     <Box sx={{minWidth: 0}}>
                         <Typography variant="subtitle2" sx={{fontWeight: 800, overflowWrap: "anywhere"}}>{label}</Typography>
                         <Typography variant="caption" color="text.secondary">{quantity(call.gasUsed)} gas · {shortAddress(target)}</Typography>
@@ -216,7 +216,7 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
                             <Box
                                 key={`${change.asset}:${change.tokenAddress ?? "native"}:${change.account}`}
                                 aria-label={`${role.label} ${change.account}: ${formatted}`}
-                                sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5, p: 1.25, borderRadius: 1.5, bgcolor: "action.hover"}}
+                                sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "flex-start"}, justifyContent: "space-between", gap: 1.5, p: 1.25, borderRadius: 1.5, bgcolor: "action.hover"}}
                             >
                                 <Box sx={{minWidth: 0}}>
                                     <Chip size="small" variant="outlined" color={role.color} label={role.label} sx={{mb: 0.5, fontWeight: 700}} />
@@ -232,12 +232,12 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
                                         </Typography>
                                     )}
                                 </Box>
-                                <Box sx={{flex: "0 0 auto", textAlign: "right"}}>
+                                <Box sx={{flex: "0 0 auto", textAlign: {xs: "left", sm: "right"}, maxWidth: "100%"}}>
                                     <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: "monospace", fontWeight: 800}}>
                                         {formatted}
                                     </Typography>
                                     {showSeparateRawAmount && (
-                                        <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace"}}>
+                                        <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
                                             {signedRawAmount(delta, change.asset)}
                                         </Typography>
                                     )}

@@ -176,7 +176,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
-                    <Typography sx={{fontWeight: 700, overflowWrap: "anywhere"}}>{frag.format("sighash")}</Typography>
+                    <Typography sx={{fontWeight: 700, overflowWrap: "anywhere", minWidth: 0, flex: 1}}>{frag.format("sighash")}</Typography>
                     <Box sx={{pr: 0.5}}>
                         <FunctionMutabilityBadge fragment={frag} />
                     </Box>
@@ -289,10 +289,10 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                         </Box>
                     </Grid>
                     <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1, width: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
+                        <Typography sx={{m: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
                     </Grid>
                     <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1, width: 1}} color="text.secondary">Chain ID: {contractChainId}</Typography>
+                        <Typography sx={{m: 1}} color="text.secondary">Chain ID: {contractChainId}</Typography>
                     </Grid>
                 </Grid>
             </Box>

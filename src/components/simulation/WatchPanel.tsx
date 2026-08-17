@@ -105,8 +105,8 @@ export default function WatchPanel() {
             sx={{p: {xs: 2, md: 2.5}, borderRadius: 3, border: "1px solid", borderColor: "divider"}}
         >
             <Stack spacing={1.5}>
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
-                    <Box>
+                <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1}}>
+                    <Box sx={{minWidth: 0}}>
                         <Typography variant="h6" sx={{fontWeight: 800}}>Watch expressions</Typography>
                         <Typography variant="caption" color="text.secondary">
                             {simulation.snapshot || watchBaseBlock
@@ -114,7 +114,7 @@ export default function WatchPanel() {
                                 : "Pin read-only calls to compare canonical and speculative values"}
                         </Typography>
                     </Box>
-                    <Button size="small" startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
+                    <Button size="small" sx={{alignSelf: {xs: "flex-start", sm: "center"}}} startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
                         Refresh
                     </Button>
                 </Box>

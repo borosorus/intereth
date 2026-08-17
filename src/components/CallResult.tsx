@@ -80,7 +80,7 @@ export default function CallResult({result}: {result: CallResultData | null}) {
     return (
         <Paper variant="outlined" sx={{p: 2, borderRadius: 2, backgroundColor: "rgba(248, 250, 252, 0.82)"}}>
             <Stack spacing={1.25}>
-                <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
+                <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap"}}>
                     <Typography variant="subtitle2" sx={{fontWeight: 800}}>
                         {result.kind === "transaction" ? "Transaction result" : result.kind === "raw" ? "Raw call result" : "Call result"}
                     </Typography>

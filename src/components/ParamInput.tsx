@@ -57,8 +57,8 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
             <Paper
                 variant="outlined"
                 sx={{
-                    p: 2,
-                    pl: 2 + indent,
+                    p: {xs: 1.25, sm: 2},
+                    pl: {xs: 1.25, sm: 2 + indent},
                     borderRadius: 2,
                     borderLeft: "4px solid",
                     borderColor: "secondary.main",
@@ -105,8 +105,8 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
             <Paper
                 variant="outlined"
                 sx={{
-                    p: 2,
-                    pl: 2 + indent,
+                    p: {xs: 1.25, sm: 2},
+                    pl: {xs: 1.25, sm: 2 + indent},
                     borderRadius: 2,
                     borderLeft: "4px solid",
                     borderColor: "primary.main",
@@ -188,8 +188,8 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
             <Paper
                 variant="outlined"
                 sx={{
-                    p: 2,
-                    pl: 2 + indent,
+                    p: {xs: 1.25, sm: 2},
+                    pl: {xs: 1.25, sm: 2 + indent},
                     borderRadius: 2,
                     borderLeft: "4px solid",
                     borderColor: "primary.main",
@@ -197,7 +197,7 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
                 }}
             >
                 <Stack spacing={1.5}>
-                    <Box sx={{display: "flex", justifyContent: "space-between", gap: 2, alignItems: "baseline"}}>
+                    <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, justifyContent: "space-between", gap: {xs: 0.5, sm: 2}, alignItems: {xs: "stretch", sm: "baseline"}}}>
                         <Box>
                             <Typography variant="subtitle2" sx={{fontWeight: 700}}>
                                 {labelText}
@@ -228,7 +228,7 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
                                     key={index}
                                     variant="outlined"
                                     sx={{
-                                        p: 1.5,
+                                        p: {xs: 1, sm: 1.5},
                                         borderRadius: 2,
                                         backgroundColor: "rgba(255,255,255,0.8)",
                                     }}

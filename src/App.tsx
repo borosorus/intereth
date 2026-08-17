@@ -96,7 +96,7 @@ export default function App(){
     const selectedContract = contracts.find((contract) => contract.id === selectedContractId) ?? contracts[0];
 
     return (
-      <Box sx={{px: {xs: 2, sm: 3}, pb: 6}}>
+      <Box sx={{pb: 6}}>
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Stack spacing={3}>
             {contracts.length === 0 && <Paper

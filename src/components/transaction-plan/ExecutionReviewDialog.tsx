@@ -109,7 +109,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                     </Paper>
 
                     <Box>
-                        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.75}}>
+                        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.75, flexWrap: "wrap"}}>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Speculative preview</Typography>
                             <StateBadge {...simulationState} />
                         </Box>
@@ -129,7 +129,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                             {calls.map((call, index) => {
                                 const result = resultsById.get(call.id)!;
                                 return (
-                                    <Box key={call.id} sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
+                                    <Box key={call.id} sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap"}}>
                                         <Typography variant="body2" sx={{overflowWrap: "anywhere"}}>{index + 1}. {call.display.functionSignature ?? "Raw transaction"}</Typography>
                                         <Chip size="small" label={result.status === "0x1" ? "Success" : "Reverted"} color={result.status === "0x1" ? "success" : "error"} />
                                     </Box>
@@ -154,9 +154,9 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                                     {accountChanges.map((change) => {
                                         const metadata = change.asset === "erc20" ? metadataForToken(simulation.tokenMetadataByAddress, snapshot.chainId, change.tokenAddress) : undefined;
                                         return (
-                                            <Box key={`${change.asset}:${change.tokenAddress ?? "native"}`} sx={{display: "flex", justifyContent: "space-between", gap: 1}}>
+                                            <Box key={`${change.asset}:${change.tokenAddress ?? "native"}`} sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, justifyContent: "space-between", gap: {xs: 0.25, sm: 1}}}>
                                                 <Typography variant="body2">{change.asset === "native" ? "Native asset" : tokenLabel(change.tokenAddress ?? "", metadata)}</Typography>
-                                                <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 700}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
+                                                <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
                                             </Box>
                                         );
                                     })}

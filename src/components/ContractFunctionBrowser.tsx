@@ -1,5 +1,5 @@
 import SearchIcon from "@mui/icons-material/Search";
-import { Button, InputAdornment, Paper, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { Box, Button, InputAdornment, Paper, Stack, TextField, ToggleButton, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import ContractFunctionSection, { isReadFunction } from "./ContractFunctionSection";
@@ -54,12 +54,16 @@ export default function ContractFunctionBrowser({contractId, functions, renderFu
                         onChange={(event) => setQuery(event.target.value)}
                         InputProps={{startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>}}
                     />
-                    <ToggleButtonGroup exclusive size="small" value={filter} onChange={(_, value: FunctionFilter | null) => value && setFilter(value)} aria-label="Function filter" sx={{alignSelf: "flex-start", maxWidth: "100%", overflowX: "auto"}}>
-                        <ToggleButton value="all">All {functions.length}</ToggleButton>
-                        <ToggleButton value="read">Read {readCount}</ToggleButton>
-                        <ToggleButton value="write">Write {writeCount}</ToggleButton>
-                        <ToggleButton value="payable">Payable {payableCount}</ToggleButton>
-                    </ToggleButtonGroup>
+                    <Box role="group" aria-label="Function filter" sx={{display: "grid", gridTemplateColumns: {xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, auto)"}, gap: 0.75, alignSelf: {sm: "flex-start"}}}>
+                        {([
+                            ["all", `All ${functions.length}`],
+                            ["read", `Read ${readCount}`],
+                            ["write", `Write ${writeCount}`],
+                            ["payable", `Payable ${payableCount}`],
+                        ] as Array<[FunctionFilter, string]>).map(([value, label]) => (
+                            <ToggleButton key={value} size="small" value={value} selected={filter === value} onChange={() => setFilter(value)} sx={{minWidth: 0}}>{label}</ToggleButton>
+                        ))}
+                    </Box>
                 </Stack>
             </Paper>
             {visible.length === 0 ? (

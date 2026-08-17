@@ -23,7 +23,7 @@ export default function WorkspaceEmptyGuidance() {
                     {simulate ? <ScienceOutlinedIcon /> : <BoltOutlinedIcon />}
                 </Box>
                 <Box sx={{minWidth: 0, flex: 1}}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{mb: 0.35}}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{mb: 0.35}}>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>{simulate ? "Build speculative state" : "Start interacting"}</Typography>
                         <Chip size="small" color={simulate ? "info" : "secondary"} variant="outlined" label={simulate ? "Simulate" : "Interact"} />
                     </Stack>
