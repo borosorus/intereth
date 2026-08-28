@@ -1,9 +1,9 @@
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NormalizedError, normalizeError } from "../../callUtils";
 import { useTransactionPlan } from "../../transaction-plan/context";
-import { BatchExecutionError, QueuedCall } from "../../transaction-plan/types";
+import { BatchExecutionError, QueuedCall, SequentialCallExecution } from "../../transaction-plan/types";
 import { sendPreparedTransaction } from "../../transactions/sendTransaction";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import CopyButton from "../CopyButton";
@@ -16,6 +16,14 @@ function storedError(error: NormalizedError): BatchExecutionError {
 
 export function sequentialCallLabel(call: QueuedCall) {
     return call.display.functionSignature ?? "Raw transaction";
+}
+
+function statusPresentation(record: SequentialCallExecution | undefined, ready: boolean) {
+    if (!record) return ready ? {label: "Ready", color: "secondary" as const} : {label: "Waiting", color: "default" as const};
+    if (record.status === "confirmed") return {label: "Confirmed", color: "success" as const};
+    if (record.status === "failed") return {label: "Failed", color: "error" as const};
+    if (record.status === "pending") return {label: "Pending", color: "info" as const};
+    return {label: "Awaiting wallet", color: "info" as const};
 }
 
 export default function SequentialExecution() {
@@ -42,6 +50,7 @@ export default function SequentialExecution() {
                     submittedHash = result.hash;
                     dispatch({type: "SEQUENTIAL_CALL_SUBMITTED", callId: call.id, transactionHash: result.hash, submittedAt: Date.now()});
                 } else if (result.status === "confirmed") {
+                    if (result.blockNumber === undefined || result.gasUsed === undefined) return;
                     dispatch({
                         type: "SEQUENTIAL_CALL_CONFIRMED",
                         callId: call.id,
@@ -125,6 +134,36 @@ export default function SequentialExecution() {
                 </Typography>
             </Box>
 
+            {execution.status !== "idle" && (
+                <Stack spacing={0.75}>
+                    {state.plan.calls.map((call, index) => {
+                        const record = records[index];
+                        const ready = execution.status === "active" && index === confirmedCount && (!record || record.status === "failed");
+                        const presentation = statusPresentation(record, ready);
+                        return (
+                            <Paper key={call.id} variant="outlined" sx={{p: 1.25, borderRadius: 1.5}}>
+                                <Stack spacing={0.5}>
+                                    <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
+                                        <Typography variant="body2" sx={{fontWeight: 700, overflowWrap: "anywhere"}}>
+                                            {index + 1}. {sequentialCallLabel(call)}
+                                        </Typography>
+                                        <Chip size="small" label={presentation.label} color={presentation.color} variant={record?.status === "confirmed" ? "filled" : "outlined"} />
+                                    </Box>
+                                    {record?.transactionHash && (
+                                        <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
+                                            <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
+                                                {record.transactionHash}
+                                            </Typography>
+                                            <CopyButton value={record.transactionHash} label={`Copy transaction hash for call ${index + 1}`} />
+                                        </Box>
+                                    )}
+                                </Stack>
+                            </Paper>
+                        );
+                    })}
+                </Stack>
+            )}
+
             {execution.status === "idle" && (
                 <Button
                     variant="outlined"
@@ -140,21 +179,9 @@ export default function SequentialExecution() {
             {execution.status === "active" && (
                 <Stack spacing={1}>
                     {currentRecord?.status === "submitting" && <Alert severity="info">Waiting for wallet confirmation for call {confirmedCount + 1}.</Alert>}
-                    {currentRecord?.status === "pending" && (
-                        <Alert severity="info">
-                            Call {confirmedCount + 1} is pending on-chain.
-                            {currentRecord.transactionHash && (
-                                <Box sx={{mt: 0.5, display: "flex", alignItems: "center", gap: 0.5}}>
-                                    <Typography variant="caption" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{currentRecord.transactionHash}</Typography>
-                                    <CopyButton value={currentRecord.transactionHash} label="Copy transaction hash" />
-                                </Box>
-                            )}
-                        </Alert>
-                    )}
+                    {currentRecord?.status === "pending" && <Alert severity="info">Call {confirmedCount + 1} is pending on-chain.</Alert>}
                     {currentRecord?.status === "failed" && (
-                        <Alert severity="error">
-                            Call {confirmedCount + 1} failed: {currentRecord.error?.message ?? "Transaction failed."}
-                        </Alert>
+                        <Alert severity="error">Call {confirmedCount + 1} failed: {currentRecord.error?.message ?? "Transaction failed."}</Alert>
                     )}
                     {!waiting && currentRecord?.status !== "failed" && nextCall && (
                         <Button
@@ -178,7 +205,10 @@ export default function SequentialExecution() {
                             variant="contained"
                             color="secondary"
                             fullWidth
-                            onClick={() => dispatch({type: "RETRY_SEQUENTIAL_CALL", callId: currentRecord.callId})}
+                            onClick={() => {
+                                dispatch({type: "RETRY_SEQUENTIAL_CALL", callId: currentRecord.callId});
+                                void sendCall(currentCall);
+                            }}
                         >
                             Retry transaction
                         </Button>
