@@ -101,6 +101,26 @@ export interface BatchExecutionState {
     error?: BatchExecutionError;
 }
 
+export type SequentialCallExecutionStatus = "submitting" | "pending" | "confirmed" | "failed";
+
+export interface SequentialCallExecution {
+    callId: string;
+    status: SequentialCallExecutionStatus;
+    transactionHash?: string;
+    blockNumber?: string;
+    gasUsed?: string;
+    submittedAt?: number;
+    updatedAt?: number;
+    error?: BatchExecutionError;
+}
+
+export interface SequentialExecutionState {
+    status: "idle" | "active" | "completed" | "stopped";
+    calls: SequentialCallExecution[];
+    startedAt?: number;
+    updatedAt?: number;
+}
+
 export interface TransactionPlanState {
     plan: {
         context: PlanContext | null;
@@ -108,6 +128,7 @@ export interface TransactionPlanState {
         watches: WatchExpression[];
     };
     execution: BatchExecutionState;
+    sequentialExecution: SequentialExecutionState;
 }
 
 export type TransactionPlanAction =
@@ -124,4 +145,11 @@ export type TransactionPlanAction =
     | {type: "BATCH_SUBMITTED"; batchId: string; submittedAt: number}
     | {type: "BATCH_SUBMISSION_FAILED"; error: BatchExecutionError}
     | {type: "BATCH_STATUS_UPDATED"; execution: BatchExecutionState; updatedAt: number}
-    | {type: "RESET_FAILED_BATCH"};
+    | {type: "RESET_FAILED_BATCH"}
+    | {type: "START_SEQUENTIAL_EXECUTION"; startedAt: number}
+    | {type: "START_SEQUENTIAL_CALL"; callId: string}
+    | {type: "SEQUENTIAL_CALL_SUBMITTED"; callId: string; transactionHash: string; submittedAt: number}
+    | {type: "SEQUENTIAL_CALL_CONFIRMED"; callId: string; transactionHash: string; blockNumber: string; gasUsed: string; updatedAt: number}
+    | {type: "SEQUENTIAL_CALL_FAILED"; callId: string; error: BatchExecutionError; updatedAt: number; transactionHash?: string; blockNumber?: string; gasUsed?: string}
+    | {type: "RETRY_SEQUENTIAL_CALL"; callId: string}
+    | {type: "STOP_SEQUENTIAL_EXECUTION"; updatedAt: number};
