@@ -37,7 +37,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
-import AtomicBatchExecution, { useAtomicBatchExecution } from "./AtomicBatchExecution";
+import { useAtomicBatchExecution } from "./AtomicBatchExecution";
 import SimulationControls from "./SimulationControls";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import ResponsiveDialog from "../ResponsiveDialog";
@@ -50,6 +50,7 @@ import { useSimulation } from "../../simulation/context";
 import { CallImpact, prioritizeBalanceChanges, selectCallImpact } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
+import TransactionExecutionOptions from "./TransactionExecutionOptions";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -566,7 +567,7 @@ export default function TransactionQueuePanel() {
                             {workspace.mode === "interact" ? (
                                 <>
                                     <InteractSimulationPreview />
-                                    <AtomicBatchExecution controller={batchController} />
+                                    <TransactionExecutionOptions controller={batchController} />
                                 </>
                             ) : (
                                 <Alert severity="info">Switch to Interact to execute this transaction plan.</Alert>
@@ -583,7 +584,9 @@ export default function TransactionQueuePanel() {
                             color="error"
                             variant="outlined"
                             fullWidth
-                            disabled={state.execution.status === "submitting" || state.execution.status === "pending"}
+                            disabled={state.execution.status === "submitting"
+                                || state.execution.status === "pending"
+                                || state.sequentialExecution.status === "active"}
                             onClick={() => setConfirmClear(true)}
                         >
                             Clear plan
