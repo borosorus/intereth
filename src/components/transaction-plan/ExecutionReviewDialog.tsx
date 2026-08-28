@@ -23,7 +23,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { simulationPresentation, StateBadge } from "../StateBadge";
 
-export type ExecutionMechanism = "atomic-batch" | "smart-account";
+export type ExecutionMechanism = "atomic-batch" | "smart-account" | "sequential";
 
 function quantity(value: string) {
     try {
@@ -43,6 +43,12 @@ function snapshotAge(capturedAt: number, now: number) {
     return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
 }
 
+function mechanismLabel(mechanism: ExecutionMechanism) {
+    if (mechanism === "smart-account") return "EIP-5792 with smart-account enablement";
+    if (mechanism === "sequential") return "Individual transactions in plan order";
+    return "EIP-5792 atomic batch";
+}
+
 export default function ExecutionReviewDialog({open, mechanism, onClose, onConfirm}: {
     open: boolean;
     mechanism: ExecutionMechanism;
@@ -54,12 +60,14 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
     const simulation = useSimulation();
     const [riskAccepted, setRiskAccepted] = useState(false);
     const [delegationAccepted, setDelegationAccepted] = useState(false);
+    const [sequentialAccepted, setSequentialAccepted] = useState(false);
     const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
         if (!open) return;
         setRiskAccepted(false);
         setDelegationAccepted(false);
+        setSequentialAccepted(false);
         setNow(Date.now());
         const interval = window.setInterval(() => setNow(Date.now()), 30_000);
         return () => window.clearInterval(interval);
@@ -76,12 +84,14 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
     const knownReverts = fresh ? calls.filter((call) => resultsById.get(call.id)?.status === "0x0") : [];
     const requiresRiskAcceptance = !fresh;
     const requiresDelegationAcceptance = mechanism === "smart-account";
+    const requiresSequentialAcceptance = mechanism === "sequential";
     const sessionMatches = sessionStatus === "ready"
         && Boolean(context && wallet.account?.toLowerCase() === context.account.toLowerCase() && wallet.chainId === context.chainId);
     const canConfirm = sessionMatches
         && knownReverts.length === 0
         && (!requiresRiskAcceptance || riskAccepted)
-        && (!requiresDelegationAcceptance || delegationAccepted);
+        && (!requiresDelegationAcceptance || delegationAccepted)
+        && (!requiresSequentialAcceptance || sequentialAccepted);
     const totalNative = summarizeNativeValue(calls.reduce((total, call) => total + BigInt(call.value), BigInt(0)).toString());
     const accountChanges = fresh && snapshot
         ? snapshot.balanceChanges.filter((change) => change.account.toLowerCase() === snapshot.account.toLowerCase())
@@ -104,9 +114,15 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                             <Typography variant="body2"><strong>Chain:</strong> {context?.chainId ?? "Unavailable"}</Typography>
                             <Typography variant="body2"><strong>Calls:</strong> {calls.length}</Typography>
                             <Typography variant="body2"><strong>Total native value:</strong> {totalNative.primary}</Typography>
-                            <Typography variant="body2"><strong>Mechanism:</strong> {mechanism === "smart-account" ? "EIP-5792 with smart-account enablement" : "EIP-5792 atomic batch"}</Typography>
+                            <Typography variant="body2"><strong>Mechanism:</strong> {mechanismLabel(mechanism)}</Typography>
                         </Stack>
                     </Paper>
+
+                    {mechanism === "sequential" && (
+                        <Alert severity="warning">
+                            These calls are not atomic. Each call requires a separate wallet confirmation, and confirmed transactions remain on-chain if a later call fails or is rejected.
+                        </Alert>
+                    )}
 
                     <Box>
                         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.75, flexWrap: "wrap"}}>
@@ -119,7 +135,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                             </Typography>
                         ) : (
                             <Alert severity="warning" sx={{mt: 1}}>
-                                A fresh simulation matching this exact queue is unavailable. The wallet may still reject the request or the batch may revert.
+                                A fresh simulation matching this exact queue is unavailable. The wallet may still reject the request or a transaction may revert.
                             </Alert>
                         )}
                     </Box>
@@ -181,13 +197,19 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                             />
                         </>
                     )}
+                    {requiresSequentialAcceptance && (
+                        <FormControlLabel
+                            control={<Checkbox checked={sequentialAccepted} onChange={(event) => setSequentialAccepted(event.target.checked)} />}
+                            label="I understand that earlier transactions cannot be rolled back if a later call fails."
+                        />
+                    )}
                     {!sessionMatches && <Alert severity="error">Reconnect the plan account on its original chain before submitting.</Alert>}
                 </Stack>
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
                 <Button variant="contained" color="secondary" disabled={!canConfirm} onClick={onConfirm}>
-                    {mechanism === "smart-account" ? "Enable and submit" : "Submit atomic batch"}
+                    {mechanism === "smart-account" ? "Enable and submit" : mechanism === "sequential" ? "Start sequential execution" : "Submit atomic batch"}
                 </Button>
             </DialogActions>
         </ResponsiveDialog>
