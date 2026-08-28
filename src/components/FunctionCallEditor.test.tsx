@@ -30,7 +30,7 @@ describe("FunctionCallEditor calldata copy", () => {
 
         fireEvent.click(screen.getByRole("button", {name: "Copy calldata"}));
         await waitFor(() => expect(clipboardWrite).toHaveBeenCalledWith(
-            iface.encodeFunctionData(fragment, [spender, 42n]),
+            iface.encodeFunctionData(fragment, [spender, BigInt(42)]),
         ));
     });
 
