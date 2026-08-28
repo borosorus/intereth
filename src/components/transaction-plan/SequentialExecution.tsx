@@ -224,6 +224,7 @@ export default function SequentialExecution() {
             {execution.status === "completed" && (
                 <Stack spacing={1}>
                     <Alert severity="success">All {state.plan.calls.length} transactions were confirmed in order.</Alert>
+                    <Typography variant="caption" color="text.secondary">Creating a new draft keeps these same calls. Review or remove them before sending anything again.</Typography>
                     <Button variant="outlined" fullWidth onClick={() => dispatch({type: "RESET_SEQUENTIAL_EXECUTION"})}>Create new draft</Button>
                 </Stack>
             )}
@@ -231,6 +232,7 @@ export default function SequentialExecution() {
             {execution.status === "stopped" && (
                 <Stack spacing={1}>
                     <Alert severity="info">Sequential execution was stopped. Confirmed transactions remain on-chain.</Alert>
+                    <Typography variant="caption" color="text.secondary">Creating a new draft keeps all original calls, including calls already confirmed. Remove or edit them before another execution.</Typography>
                     <Button variant="outlined" fullWidth onClick={() => dispatch({type: "RESET_SEQUENTIAL_EXECUTION"})}>Create new draft</Button>
                 </Stack>
             )}
