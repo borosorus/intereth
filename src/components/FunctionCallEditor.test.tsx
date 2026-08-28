@@ -19,7 +19,7 @@ describe("FunctionCallEditor calldata copy", () => {
         render(
             <FunctionCallEditor
                 fragment={fragment}
-                arguments={[spender, "42"]}
+                arguments={[spender, {amount: "42", unit: "wei"}]}
                 onArgumentsChange={noop}
                 valueAmount=""
                 valueUnit="wei"
@@ -40,7 +40,7 @@ describe("FunctionCallEditor calldata copy", () => {
         render(
             <FunctionCallEditor
                 fragment={fragment}
-                arguments={["", ""]}
+                arguments={["", {amount: "", unit: "wei"}]}
                 onArgumentsChange={noop}
                 valueAmount=""
                 valueUnit="wei"
