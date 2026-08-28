@@ -29,7 +29,7 @@ export default function TransactionExecutionOptions({controller}: {controller: A
                         <Typography variant="caption" color="text.secondary">All queued calls execute together or not at all.</Typography>
                     </Box>
                     <Alert severity="info">
-                        Atomic batching is unavailable in this wallet on the plan network. You can send the same plan as individual transactions below.
+                        Atomic batching is unavailable in this wallet on the plan network. Send the queued plan as individual transactions below. Use Send now from individual function or raw-call forms if you only want to submit a single call outside the plan.
                     </Alert>
                 </>
             ) : (
