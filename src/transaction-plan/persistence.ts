@@ -143,6 +143,7 @@ const EXECUTION_STATUSES: BatchExecutionState["status"][] = [
 
 function isExecution(value: unknown): value is BatchExecutionState {
     if (!isRecord(value) || !EXECUTION_STATUSES.includes(value.status as BatchExecutionState["status"])) return false;
+    const status = value.status as BatchExecutionState["status"];
     if (value.batchId !== undefined && (!isHexData(value.batchId) || value.batchId === "0x" || value.batchId.length > 8194)) return false;
     if (value.walletStatus !== undefined && (typeof value.walletStatus !== "number" || !Number.isInteger(value.walletStatus) || value.walletStatus < 0)) return false;
     if (value.atomic !== undefined && typeof value.atomic !== "boolean") return false;
@@ -150,18 +151,18 @@ function isExecution(value: unknown): value is BatchExecutionState {
     if (value.submittedAt !== undefined && !isTimestamp(value.submittedAt)) return false;
     if (value.updatedAt !== undefined && !isTimestamp(value.updatedAt)) return false;
     if (value.error !== undefined && !isStoredError(value.error)) return false;
-    if (value.status === "idle" || value.status === "submitting") {
+    if (status === "idle" || status === "submitting") {
         return value.batchId === undefined && value.walletStatus === undefined && value.atomic === undefined && value.receipts === undefined;
     }
     if (typeof value.batchId !== "string") return false;
-    if (value.status === "pending") {
+    if (status === "pending") {
         return (value.walletStatus === undefined && value.atomic === undefined) || (value.walletStatus === 100 && value.atomic === true);
     }
-    if (value.status === "invalid") return true;
+    if (status === "invalid") return true;
     const expectedWalletStatus: Partial<Record<BatchExecutionState["status"], number>> = {
         confirmed: 200, offchain_failed: 400, reverted: 500, partially_reverted: 600,
     };
-    return value.walletStatus === expectedWalletStatus[value.status] && value.atomic === true;
+    return value.walletStatus === expectedWalletStatus[status] && value.atomic === true;
 }
 
 function isSequentialCall(value: unknown): value is SequentialCallExecution {
