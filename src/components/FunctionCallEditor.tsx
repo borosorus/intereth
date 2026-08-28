@@ -1,6 +1,8 @@
 import { Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { ParamValue, ValueUnit } from "../calls/parameters";
+import { useMemo } from "react";
+import { buildParamValues, ParamValue, ValueUnit } from "../calls/parameters";
+import CopyButton from "./CopyButton";
 import ParamInput from "./ParamInput";
 import TransactionValueInput from "./TransactionValueInput";
 
@@ -23,6 +25,15 @@ export default function FunctionCallEditor({
     onValueAmountChange,
     onValueUnitChange,
 }: FunctionCallEditorProps) {
+    const calldata = useMemo(() => {
+        try {
+            const values = buildParamValues(fragment.inputs, argumentValues);
+            return new ethers.Interface([fragment]).encodeFunctionData(fragment, values);
+        } catch {
+            return null;
+        }
+    }, [argumentValues, fragment]);
+
     return (
         <Stack spacing={1.5}>
             {fragment.inputs.map((input, index) => (
@@ -45,6 +56,12 @@ export default function FunctionCallEditor({
                     label="Transaction value"
                 />
             )}
+            <CopyButton
+                value={calldata ?? ""}
+                label="Copy calldata"
+                variant="text"
+                disabled={!calldata}
+            />
         </Stack>
     );
 }
