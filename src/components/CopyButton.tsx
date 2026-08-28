@@ -8,14 +8,16 @@ interface CopyButtonProps {
     label: string;
     variant?: "icon" | "text" | "url";
     size?: "small" | "medium";
+    disabled?: boolean;
 }
 
-export default function CopyButton({value, label, variant = "icon", size = "small"}: CopyButtonProps) {
+export default function CopyButton({value, label, variant = "icon", size = "small", disabled = false}: CopyButtonProps) {
     const [copied, setCopied] = useState(false);
     const [copyError, setCopyError] = useState(false);
 
     const copy = async (event: React.MouseEvent) => {
         event.stopPropagation();
+        if (disabled) return;
         try {
             if (!navigator.clipboard) {
                 throw new Error("Clipboard API unavailable");
@@ -40,6 +42,7 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
                         onClick={copy}
                         endIcon={icon}
                         aria-label={label}
+                        disabled={disabled}
                         sx={{
                             width: 1,
                             minWidth: 0,
@@ -56,12 +59,12 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
                     </Button>
                 </Tooltip>
             ) : variant === "text" ? (
-                <Button size={size} onClick={copy} startIcon={icon} sx={{textTransform: "none"}}>
+                <Button size={size} onClick={copy} startIcon={icon} disabled={disabled} sx={{textTransform: "none"}}>
                     {copied ? "Copied" : label}
                 </Button>
             ) : (
                 <Tooltip title={copied ? "Copied" : label}>
-                    <IconButton size={size} onClick={copy} aria-label={label}>
+                    <IconButton size={size} onClick={copy} aria-label={label} disabled={disabled}>
                         {icon}
                     </IconButton>
                 </Tooltip>

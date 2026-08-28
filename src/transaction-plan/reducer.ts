@@ -1,10 +1,17 @@
 import { ethers } from "ethers";
 import {
     QueuedCall,
+    SequentialCallExecution,
     TransactionPlanAction,
     TransactionPlanState,
 } from "./types";
-import { canForgetTrackedExecution, isExecutionInFlight, isExecutionMutable } from "./executionPolicy";
+import {
+    canForgetTrackedExecution,
+    isExecutionInFlight,
+    isExecutionMutable,
+    isSequentialExecutionInFlight,
+    isSequentialExecutionMutable,
+} from "./executionPolicy";
 
 export function createEmptyTransactionPlanState(): TransactionPlanState {
     return {
@@ -15,6 +22,10 @@ export function createEmptyTransactionPlanState(): TransactionPlanState {
         },
         execution: {
             status: "idle",
+        },
+        sequentialExecution: {
+            status: "idle",
+            calls: [],
         },
     };
 }
@@ -54,15 +65,34 @@ function sameWatch(left: TransactionPlanState["plan"]["watches"][number], right:
         && left.value === right.value;
 }
 
+function planIsMutable(state: TransactionPlanState) {
+    return isExecutionMutable(state.execution) && isSequentialExecutionMutable(state.sequentialExecution);
+}
+
+function currentSequentialRecord(state: TransactionPlanState) {
+    return state.sequentialExecution.calls[state.sequentialExecution.calls.length - 1];
+}
+
+function nextSequentialCall(state: TransactionPlanState) {
+    const completedCount = state.sequentialExecution.calls.filter((call) => call.status === "confirmed").length;
+    return state.plan.calls[completedCount];
+}
+
+function replaceCurrentSequentialRecord(state: TransactionPlanState, record: SequentialCallExecution) {
+    const calls = [...state.sequentialExecution.calls];
+    calls[calls.length - 1] = record;
+    return calls;
+}
+
 export function transactionPlanReducer(state: TransactionPlanState, action: TransactionPlanAction): TransactionPlanState {
     switch (action.type) {
         case "ADD_CALL":
-            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
+            if (!planIsMutable(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             return {...state, plan: establishPlan(state, action.call)};
         case "UPDATE_CALL": {
-            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call)) {
+            if (!planIsMutable(state) || !callMatchesPlan(state, action.call)) {
                 return state;
             }
             const previous = state.plan.calls.find((call) => call.id === action.call.id);
@@ -75,7 +105,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "REMOVE_CALL": {
-            if (!isExecutionMutable(state.execution)) {
+            if (!planIsMutable(state)) {
                 return state;
             }
             const calls = state.plan.calls.filter((call) => call.id !== action.callId);
@@ -89,7 +119,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "DUPLICATE_CALL": {
-            if (!isExecutionMutable(state.execution) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
+            if (!planIsMutable(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
                 return state;
             }
             const index = state.plan.calls.findIndex((call) => call.id === action.afterCallId);
@@ -101,7 +131,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return {...state, plan: {...state.plan, calls}};
         }
         case "MOVE_CALL": {
-            if (!isExecutionMutable(state.execution)) {
+            if (!planIsMutable(state)) {
                 return state;
             }
             const index = state.plan.calls.findIndex((call) => call.id === action.callId);
@@ -114,9 +144,11 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             return {...state, plan: {...state.plan, calls}};
         }
         case "CLEAR_PLAN":
-            return isExecutionInFlight(state.execution) ? state : createEmptyTransactionPlanState();
+            return isExecutionInFlight(state.execution) || isSequentialExecutionInFlight(state.sequentialExecution)
+                ? state
+                : createEmptyTransactionPlanState();
         case "ADD_WATCH":
-            if (!isExecutionMutable(state.execution)
+            if (!planIsMutable(state)
                 || !watchMatchesPlan(state, action.watch)
                 || state.plan.watches.some((watch) => watch.id === action.watch.id || sameWatch(watch, action.watch))) {
                 return state;
@@ -130,7 +162,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                 },
             };
         case "REMOVE_WATCH": {
-            if (!isExecutionMutable(state.execution)) return state;
+            if (!planIsMutable(state)) return state;
             const watches = state.plan.watches.filter((watch) => watch.id !== action.watchId);
             return {
                 ...state,
@@ -142,9 +174,13 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             };
         }
         case "FORGET_TRACKED_PLAN":
-            return canForgetTrackedExecution(state.execution) ? createEmptyTransactionPlanState() : state;
+            return canForgetTrackedExecution(state.execution) && !isSequentialExecutionInFlight(state.sequentialExecution)
+                ? createEmptyTransactionPlanState()
+                : state;
         case "START_BATCH_SUBMISSION":
-            return isExecutionMutable(state.execution) && state.plan.calls.length > 0
+            return isExecutionMutable(state.execution)
+                && isSequentialExecutionMutable(state.sequentialExecution)
+                && state.plan.calls.length > 0
                 ? {...state, execution: {status: "submitting"}}
                 : state;
         case "BATCH_SUBMITTED":
@@ -179,6 +215,123 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
         case "RESET_FAILED_BATCH":
             return state.execution.status === "offchain_failed" || state.execution.status === "reverted"
                 ? {...state, execution: {status: "idle"}}
+                : state;
+        case "START_SEQUENTIAL_EXECUTION":
+            return state.sequentialExecution.status === "idle"
+                && isExecutionMutable(state.execution)
+                && state.plan.calls.length > 0
+                ? {
+                    ...state,
+                    sequentialExecution: {status: "active", calls: [], startedAt: action.startedAt, updatedAt: action.startedAt},
+                }
+                : state;
+        case "START_SEQUENTIAL_CALL": {
+            if (state.sequentialExecution.status !== "active") return state;
+            const current = currentSequentialRecord(state);
+            if (current && current.status !== "confirmed") return state;
+            const next = nextSequentialCall(state);
+            if (!next || next.id !== action.callId) return state;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: [...state.sequentialExecution.calls, {callId: action.callId, status: "submitting"}],
+                },
+            };
+        }
+        case "SEQUENTIAL_CALL_SUBMITTED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "submitting") {
+                return state;
+            }
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {
+                        ...current,
+                        status: "pending",
+                        transactionHash: action.transactionHash,
+                        submittedAt: action.submittedAt,
+                        updatedAt: action.submittedAt,
+                    }),
+                    updatedAt: action.submittedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_CALL_CONFIRMED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || (current.status !== "pending" && current.status !== "submitting")) {
+                return state;
+            }
+            const confirmed = {
+                ...current,
+                status: "confirmed" as const,
+                transactionHash: action.transactionHash,
+                blockNumber: action.blockNumber,
+                gasUsed: action.gasUsed,
+                updatedAt: action.updatedAt,
+                error: undefined,
+            };
+            const calls = replaceCurrentSequentialRecord(state, confirmed);
+            const completed = calls.length === state.plan.calls.length;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    status: completed ? "completed" : "active",
+                    calls,
+                    updatedAt: action.updatedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_CALL_FAILED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || (current.status !== "pending" && current.status !== "submitting")) {
+                return state;
+            }
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {
+                        ...current,
+                        status: "failed",
+                        transactionHash: action.transactionHash ?? current.transactionHash,
+                        blockNumber: action.blockNumber,
+                        gasUsed: action.gasUsed,
+                        error: action.error,
+                        updatedAt: action.updatedAt,
+                    }),
+                    updatedAt: action.updatedAt,
+                },
+            };
+        }
+        case "RETRY_SEQUENTIAL_CALL": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "failed") {
+                return state;
+            }
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: state.sequentialExecution.calls.slice(0, -1),
+                },
+            };
+        }
+        case "STOP_SEQUENTIAL_EXECUTION": {
+            if (state.sequentialExecution.status !== "active") return state;
+            const current = currentSequentialRecord(state);
+            if (current && (current.status === "submitting" || current.status === "pending")) return state;
+            return {
+                ...state,
+                sequentialExecution: {...state.sequentialExecution, status: "stopped", updatedAt: action.updatedAt},
+            };
+        }
+        case "RESET_SEQUENTIAL_EXECUTION":
+            return state.sequentialExecution.status === "completed" || state.sequentialExecution.status === "stopped"
+                ? {...state, sequentialExecution: {status: "idle", calls: []}}
                 : state;
         default:
             return state;
