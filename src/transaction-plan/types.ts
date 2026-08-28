@@ -152,4 +152,5 @@ export type TransactionPlanAction =
     | {type: "SEQUENTIAL_CALL_CONFIRMED"; callId: string; transactionHash: string; blockNumber: string; gasUsed: string; updatedAt: number}
     | {type: "SEQUENTIAL_CALL_FAILED"; callId: string; error: BatchExecutionError; updatedAt: number; transactionHash?: string; blockNumber?: string; gasUsed?: string}
     | {type: "RETRY_SEQUENTIAL_CALL"; callId: string}
-    | {type: "STOP_SEQUENTIAL_EXECUTION"; updatedAt: number};
+    | {type: "STOP_SEQUENTIAL_EXECUTION"; updatedAt: number}
+    | {type: "RESET_SEQUENTIAL_EXECUTION"};
