@@ -1,4 +1,4 @@
-import { BatchExecutionState } from "./types";
+import { BatchExecutionState, SequentialExecutionState } from "./types";
 
 export function isExecutionMutable(execution: BatchExecutionState) {
     return execution.status === "idle";
@@ -21,4 +21,16 @@ export function canForgetTrackedExecution(execution: BatchExecutionState) {
         || execution.status === "invalid"
         || execution.status === "partially_reverted"
     );
+}
+
+export function isSequentialExecutionMutable(execution: SequentialExecutionState) {
+    return execution.status === "idle";
+}
+
+export function isSequentialExecutionInFlight(execution: SequentialExecutionState) {
+    return execution.status === "active";
+}
+
+export function isSequentialExecutionAutoClearable(execution: SequentialExecutionState) {
+    return execution.status !== "active";
 }
