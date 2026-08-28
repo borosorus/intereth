@@ -37,28 +37,26 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
         <>
             {variant === "url" ? (
                 <Tooltip title={copied ? "Copied" : label}>
-                    <span>
-                        <Button
-                            size={size}
-                            onClick={copy}
-                            endIcon={icon}
-                            aria-label={label}
-                            disabled={disabled}
-                            sx={{
-                                width: 1,
-                                minWidth: 0,
-                                p: 0,
-                                justifyContent: "flex-start",
-                                textTransform: "none",
-                                color: "text.secondary",
-                                fontSize: "inherit",
-                                lineHeight: "inherit",
-                                "& .MuiButton-endIcon": {flex: "0 0 auto"},
-                            }}
-                        >
-                            <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{value}</span>
-                        </Button>
-                    </span>
+                    <Button
+                        size={size}
+                        onClick={copy}
+                        endIcon={icon}
+                        aria-label={label}
+                        disabled={disabled}
+                        sx={{
+                            width: 1,
+                            minWidth: 0,
+                            p: 0,
+                            justifyContent: "flex-start",
+                            textTransform: "none",
+                            color: "text.secondary",
+                            fontSize: "inherit",
+                            lineHeight: "inherit",
+                            "& .MuiButton-endIcon": {flex: "0 0 auto"},
+                        }}
+                    >
+                        <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{value}</span>
+                    </Button>
                 </Tooltip>
             ) : variant === "text" ? (
                 <Button size={size} onClick={copy} startIcon={icon} disabled={disabled} sx={{textTransform: "none"}}>
@@ -66,11 +64,9 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
                 </Button>
             ) : (
                 <Tooltip title={copied ? "Copied" : label}>
-                    <span>
-                        <IconButton size={size} onClick={copy} aria-label={label} disabled={disabled}>
-                            {icon}
-                        </IconButton>
-                    </span>
+                    <IconButton size={size} onClick={copy} aria-label={label} disabled={disabled}>
+                        {icon}
+                    </IconButton>
                 </Tooltip>
             )}
             <Snackbar open={copied} autoHideDuration={1800} onClose={() => setCopied(false)}>
