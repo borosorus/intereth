@@ -445,6 +445,7 @@ function QueuedCallItem({call, index, total, impact, metadataByAddress}: {
                         >
                             <KeyboardArrowDownIcon />
                         </IconButton>
+                        <CopyButton value={call.data} label="Copy calldata" variant="text" />
                         <Button size="small" startIcon={<EditOutlinedIcon />} disabled={!canEdit} onClick={() => setEditing(true)}>
                             Edit
                         </Button>
