@@ -29,6 +29,7 @@ import ErrorDialog from "./ErrorDialog";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
+import { ContractInterfaceFormat, parseContractInterface } from "../contractInterface";
 
 enum CustomRpcState {
     disabled,
@@ -43,6 +44,9 @@ interface ContractManagerProps {
     addContract: (contract: DynamicContract) => void;
     showExamples: boolean;
 }
+
+const JSON_ABI_PLACEHOLDER = '[{"type":"function","name":"balanceOf","inputs":[{"name":"account","type":"address"}],"outputs":[{"type":"uint256"}],"stateMutability":"view"}]';
+const SOLIDITY_INTERFACE_PLACEHOLDER = "function balanceOf(address account) external view returns (uint256);\nfunction withdraw(address recipient, uint256 amount) external returns (uint256 received);";
 
 const formSectionSx = {
     p: {xs: 1.5, sm: 2},
@@ -109,6 +113,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [address, setAddress] = useState('');
     const [label, setLabel] = useState('');
     const [abi, setAbi] = useState('');
+    const [interfaceFormat, setInterfaceFormat] = useState<ContractInterfaceFormat>("json");
     const [abiPreset, setAbiPreset] = useState<AbiPresetSelection>("custom");
     const [providerIndex, setProviderIndex] = useState(0);
     const [customRpc, setCustomRpc] = useState('');
@@ -246,12 +251,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             return '';
         }
         try {
-            new ethers.Interface(abi);
+            parseContractInterface(abi, interfaceFormat);
             return '';
         } catch {
-            return 'Enter a valid JSON or human-readable ABI.';
+            return interfaceFormat === "json"
+                ? 'Enter a valid JSON ABI.'
+                : 'Enter valid Solidity function declarations.';
         }
-    }, [abi]);
+    }, [abi, interfaceFormat]);
 
     const isAddressValid = ethers.isAddress(address);
     const canAddInstance = !abiError && (useBrowserWallet
@@ -281,7 +288,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     };
 
     const getInterface = () => abi.trim()
-        ? new ethers.Interface(abi)
+        ? parseContractInterface(abi, interfaceFormat)
         : new ethers.Interface(["fallback(bytes calldata data) external view"]);
     const contractLabel = () => label.trim() || `Contract ${address.slice(0, 8)}…${address.slice(-6)}`;
 
@@ -348,6 +355,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         }
         const preset = ABI_PRESETS.find((candidate) => candidate.id === selection);
         if (preset) {
+            setInterfaceFormat("json");
             setAbi(formatAbi(preset.abi));
         }
     };
@@ -356,6 +364,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         const ethereumIndex = chains.findIndex((chain) => chain.id === '1');
         setAddress(example.address);
         setLabel(example.label);
+        setInterfaceFormat("json");
         setAbi(formatAbi(example.abi));
         setAbiPreset("custom");
         setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
@@ -403,7 +412,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
                         <Box>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
-                            <Typography variant="caption" color="text.secondary">Paste an ABI, use a preset, or leave it empty for raw calls.</Typography>
+                            <Typography variant="caption" color="text.secondary">Choose JSON ABI or Solidity function declarations, or leave it empty for raw calls.</Typography>
                         </Box>
                         <FormControl size="small" sx={{width: {xs: "100%", sm: 180}, flex: "0 0 auto"}}>
                             <InputLabel id="abi-preset-label">Preset</InputLabel>
@@ -429,8 +438,25 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             </Select>
                         </FormControl>
                     </Box>
+                    <FormControl size="small" sx={{width: {xs: "100%", sm: 220}}}>
+                        <InputLabel id="interface-format-label">Interface format</InputLabel>
+                        <Select
+                            labelId="interface-format-label"
+                            value={interfaceFormat}
+                            label="Interface format"
+                            onChange={(event) => {
+                                setInterfaceFormat(event.target.value as ContractInterfaceFormat);
+                                setAbiPreset("custom");
+                            }}
+                            sx={selectSurfaceSx}
+                        >
+                            <MenuItem value="json">JSON ABI</MenuItem>
+                            <MenuItem value="solidity">Solidity interface</MenuItem>
+                        </Select>
+                    </FormControl>
                     <TextField
-                        label="Contract ABI"
+                        label={interfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
+                        placeholder={interfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
                         multiline
                         rows={6}
                         value={abi}
@@ -439,7 +465,9 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             setAbiPreset("custom");
                         }}
                         error={Boolean(abiError)}
-                        helperText={abiError || "Optional. Leave empty to use the raw-call fallback."}
+                        helperText={abiError || (interfaceFormat === "json"
+                            ? "Optional. Paste a JSON ABI array or leave empty for raw calls."
+                            : "Optional. Enter semicolon-separated Solidity function declarations or leave empty for raw calls.")}
                         fullWidth
                         sx={{
                             ...inputSurfaceSx,
