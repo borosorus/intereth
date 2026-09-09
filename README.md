@@ -9,6 +9,7 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Works with predefined networks or any custom HTTP RPC endpoint.
 - Includes Ethereum examples for WETH, ENS Registry, and Uniswap V3 Factory.
 - Provides editable ERC-20, ERC-721, and ERC-1155 ABI presets.
+- Can fetch verified contract ABIs from Sourcify and Blockscout without an API key.
 - Supports nested tuples, arrays, raw calldata, payable calls, and transaction values.
 - Formats unsigned integer inputs as wei, gwei, or ETH while previewing the final integer value.
 - Shows the active RPC URL and chain ID on read-only contract instances.
@@ -19,9 +20,9 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 
 ## Usage
 
-1. Enter a contract address or choose an example to prefill the form.
-2. Paste a JSON ABI or a JSON array of human-readable fragments, select a preset, or leave it empty for raw calls only.
-3. Select an RPC provider for read-only calls, or enable the browser wallet for state-changing calls.
+1. Select an RPC provider for read-only calls, or enable the browser wallet for state-changing calls, and confirm the displayed chain ID.
+2. Enter a contract address or choose an example to prefill the form.
+3. Enable automatic ABI fetching for a publicly verified contract, paste a JSON ABI, select a preset, or leave it empty for raw calls only.
 4. Add the instance, expand a function, complete its inputs, and run the call.
 
 State-changing ABI functions and raw calls provide two actions: **Add to queue** and **Send immediately**. The queue is bound to the wallet account and chain that created it. A matching draft restored after refresh is immediately usable. Changing account or network clears unsubmitted drafts; submitted or otherwise unresolved batches remain locked until their original wallet session returns or the user explicitly forgets their tracking state.
@@ -52,6 +53,8 @@ After submission, the plan is locked and its EIP-5792 batch identifier is stored
 The transaction plan contains public addresses, calldata, values, and wallet status data in browser local storage. It never stores private keys or wallet authorization signatures. Clearing site data removes the saved plan.
 
 Custom RPC endpoints are validated before use. Their full URLs are displayed in the interface, including any embedded API keys, so avoid exposing the page in screenshots or screen shares when using credentialed URLs.
+
+Automatic ABI lookup is opt-in and sends the public contract address and chain ID to Sourcify, then to the configured public Blockscout instance when necessary. Lookup is available only for contracts verified by one of those services.
 
 Always verify the contract address, network, function arguments, and wallet transaction preview before signing.
 

@@ -23,8 +23,9 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DynamicContract } from "../App";
-import { chains } from "../onboard";
+import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
+import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
@@ -39,6 +40,11 @@ enum CustomRpcState {
 }
 
 type AbiPresetSelection = "custom" | (typeof ABI_PRESETS)[number]["id"];
+
+type AbiLookupState =
+    | {status: "idle" | "waiting" | "loading"}
+    | {status: "success"; source: AbiLookupSource}
+    | {status: "not-found" | "error"};
 
 interface ContractManagerProps {
     addContract: (contract: DynamicContract) => void;
@@ -115,6 +121,10 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [abi, setAbi] = useState('');
     const [interfaceFormat, setInterfaceFormat] = useState<ContractInterfaceFormat>("json");
     const [abiPreset, setAbiPreset] = useState<AbiPresetSelection>("custom");
+    const [automaticAbi, setAutomaticAbi] = useState(false);
+    const [fetchedAbi, setFetchedAbi] = useState('');
+    const [abiLookupState, setAbiLookupState] = useState<AbiLookupState>({status: "idle"});
+    const [abiLookupRetry, setAbiLookupRetry] = useState(0);
     const [providerIndex, setProviderIndex] = useState(0);
     const [customRpc, setCustomRpc] = useState('');
     const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
@@ -246,22 +256,67 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             : null;
     }, [customRpcChainId, customRpcState, predefinedRpcState, providerIndex, selectedRpcUrl]);
 
+    const resolvedChainId = useBrowserWallet
+        ? (signer ? walletChainId : null)
+        : selectedProviderDetails?.chainId ?? null;
+    const resolvedChainLabel = resolvedChainId
+        ? chainsById.get(resolvedChainId)?.label ?? "Unknown network"
+        : null;
+
+    useEffect(() => {
+        if (!automaticAbi) {
+            setAbiLookupState({status: "idle"});
+            return;
+        }
+        if (!ethers.isAddress(address) || !resolvedChainId) {
+            setFetchedAbi('');
+            setAbiLookupState({status: "waiting"});
+            return;
+        }
+
+        const controller = new AbortController();
+        setFetchedAbi('');
+        setAbiLookupState({status: "loading"});
+        const timer = window.setTimeout(() => {
+            fetchVerifiedAbi({
+                address: ethers.getAddress(address),
+                chainId: resolvedChainId,
+                signal: controller.signal,
+            }).then((result) => {
+                if (controller.signal.aborted) return;
+                setFetchedAbi(JSON.stringify(result.abi, null, 2));
+                setAbiLookupState({status: "success", source: result.source});
+            }).catch((error) => {
+                if (controller.signal.aborted) return;
+                setAbiLookupState({status: error instanceof AbiLookupError && error.kind === "not-found" ? "not-found" : "error"});
+            });
+        }, 500);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+    }, [address, automaticAbi, abiLookupRetry, resolvedChainId]);
+
+    const activeAbi = automaticAbi ? fetchedAbi : abi;
+    const activeInterfaceFormat: ContractInterfaceFormat = automaticAbi ? "json" : interfaceFormat;
+
     const abiError = useMemo(() => {
-        if (!abi.trim()) {
+        if (!activeAbi.trim()) {
             return '';
         }
         try {
-            parseContractInterface(abi, interfaceFormat);
+            parseContractInterface(activeAbi, activeInterfaceFormat);
             return '';
         } catch {
-            return interfaceFormat === "json"
+            return activeInterfaceFormat === "json"
                 ? 'Enter a valid JSON ABI.'
                 : 'Enter valid Solidity function declarations.';
         }
-    }, [abi, interfaceFormat]);
+    }, [activeAbi, activeInterfaceFormat]);
 
     const isAddressValid = ethers.isAddress(address);
-    const canAddInstance = !abiError && (useBrowserWallet
+    const canAddInstance = (!automaticAbi || abiLookupState.status === "success") && !abiError && (useBrowserWallet
         ? Boolean(signer && walletChainId && isAddressValid)
         : Boolean(isAddressValid && selectedProviderDetails));
 
@@ -287,8 +342,8 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         }
     };
 
-    const getInterface = () => abi.trim()
-        ? parseContractInterface(abi, interfaceFormat)
+    const getInterface = () => activeAbi.trim()
+        ? parseContractInterface(activeAbi, activeInterfaceFormat)
         : new ethers.Interface(["fallback(bytes calldata data) external view"]);
     const contractLabel = () => label.trim() || `Contract ${address.slice(0, 8)}…${address.slice(-6)}`;
 
@@ -360,6 +415,19 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         }
     };
 
+    const toggleAutomaticAbi = () => {
+        if (automaticAbi) {
+            if (abiLookupState.status === "success") {
+                setAbi(fetchedAbi);
+                setInterfaceFormat("json");
+                setAbiPreset("custom");
+            }
+            setAutomaticAbi(false);
+            return;
+        }
+        setAutomaticAbi(true);
+    };
+
     const selectExample = (example: ContractExample) => {
         const ethereumIndex = chains.findIndex((chain) => chain.id === '1');
         setAddress(example.address);
@@ -367,6 +435,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         setInterfaceFormat("json");
         setAbi(formatAbi(example.abi));
         setAbiPreset("custom");
+        setAutomaticAbi(false);
         setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
         setCustomRpc('');
         setCustomRpcChainId('');
@@ -380,6 +449,90 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
     return (
         <Stack spacing={2.5}>
+            <Box sx={formSectionSx}>
+                <Stack spacing={1.25}>
+                    <Box>
+                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Network &amp; access</Typography>
+                        <Typography variant="caption" color="text.secondary">Choose the chain before entering a contract address.</Typography>
+                    </Box>
+                    <Grid container spacing={2} alignItems="center">
+                        {!useBrowserWallet && (
+                            <Grid item xs={12} md={7}>
+                                <FormControl fullWidth error={predefinedRpcState === CustomRpcState.failed}>
+                                    <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
+                                    <Select
+                                        labelId="rpc-provider-label"
+                                        id="rpc-provider-select"
+                                        value={providerIndex}
+                                        label="RPC Provider"
+                                        onChange={(event) => setProviderIndex(event.target.value as number)}
+                                        sx={selectSurfaceSx}
+                                    >
+                                        {chains.map((chain, index) => (
+                                            <MenuItem key={chain.id} value={index}>{chain.label} (Chain {chain.id})</MenuItem>
+                                        ))}
+                                        <MenuItem value={-1}>Custom</MenuItem>
+                                    </Select>
+                                    {predefinedRpcState === CustomRpcState.connecting && (
+                                        <FormHelperText>Checking RPC endpoint...</FormHelperText>
+                                    )}
+                                    {predefinedRpcState === CustomRpcState.failed && (
+                                        <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
+                                    )}
+                                </FormControl>
+                            </Grid>
+                        )}
+                        <Grid item xs={12} md={useBrowserWallet ? 12 : 5}>
+                            <FormControlLabel
+                                control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>}
+                                label="Use browser wallet"
+                            />
+                        </Grid>
+                        {providerIndex === -1 && !useBrowserWallet && (
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    id="custom-rpc"
+                                    label="Custom HTTP RPC URL"
+                                    value={customRpc}
+                                    onChange={(event) => setCustomRpc(event.target.value)}
+                                    error={customRpc !== '' && customRpcState === CustomRpcState.failed}
+                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : 'A full HTTP RPC endpoint.'}
+                                    InputProps={{
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                {renderCustomRpcProgress(customRpcState)}
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                    sx={inputSurfaceSx}
+                                />
+                            </Grid>
+                        )}
+                        {!useBrowserWallet && selectedProviderDetails && (
+                            <Grid item xs={12}>
+                                <Box sx={{px: 0.5}}>
+                                    <Typography variant="caption" color="text.secondary" sx={{display: "block", mb: 0.35, fontWeight: 700}}>
+                                        {selectedProviderDetails.label}
+                                    </Typography>
+                                    <ProviderSummary details={selectedProviderDetails} />
+                                </Box>
+                            </Grid>
+                        )}
+                        {useBrowserWallet && signer && walletChainId && (
+                            <Grid item xs={12}>
+                                <Stack direction="row" spacing={0.75} alignItems="center" sx={{px: 0.5}}>
+                                    <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700}}>
+                                        {resolvedChainLabel}
+                                    </Typography>
+                                    <Chip label={`Chain ID ${walletChainId}`} size="small" variant="outlined" />
+                                </Stack>
+                            </Grid>
+                        )}
+                    </Grid>
+                </Stack>
+            </Box>
+
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
                     <Box>
@@ -412,37 +565,44 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
                         <Box>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
-                            <Typography variant="caption" color="text.secondary">Choose JSON ABI or Solidity function declarations, or leave it empty for raw calls.</Typography>
+                            <Typography variant="caption" color="text.secondary">Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls.</Typography>
                         </Box>
-                        <FormControl size="small" sx={{width: {xs: "100%", sm: 180}, flex: "0 0 auto"}}>
-                            <InputLabel id="abi-preset-label">Preset</InputLabel>
-                            <Select
-                                labelId="abi-preset-label"
-                                value={abiPreset}
-                                label="Preset"
-                                onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
-                                renderValue={(selection) => selection === "custom"
-                                    ? "Custom ABI"
-                                    : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
-                                sx={selectSurfaceSx}
-                            >
-                                <MenuItem value="custom">Custom ABI</MenuItem>
-                                {ABI_PRESETS.map((preset) => (
-                                    <MenuItem key={preset.id} value={preset.id}>
-                                        <Stack spacing={0.15}>
-                                            <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
-                                            <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
-                                        </Stack>
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <Stack direction={{xs: "column", sm: "row"}} spacing={1} alignItems={{xs: "stretch", sm: "center"}}>
+                            <FormControlLabel
+                                control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
+                                label="Fetch ABI automatically"
+                                sx={{mr: {sm: 0}}}
+                            />
+                            <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 180}, flex: "0 0 auto"}}>
+                                <InputLabel id="abi-preset-label">Preset</InputLabel>
+                                <Select
+                                    labelId="abi-preset-label"
+                                    value={abiPreset}
+                                    label="Preset"
+                                    onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
+                                    renderValue={(selection) => selection === "custom"
+                                        ? "Custom ABI"
+                                        : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
+                                    sx={selectSurfaceSx}
+                                >
+                                    <MenuItem value="custom">Custom ABI</MenuItem>
+                                    {ABI_PRESETS.map((preset) => (
+                                        <MenuItem key={preset.id} value={preset.id}>
+                                            <Stack spacing={0.15}>
+                                                <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
+                                                <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
+                                            </Stack>
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Stack>
                     </Box>
-                    <FormControl size="small" sx={{width: {xs: "100%", sm: 220}}}>
+                    <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 220}}}>
                         <InputLabel id="interface-format-label">Interface format</InputLabel>
                         <Select
                             labelId="interface-format-label"
-                            value={interfaceFormat}
+                            value={activeInterfaceFormat}
                             label="Interface format"
                             onChange={(event) => {
                                 setInterfaceFormat(event.target.value as ContractInterfaceFormat);
@@ -455,19 +615,30 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         </Select>
                     </FormControl>
                     <TextField
-                        label={interfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
-                        placeholder={interfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
+                        label={activeInterfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
+                        placeholder={activeInterfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
                         multiline
                         rows={6}
-                        value={abi}
+                        value={activeAbi}
+                        disabled={automaticAbi}
                         onChange={(event) => {
                             setAbi(event.target.value);
                             setAbiPreset("custom");
                         }}
-                        error={Boolean(abiError)}
-                        helperText={abiError || (interfaceFormat === "json"
-                            ? "Optional. Paste a JSON ABI array or leave empty for raw calls."
-                            : "Optional. Enter semicolon-separated Solidity function declarations or leave empty for raw calls.")}
+                        error={!automaticAbi && Boolean(abiError)}
+                        helperText={automaticAbi
+                            ? (abiLookupState.status === "idle" || abiLookupState.status === "waiting"
+                                ? "Enter a valid contract address after selecting a network."
+                                : abiLookupState.status === "loading"
+                                    ? "Looking for a verified ABI..."
+                                    : abiLookupState.status === "success"
+                                        ? `Fetched verified ABI from ${abiLookupState.source}.`
+                                        : abiLookupState.status === "not-found"
+                                            ? `No verified ABI was found for this address on chain ${resolvedChainId}.`
+                                            : "ABI providers could not complete the lookup.")
+                            : (abiError || (interfaceFormat === "json"
+                                ? "Optional. Paste a JSON ABI array or leave empty for raw calls."
+                                : "Optional. Enter semicolon-separated Solidity function declarations or leave empty for raw calls."))}
                         fullWidth
                         sx={{
                             ...inputSurfaceSx,
@@ -477,78 +648,13 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             },
                         }}
                     />
-                </Stack>
-            </Box>
-
-            <Box sx={formSectionSx}>
-                <Stack spacing={1.25}>
-                    <Box>
-                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Connection</Typography>
-                        <Typography variant="caption" color="text.secondary">Select an RPC for read-only access or use your browser wallet.</Typography>
-                    </Box>
-                    <Grid container spacing={2} alignItems="center">
-                {!useBrowserWallet && (
-                    <Grid item xs={12} md={7}>
-                        <FormControl fullWidth error={predefinedRpcState === CustomRpcState.failed}>
-                            <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
-                            <Select
-                                labelId="rpc-provider-label"
-                                id="rpc-provider-select"
-                                value={providerIndex}
-                                label="RPC Provider"
-                                onChange={(event) => setProviderIndex(event.target.value as number)}
-                                sx={selectSurfaceSx}
-                            >
-                                {chains.map((chain, index) => <MenuItem key={chain.id} value={index}>{chain.label}</MenuItem>)}
-                                <MenuItem value={-1}>Custom</MenuItem>
-                            </Select>
-                            {predefinedRpcState === CustomRpcState.connecting && (
-                                <FormHelperText>Checking RPC endpoint...</FormHelperText>
-                            )}
-                            {predefinedRpcState === CustomRpcState.failed && (
-                                <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
-                            )}
-                        </FormControl>
-                    </Grid>
-                )}
-                <Grid item xs={12} md={useBrowserWallet ? 12 : 5}>
-                    <FormControlLabel
-                        control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>}
-                        label="Use browser wallet"
-                    />
-                </Grid>
-                {providerIndex === -1 && !useBrowserWallet && (
-                    <Grid item xs={12}>
-                        <TextField
-                            fullWidth
-                            id="custom-rpc"
-                            label="Custom HTTP RPC URL"
-                            value={customRpc}
-                            onChange={(event) => setCustomRpc(event.target.value)}
-                            error={customRpc !== '' && customRpcState === CustomRpcState.failed}
-                            helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : 'A full HTTP RPC endpoint.'}
-                            InputProps={{
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        {renderCustomRpcProgress(customRpcState)}
-                                    </InputAdornment>
-                                ),
-                            }}
-                            sx={inputSurfaceSx}
-                        />
-                    </Grid>
-                )}
-                {!useBrowserWallet && selectedProviderDetails && (
-                    <Grid item xs={12}>
-                        <Box sx={{px: 0.5}}>
-                            <Typography variant="caption" color="text.secondary" sx={{display: "block", mb: 0.35, fontWeight: 700}}>
-                                {selectedProviderDetails.label}
-                            </Typography>
-                            <ProviderSummary details={selectedProviderDetails} />
+                    {automaticAbi && (abiLookupState.status === "not-found" || abiLookupState.status === "error") && (
+                        <Box>
+                            <Button size="small" variant="outlined" onClick={() => setAbiLookupRetry((value) => value + 1)}>
+                                Retry ABI lookup
+                            </Button>
                         </Box>
-                    </Grid>
-                )}
-                    </Grid>
+                    )}
                 </Stack>
             </Box>
 
