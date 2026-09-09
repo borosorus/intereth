@@ -5,11 +5,12 @@ import { chains } from './chainConfig'
 export { chains, chainsById } from './chainConfig'
 
 const injected = injectedModule()
+const walletChains = chains.map(({id, token, label, rpcUrl}) => ({id, token, label, rpcUrl}))
 
 export const web3Onboard = init({
     // This javascript object is unordered meaning props do not require a certain order
     wallets: [injected],
-    chains,
+    chains: walletChains,
     accountCenter: {
       desktop: {
         enabled: true,
