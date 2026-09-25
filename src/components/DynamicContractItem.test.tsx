@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import DynamicContractItem, { DynamicFunctionItem } from "./DynamicContractItem";
 import { useWalletSession } from "../wallet/WalletSessionContext";

@@ -1,6 +1,6 @@
 import { Button, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 import { render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import ResponsiveDialog from "./ResponsiveDialog";
 
 function mockViewport(mobile: boolean) {

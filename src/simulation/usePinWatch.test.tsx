@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../transaction-plan/reducer";
 import { WatchExpression } from "../transaction-plan/types";

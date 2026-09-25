@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { useSimulation } from "../../simulation/context";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
 

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Mock } from "vitest";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { useTransactionPlan } from "../../transaction-plan/context";

@@ -2,6 +2,7 @@
   "name": "intereth",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
   },
@@ -11,12 +12,7 @@
     "@fontsource/roboto": "^5.0.13",
     "@mui/icons-material": "^5.15.19",
     "@mui/material": "^5.15.19",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
-    "@types/node": "^24.0.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
     "@web3-onboard/core": "^2.22.0",
     "@web3-onboard/injected-wallets": "^2.11.0",
     "@web3-onboard/react": "^2.9.0",
@@ -38,6 +34,12 @@
     "deploy": "gh-pages -d dist"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.13.6",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.1.1",
     "gh-pages": "^6.3.0",
     "jsdom": "^30.1.1",

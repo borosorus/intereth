@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import ContractManager from "./ContractManager";
 import {AbiLookupError, fetchVerifiedAbi} from "../abiLookup";
