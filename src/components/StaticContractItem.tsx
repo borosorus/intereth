@@ -1,6 +1,6 @@
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ParamInput, { createEmptyParamValue, ParamValue } from "./ParamInput";
 import ErrorDialog from "./ErrorDialog";
@@ -8,19 +8,18 @@ import RawCall from "./RawCall";
 import { ProviderDetails } from "../presets";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
+import { useCallActions } from "./useCallActions";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
-import ReadActions, { ReadLoadingMode } from "./ReadActions";
-import { useSimulatedRead } from "../simulation/useSimulatedRead";
+import ReadActions from "./ReadActions";
 import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
-import { usePinWatch } from "../simulation/usePinWatch";
 import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
 
 interface StaticFunctionItemProps {
-    contract: ethers.BaseContract; 
+    contract: ethers.BaseContract;
     frag: ethers.FunctionFragment;
     chainId: string;
 }
@@ -30,65 +29,13 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const summaryId = `${accordionId}-summary`;
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
-    const [loading, setLoading] = useState<ReadLoadingMode>(null);
-    const [result, setResult] = useState<CallResultData | null>(null);
-    const [error, setError] = useState<NormalizedError | null>(null);
-    const simulatedRead = useSimulatedRead(chainId);
-    const workspace = useWorkspaceMode();
-    const watchPin = usePinWatch(chainId);
+    const actions = useCallActions({chainId});
+    const {watchPin, result, error, setError} = actions;
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
 
     const isDisabled = frag.stateMutability === "nonpayable" || frag.stateMutability === "payable";
-    const simulationAvailable = workspace.mode === "simulate" && !isDisabled && simulatedRead.available;
-
-    useEffect(() => {
-        setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-    }, [simulatedRead.revision, workspace.mode]);
-
-    const call = useCallback(async () => {
-        try {
-            setLoading("onchain");
-            setResult(null);
-            setError(null);
-            const encoded = encodeFunctionRead(frag, args);
-            const resp = await contract.getFunction(frag)(...encoded.args);
-            setResult({kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}});
-        } catch (error) {
-            setError(normalizeError(error));
-        } finally {
-            setLoading(null);
-        }
-    }, [args, contract, frag]);
-
-    const runSimulated = useCallback(async () => {
-        try {
-            setResult(null);
-            setError(null);
-            const encoded = encodeFunctionRead(frag, args);
-            const completed = await simulatedRead.run({
-                to: await contract.getAddress(),
-                data: encoded.data,
-            });
-            if (!completed) return;
-            setResult({
-                kind: "function",
-                outputs: frag.outputs,
-                value: decodeFunctionRead(frag, completed.result.returnData),
-                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
-            });
-        } catch (simulationError) {
-            setError(normalizeError(simulationError, "Simulated read failed"));
-        }
-    }, [args, contract, frag, simulatedRead]);
-
-    const pinWatch = useCallback(async () => {
-        try {
-            await watchPin.pin(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}));
-        } catch (watchError) {
-            setError(normalizeError(watchError, "Could not pin watch"));
-        }
-    }, [args, contract, frag, watchPin]);
+    const simulationAvailable = !isDisabled && actions.simulationAvailable;
 
     return (
         <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
@@ -126,10 +73,23 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                             <ReadActions
                                 simulationAvailable={simulationAvailable}
                                 onChainAvailable={typeof contract.runner?.call === "function"}
-                                loading={simulatedRead.loading ? "simulated" : loading}
-                                onSimulated={() => void runSimulated()}
-                                onOnChain={() => void call()}
-                                onPinWatch={() => void pinWatch()}
+                                loading={actions.readActionsLoading}
+                                onSimulated={() => void actions.runSimulated(
+                                    async () => ({to: await contract.getAddress(), data: encodeFunctionRead(frag, args).data}),
+                                    (completed) => ({
+                                        kind: "function",
+                                        outputs: frag.outputs,
+                                        value: decodeFunctionRead(frag, completed.result.returnData),
+                                        source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
+                                    }),
+                                    "Simulated read failed",
+                                )}
+                                onOnChain={() => void actions.runOnchainRead(async (): Promise<CallResultData> => {
+                                    const encoded = encodeFunctionRead(frag, args);
+                                    const resp = await contract.getFunction(frag)(...encoded.args);
+                                    return {kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}};
+                                })}
+                                onPinWatch={() => void actions.pinWatch(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}))}
                                 canPinWatch={watchPin.canPin}
                             />
                             {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}

@@ -1,156 +1,49 @@
-import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Button, CircularProgress, Stack } from "@mui/material";
+import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Stack } from "@mui/material";
 import { ethers } from "ethers";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
 import TransactionValueInput from "./TransactionValueInput";
 import CallResult from "./CallResult";
-import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
+import CallActionButtons from "./CallActionButtons";
+import { CallWalletContext, useCallActions } from "./useCallActions";
+import { CallResultData, normalizeError } from "../callUtils";
 import { ValueUnit } from "../calls/parameters";
 import { prepareRawCall } from "../calls/prepareCall";
-import { useWalletSession } from "../wallet/WalletSessionContext";
-import { useTransactionPlan } from "../transaction-plan/context";
 import { normalizeReadData } from "../calls/readCall";
-import ReadActions, { ReadLoadingMode } from "./ReadActions";
-import { useSimulatedRead } from "../simulation/useSimulatedRead";
-import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
-import { detectErc20ApprovalRequirement } from "../transactions/approvalRecovery";
-import { sendPreparedTransaction } from "../transactions/sendTransaction";
-import { QueuedCall } from "../transaction-plan/types";
-import { useWorkspaceMode } from "../workspace/context";
+import ReadActions from "./ReadActions";
+import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { prepareRawWatch } from "../simulation/watchExpressions";
-import { usePinWatch } from "../simulation/usePinWatch";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const dataInputId = useId();
-    const [isResponseLoading, setIsResponseLoading] = useState(false);
-    const [isQueueing, setIsQueueing] = useState(false);
-    const [queued, setQueued] = useState(false);
-    const [result, setResult] = useState<CallResultData | null>(null);
-    const [error, setError] = useState<NormalizedError | null>(null);
-    const [readLoading, setReadLoading] = useState<ReadLoadingMode>(null);
-    const [approvalRecovery, setApprovalRecovery] = useState<ApprovalRecoveryRequest | null>(null);
+    const actions = useCallActions({chainId});
+    const {wallet, transactionPlan, watchPin, result, error, setError, queued} = actions;
 
     const [data, setData] = useState('');
     const [valueAmount, setValueAmount] = useState('');
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
     const [staticCall, setStatic] = useState(isStaticOnly ?? false);
-    const wallet = useWalletSession();
-    const transactionPlan = useTransactionPlan();
-    const simulatedRead = useSimulatedRead(chainId);
-    const workspace = useWorkspaceMode();
-    const watchPin = usePinWatch(chainId);
-    const simulationAvailable = workspace.mode === "simulate" && staticCall && simulatedRead.available;
+    const simulationAvailable = staticCall && actions.simulationAvailable;
 
-    useEffect(() => {
-        setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-        if (workspace.mode === "simulate") setApprovalRecovery(null);
-    }, [simulatedRead.revision, workspace.mode]);
-
-    const call = useCallback(async () => {
-        let attemptedCall: QueuedCall | null = null;
+    // Raw calls may run against a provider without a sender, which is a
+    // runner capability check rather than a wallet check, so it stays here.
+    const guardRunner = useCallback((needsSend: boolean) => {
         const runner = contract.runner;
-        const hasTxRunner = typeof runner?.sendTransaction === "function";
-        const hasCallRunner = typeof runner?.call === "function";
-        if (!hasCallRunner || (!staticCall && !hasTxRunner)) {
-            setError(normalizeError(new Error("The connected provider cannot perform this action."), "Runner unavailable"));
-            return;
-        }
+        if (typeof runner?.call === "function" && (!needsSend || typeof runner?.sendTransaction === "function")) return true;
+        setError(normalizeError(new Error("The connected provider cannot perform this action."), "Runner unavailable"));
+        return false;
+    }, [contract, setError]);
 
-        try {
-            setIsResponseLoading(true);
-            setQueued(false);
-            setResult(null);
-            setError(null);
-            const contractAddress = await contract.getAddress();
-            if (!staticCall) {
-                if (!wallet.account || !wallet.chainId || !wallet.signer) {
-                    throw Object.assign(new Error("The connected wallet is not ready to send this transaction."), {code: "WALLET_DISCONNECTED"});
-                }
-                attemptedCall = prepareRawCall({
-                    target: contractAddress,
-                    account: wallet.account,
-                    chainId: wallet.chainId,
-                    data,
-                    valueAmount,
-                    valueUnit,
-                });
-                await sendPreparedTransaction(wallet.signer, attemptedCall, setResult);
-            } else {
-                setReadLoading("onchain");
-                const callData = normalizeReadData(data);
-                const resp = await runner!.call!({to: contractAddress, data: callData});
-                setResult({kind: "raw", data: resp, source: {kind: "onchain"}});
-            }
-        } catch (caughtError) {
-            const approvalRequirement = attemptedCall ? detectErc20ApprovalRequirement(caughtError) : null;
-            if (attemptedCall && approvalRequirement) {
-                setApprovalRecovery({requirement: approvalRequirement, originalCall: attemptedCall});
-                return;
-            }
-            const normalized = normalizeError(caughtError, staticCall ? "Raw call failed" : "Transaction failed");
-            setResult((current) => current?.kind === "transaction"
-                ? {...current, status: normalized.code === "CALL_EXCEPTION" ? "failed" : "pending"}
-                : current);
-            setError(normalized);
-        } finally {
-            setIsResponseLoading(false);
-            setReadLoading(null);
-        }
-    }, [contract, data, staticCall, valueAmount, valueUnit, wallet.account, wallet.chainId, wallet.signer]);
-
-    const runSimulated = useCallback(async () => {
-        if (!chainId) return;
-        try {
-            setQueued(false);
-            setResult(null);
-            setError(null);
-            const completed = await simulatedRead.run({
-                to: await contract.getAddress(),
-                data: normalizeReadData(data),
-            });
-            if (!completed) return;
-            setResult({
-                kind: "raw",
-                data: completed.result.returnData,
-                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
-            });
-        } catch (simulationError) {
-            setError(normalizeError(simulationError, "Simulated raw call failed"));
-        }
-    }, [chainId, contract, data, simulatedRead]);
-
-    const pinWatch = useCallback(async () => {
-        try {
-            await watchPin.pin(async (context) => prepareRawWatch({target: await contract.getAddress(), context, data}));
-        } catch (watchError) {
-            setError(normalizeError(watchError, "Could not pin watch"));
-        }
-    }, [contract, data, watchPin]);
-
-    const addToQueue = useCallback(async () => {
-        try {
-            setIsQueueing(true);
-            setQueued(false);
-            setError(null);
-            if (!wallet.account || !wallet.chainId) {
-                throw Object.assign(new Error("Connect a wallet before adding calls to the plan."), {code: "WALLET_DISCONNECTED"});
-            }
-            const prepared = prepareRawCall({
-                target: await contract.getAddress(),
-                account: wallet.account,
-                chainId: wallet.chainId,
-                data,
-                valueAmount,
-                valueUnit,
-            });
-            transactionPlan.dispatch({type: "ADD_CALL", call: prepared});
-            setQueued(true);
-        } catch (queueError) {
-            setError(normalizeError(queueError, "Could not add call"));
-        } finally {
-            setIsQueueing(false);
-        }
-    }, [contract, data, transactionPlan, valueAmount, valueUnit, wallet.account, wallet.chainId]);
+    // Authoring ends here: raw calldata plus value becomes the same prepared
+    // call for send and queue.
+    const prepare = useCallback(async ({account, chainId: walletChainId}: CallWalletContext) => prepareRawCall({
+        target: await contract.getAddress(),
+        account,
+        chainId: walletChainId,
+        data,
+        valueAmount,
+        valueUnit,
+    }), [contract, data, valueAmount, valueUnit]);
 
     return (
     <Paper variant="outlined" sx={{mt: 2, p: {xs: 2, md: 3}, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.82)'}}>
@@ -166,7 +59,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     <FormControlLabel
                         control={<Switch checked={staticCall} onChange={() => {
                             setStatic(!staticCall);
-                            setResult(null);
+                            actions.setResult(null);
                             setError(null);
                         }} />}
                         label="Static call"
@@ -192,37 +85,42 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                 <ReadActions
                     simulationAvailable={simulationAvailable}
                     onChainAvailable={!disabled && typeof contract.runner?.call === "function"}
-                    loading={simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null}
-                    onSimulated={() => void runSimulated()}
-                    onOnChain={() => void call()}
-                    onPinWatch={() => void pinWatch()}
+                    loading={actions.readActionsLoading}
+                    onSimulated={() => {
+                        if (!chainId) return;
+                        void actions.runSimulated(
+                            async () => ({to: await contract.getAddress(), data: normalizeReadData(data)}),
+                            (completed) => ({
+                                kind: "raw",
+                                data: completed.result.returnData,
+                                source: {kind: "simulated", queuedCallCount: completed.queuedCallCount},
+                            }),
+                            "Simulated raw call failed",
+                        );
+                    }}
+                    onOnChain={() => {
+                        if (!guardRunner(false)) return;
+                        void actions.runOnchainRead(async (): Promise<CallResultData> => ({
+                            kind: "raw",
+                            data: await contract.runner!.call!({to: await contract.getAddress(), data: normalizeReadData(data)}),
+                            source: {kind: "onchain"},
+                        }), "Raw call failed");
+                    }}
+                    onPinWatch={() => void actions.pinWatch(async (context) => prepareRawWatch({target: await contract.getAddress(), context, data}))}
                     canPinWatch={watchPin.canPin}
                 />
             ) : (
-                <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
-                    {workspace.mode === "interact" && (
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            fullWidth
-                            disabled={disabled || isResponseLoading || isQueueing}
-                            onClick={() => call()}
-                            sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                        >
-                            {isResponseLoading ? <CircularProgress size={20} color="inherit" /> : "Send now"}
-                        </Button>
-                    )}
-                    <Button
-                        variant={workspace.mode === "simulate" ? "contained" : "outlined"}
-                        color={workspace.mode === "simulate" ? "info" : "secondary"}
-                        fullWidth
-                        disabled={disabled || isQueueing || isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
-                        onClick={addToQueue}
-                        sx={{py: 1.2, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
-                    >
-                        {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
-                    </Button>
-                </Stack>
+                <CallActionButtons
+                    isSending={actions.isResponseLoading}
+                    isQueueing={actions.isQueueing}
+                    sendDisabled={disabled || actions.isResponseLoading || actions.isQueueing}
+                    queueDisabled={disabled || actions.isQueueing || actions.isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                    onSend={() => {
+                        if (!guardRunner(true)) return;
+                        void actions.sendNow(prepare);
+                    }}
+                    onQueue={() => void actions.queueCall(prepare)}
+                />
             )}
             {queued && <Alert severity="success">Added to transaction queue.</Alert>}
             {watchPin.notice && (
@@ -234,9 +132,9 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
         </Stack>
         <ErrorDialog error={error} onClose={() => setError(null)}/>
         <ApprovalRecoveryDialog
-            request={approvalRecovery}
-            onClose={() => setApprovalRecovery(null)}
-            onOriginalResult={setResult}
+            request={actions.approvalRequest}
+            onClose={actions.clearApprovalRequest}
+            onOriginalResult={actions.setResult}
         />
     </Paper>
     );
