@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import { DynamicContract } from "../App";
 import ContractNavigation from "./ContractNavigation";
@@ -11,10 +11,10 @@ const contracts: DynamicContract[] = [
 
 describe("ContractNavigation", () => {
     it("selects and renames labeled contract instances", () => {
-        const onSelect = jest.fn();
-        const onRename = jest.fn();
-        const onAdd = jest.fn();
-        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onRename={onRename} onDelete={jest.fn()} onAdd={onAdd} />);
+        const onSelect = vi.fn();
+        const onRename = vi.fn();
+        const onAdd = vi.fn();
+        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onRename={onRename} onDelete={vi.fn()} onAdd={onAdd} />);
         fireEvent.click(screen.getAllByRole("button", {name: "Add contract"})[0]);
         expect(onAdd).toHaveBeenCalledTimes(1);
         fireEvent.click(screen.getByText("Vault"));

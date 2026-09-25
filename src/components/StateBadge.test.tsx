@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { executionPresentation, simulationPresentation, StateBadge, watchPresentation } from "./StateBadge";
 
 describe("state presentation", () => {

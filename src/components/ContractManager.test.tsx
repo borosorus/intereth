@@ -1,21 +1,21 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import ContractManager from "./ContractManager";
 import {AbiLookupError, fetchVerifiedAbi} from "../abiLookup";
 
-jest.mock("../onboard", () => {
+vi.mock("../onboard", () => {
     const chains = [{id: "1", label: "Test chain", rpcUrl: ""}];
     return {chains, chainsById: new Map(chains.map((chain) => [chain.id, chain]))};
 });
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../abiLookup", () => ({
-    ...jest.requireActual("../abiLookup"),
-    fetchVerifiedAbi: jest.fn(),
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../abiLookup", async () => ({
+    ...await vi.importActual("../abiLookup"),
+    fetchVerifiedAbi: vi.fn(),
 }));
 
-const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
-const mockedFetchVerifiedAbi = fetchVerifiedAbi as jest.MockedFunction<typeof fetchVerifiedAbi>;
+const mockedWalletSession = vi.mocked(useWalletSession);
+const mockedFetchVerifiedAbi = vi.mocked(fetchVerifiedAbi);
 const FIRST_ADDRESS = "0x0000000000000000000000000000000000000001";
 const SECOND_ADDRESS = "0x0000000000000000000000000000000000000002";
 
@@ -27,21 +27,21 @@ function walletSession(overrides = {}) {
         account: null,
         chainId: null,
         error: null,
-        clearError: jest.fn(),
-        connectWallet: jest.fn(),
-        switchChain: jest.fn(),
+        clearError: vi.fn(),
+        connectWallet: vi.fn(),
+        switchChain: vi.fn(),
         ...overrides,
     };
 }
 
 function renderManager(overrides = {}) {
     mockedWalletSession.mockReturnValue(walletSession(overrides));
-    render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+    render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 }
 
 describe("ContractManager", () => {
     afterEach(() => {
-        jest.useRealTimers();
+        vi.useRealTimers();
         mockedFetchVerifiedAbi.mockReset();
     });
 
@@ -74,7 +74,7 @@ describe("ContractManager", () => {
 
     it("puts network selection first and identifies predefined chains", () => {
         mockedWalletSession.mockReturnValue(walletSession());
-        render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+        render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         const networkHeading = screen.getByText("Network & access");
         const contractHeading = screen.getByText("Contract");
@@ -84,7 +84,7 @@ describe("ContractManager", () => {
 
     it("shows the browser wallet chain ID", () => {
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
-        render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+        render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
         expect(screen.getByText("Chain ID 1")).toBeInTheDocument();
@@ -92,11 +92,11 @@ describe("ContractManager", () => {
     });
 
     it("fetches a verified ABI in automatic mode and promotes it when disabled", async () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         const fetched = [{type: "function", name: "owner", inputs: [], outputs: [{type: "address"}], stateMutability: "view"}];
         mockedFetchVerifiedAbi.mockResolvedValue({abi: fetched, source: "Sourcify"});
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
-        render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+        render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
@@ -106,7 +106,7 @@ describe("ContractManager", () => {
         expect(editor).toBeDisabled();
         expect(screen.getByLabelText("Preset")).toHaveAttribute("aria-disabled", "true");
         await act(async () => {
-            jest.advanceTimersByTime(500);
+            vi.advanceTimersByTime(500);
             await Promise.resolve();
         });
 
@@ -120,22 +120,22 @@ describe("ContractManager", () => {
     });
 
     it("ignores a late ABI response after the address changes", async () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         let resolveFirst!: (value: Awaited<ReturnType<typeof fetchVerifiedAbi>>) => void;
         let resolveSecond!: (value: Awaited<ReturnType<typeof fetchVerifiedAbi>>) => void;
         mockedFetchVerifiedAbi
             .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
             .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
-        render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+        render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
-        act(() => jest.advanceTimersByTime(500));
+        act(() => vi.advanceTimersByTime(500));
 
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: SECOND_ADDRESS}});
-        act(() => jest.advanceTimersByTime(500));
+        act(() => vi.advanceTimersByTime(500));
         const oldAbi = [{type: "function", name: "old", inputs: [], outputs: []}];
         const newAbi = [{type: "function", name: "current", inputs: [], outputs: []}];
         await act(async () => {
@@ -153,10 +153,10 @@ describe("ContractManager", () => {
     });
 
     it("preserves the manual ABI when automatic lookup finds no match", async () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         mockedFetchVerifiedAbi.mockRejectedValue(new AbiLookupError("not-found"));
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
-        render(<ContractManager addContract={jest.fn()} showExamples={false} />);
+        render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         const manualAbi = JSON.stringify(["function name() view returns (string)"]);
         fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
@@ -164,7 +164,7 @@ describe("ContractManager", () => {
         fireEvent.change(screen.getByLabelText("JSON ABI"), {target: {value: manualAbi}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
         await act(async () => {
-            jest.advanceTimersByTime(500);
+            vi.advanceTimersByTime(500);
             await Promise.resolve();
         });
 

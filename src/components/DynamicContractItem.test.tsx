@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import DynamicContractItem, { DynamicFunctionItem } from "./DynamicContractItem";
 import { useWalletSession } from "../wallet/WalletSessionContext";
@@ -8,17 +8,17 @@ import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useSimulation } from "../simulation/context";
 import { useWorkspaceMode } from "../workspace/context";
 
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
-const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+const mockedWalletSession = vi.mocked(useWalletSession);
+const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
-beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()}));
+beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()}));
 
 function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
     mockedSimulation.mockReturnValue({
@@ -34,9 +34,9 @@ function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {
         watchEvaluations: {},
         tokenMetadataByAddress: {},
         tokenMetadataResolving: false,
-        retry: jest.fn(),
-        canSimulateChain: jest.fn().mockReturnValue(false),
-        simulateRead: jest.fn(),
+        retry: vi.fn(),
+        canSimulateChain: vi.fn().mockReturnValue(false),
+        simulateRead: vi.fn(),
         ...overrides,
     });
 }
@@ -44,8 +44,8 @@ function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {
 describe("DynamicFunctionItem queueing", () => {
     beforeEach(mockSimulation);
     it("queues encoded ABI calls without invoking the transaction runner", async () => {
-        const sendTransaction = jest.fn();
-        const dispatch = jest.fn();
+        const sendTransaction = vi.fn();
+        const dispatch = vi.fn();
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: null,
@@ -53,9 +53,9 @@ describe("DynamicFunctionItem queueing", () => {
             account: "0x0000000000000000000000000000000000000001",
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
@@ -67,7 +67,7 @@ describe("DynamicFunctionItem queueing", () => {
         const contract = {
             interface: new ethers.Interface([fragment]),
             runner: {sendTransaction},
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         } as unknown as ethers.BaseContract;
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} />);
@@ -81,7 +81,7 @@ describe("DynamicFunctionItem queueing", () => {
     });
 
     it("decodes a simulated read without requiring a wallet runner", async () => {
-        const simulateRead = jest.fn().mockResolvedValue({
+        const simulateRead = vi.fn().mockResolvedValue({
             returnData: ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [BigInt(42)]),
             gasUsed: "0x100",
         });
@@ -91,7 +91,7 @@ describe("DynamicFunctionItem queueing", () => {
             chainId: "1",
             revision: "ready:1",
             queuedCallCount: 2,
-            canSimulateChain: jest.fn().mockReturnValue(true),
+            canSimulateChain: vi.fn().mockReturnValue(true),
             simulateRead,
         });
         mockedWalletSession.mockReturnValue({
@@ -101,20 +101,20 @@ describe("DynamicFunctionItem queueing", () => {
             account: null,
             chainId: null,
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "disconnected",
             canEdit: false,
         });
         const fragment = new ethers.Interface(["function count() view returns (uint256)"]).getFunction("count")!;
         const contract = {
             runner: null,
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         } as unknown as ethers.BaseContract;
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} chainId="1" disabled />);
@@ -135,24 +135,24 @@ describe("DynamicFunctionItem queueing", () => {
 describe("DynamicContractItem wallet lifecycle", () => {
     beforeEach(mockSimulation);
     it("rebinds raw calls to the active signer and preserves the form while disconnected", async () => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
-        const oldSendTransaction = jest.fn();
-        const sendTransaction = jest.fn().mockResolvedValue({
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
+        const oldSendTransaction = vi.fn();
+        const sendTransaction = vi.fn().mockResolvedValue({
             hash: `0x${"11".repeat(32)}`,
-            wait: jest.fn().mockResolvedValue({
+            wait: vi.fn().mockResolvedValue({
                 status: 1,
                 hash: `0x${"11".repeat(32)}`,
                 blockNumber: 10,
                 gasUsed: BigInt(21_000),
             }),
         });
-        const currentRunner = {call: jest.fn(), sendTransaction};
-        const oldRunner = {call: jest.fn(), sendTransaction: oldSendTransaction};
+        const currentRunner = {call: vi.fn(), sendTransaction};
+        const oldRunner = {call: vi.fn(), sendTransaction: oldSendTransaction};
         const iface = new ethers.Interface([]);
-        const getAddress = jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010");
+        const getAddress = vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010");
         const connectedContract = {interface: iface, runner: currentRunner, getAddress};
         const disconnectedContract = {interface: iface, runner: null, getAddress};
-        const connect = jest.fn((runner) => runner ? connectedContract : disconnectedContract);
+        const connect = vi.fn((runner) => runner ? connectedContract : disconnectedContract);
         const contract = {interface: iface, runner: oldRunner, getAddress, connect} as unknown as ethers.BaseContract;
         const walletSession = {
             status: "ready" as const,
@@ -161,14 +161,14 @@ describe("DynamicContractItem wallet lifecycle", () => {
             account: "0x0000000000000000000000000000000000000001",
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         };
         mockedWalletSession.mockReturnValue(walletSession);
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "empty",
             canEdit: true,
         });
@@ -200,7 +200,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
             revision: "ready:10",
             queuedCallCount: 1,
         });
-        const signer = {call: jest.fn(), sendTransaction: jest.fn()};
+        const signer = {call: vi.fn(), sendTransaction: vi.fn()};
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: null,
@@ -208,24 +208,24 @@ describe("DynamicContractItem wallet lifecycle", () => {
             account: "0x0000000000000000000000000000000000000001",
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "empty",
             canEdit: true,
         });
         const activeContract = {
             interface: new ethers.Interface([]),
             runner: signer,
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         };
         const contract = {
             ...activeContract,
-            connect: jest.fn().mockReturnValue(activeContract),
+            connect: vi.fn().mockReturnValue(activeContract),
         } as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
@@ -235,14 +235,14 @@ describe("DynamicContractItem wallet lifecycle", () => {
     });
 
     it("groups read and write functions while preserving mutability labels", async () => {
-        const signer = {call: jest.fn(), sendTransaction: jest.fn()};
+        const signer = {call: vi.fn(), sendTransaction: vi.fn()};
         mockedWalletSession.mockReturnValue({
             status: "ready", provider: null, signer: signer as unknown as ethers.JsonRpcSigner,
             account: "0x0000000000000000000000000000000000000001", chainId: "1",
-            error: null, clearError: jest.fn(), connectWallet: jest.fn(), switchChain: jest.fn(),
+            error: null, clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
-            state: createEmptyTransactionPlanState(), dispatch: jest.fn(), sessionStatus: "empty", canEdit: true,
+            state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: true,
         });
         const iface = new ethers.Interface([
             "function balance() view returns (uint256)",
@@ -252,9 +252,9 @@ describe("DynamicContractItem wallet lifecycle", () => {
         ]);
         const activeContract = {
             interface: iface, runner: signer,
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         };
-        const contract = {...activeContract, connect: jest.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
+        const contract = {...activeContract, connect: vi.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
         fireEvent.click(screen.getByText("RPC: Browser Wallet"));

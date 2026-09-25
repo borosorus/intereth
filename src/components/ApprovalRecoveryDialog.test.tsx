@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { QueuedCall } from "../transaction-plan/types";
@@ -10,17 +10,17 @@ import { inferDirectApprovalToken, validateApprovalRecovery } from "../transacti
 import { forceSendPreparedTransaction, sendPreparedTransaction } from "../transactions/sendTransaction";
 import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
 
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../transaction-plan/uiContext", () => ({useTransactionPlanUi: jest.fn()}));
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../transactions/approvalRecovery", () => ({
-    ...jest.requireActual("../transactions/approvalRecovery"),
-    inferDirectApprovalToken: jest.fn(),
-    validateApprovalRecovery: jest.fn(),
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../transaction-plan/uiContext", () => ({useTransactionPlanUi: vi.fn()}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../transactions/approvalRecovery", async () => ({
+    ...await vi.importActual("../transactions/approvalRecovery"),
+    inferDirectApprovalToken: vi.fn(),
+    validateApprovalRecovery: vi.fn(),
 }));
-jest.mock("../transactions/sendTransaction", () => ({
-    forceSendPreparedTransaction: jest.fn(),
-    sendPreparedTransaction: jest.fn(),
+vi.mock("../transactions/sendTransaction", () => ({
+    forceSendPreparedTransaction: vi.fn(),
+    sendPreparedTransaction: vi.fn(),
 }));
 
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
@@ -51,22 +51,22 @@ const request: ApprovalRecoveryRequest = {
     },
 };
 
-const mockedPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedPlanUi = useTransactionPlanUi as jest.MockedFunction<typeof useTransactionPlanUi>;
-const mockedWallet = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
-const mockedInfer = inferDirectApprovalToken as jest.MockedFunction<typeof inferDirectApprovalToken>;
-const mockedValidate = validateApprovalRecovery as jest.MockedFunction<typeof validateApprovalRecovery>;
-const mockedSend = sendPreparedTransaction as jest.MockedFunction<typeof sendPreparedTransaction>;
-const mockedForceSend = forceSendPreparedTransaction as jest.MockedFunction<typeof forceSendPreparedTransaction>;
+const mockedPlan = vi.mocked(useTransactionPlan);
+const mockedPlanUi = vi.mocked(useTransactionPlanUi);
+const mockedWallet = vi.mocked(useWalletSession);
+const mockedInfer = vi.mocked(inferDirectApprovalToken);
+const mockedValidate = vi.mocked(validateApprovalRecovery);
+const mockedSend = vi.mocked(sendPreparedTransaction);
+const mockedForceSend = vi.mocked(forceSendPreparedTransaction);
 
 describe("ApprovalRecoveryDialog", () => {
-    const dispatch = jest.fn();
-    const requestReview = jest.fn();
-    const onClose = jest.fn();
-    const onOriginalResult = jest.fn();
+    const dispatch = vi.fn();
+    const requestReview = vi.fn();
+    const onClose = vi.fn();
+    const onOriginalResult = vi.fn();
 
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         mockedPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
             dispatch,
@@ -76,14 +76,14 @@ describe("ApprovalRecoveryDialog", () => {
         mockedPlanUi.mockReturnValue({reviewRequest: 0, requestReview});
         mockedWallet.mockReturnValue({
             status: "ready",
-            provider: {send: jest.fn()} as unknown as ethers.BrowserProvider,
-            signer: {sendTransaction: jest.fn()} as unknown as ethers.JsonRpcSigner,
+            provider: {send: vi.fn()} as unknown as ethers.BrowserProvider,
+            signer: {sendTransaction: vi.fn()} as unknown as ethers.JsonRpcSigner,
             account: ACCOUNT,
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedInfer.mockResolvedValue(TOKEN);
         mockedValidate.mockResolvedValue({approvalCall, gasLimit: BigInt(120), blockNumber: "0x20"});

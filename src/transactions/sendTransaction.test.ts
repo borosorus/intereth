@@ -22,9 +22,9 @@ function receipt() {
 
 describe("prepared transaction sending", () => {
     it("reports submission and confirmation for an ordinary signer transaction", async () => {
-        const onResult = jest.fn();
-        const wait = jest.fn().mockResolvedValue(receipt());
-        const signer = {sendTransaction: jest.fn().mockResolvedValue({hash: HASH, wait})} as unknown as ethers.JsonRpcSigner;
+        const onResult = vi.fn();
+        const wait = vi.fn().mockResolvedValue(receipt());
+        const signer = {sendTransaction: vi.fn().mockResolvedValue({hash: HASH, wait})} as unknown as ethers.JsonRpcSigner;
 
         await expect(sendPreparedTransaction(signer, call, onResult)).resolves.toMatchObject({status: "confirmed", hash: HASH});
         expect(signer.sendTransaction).toHaveBeenCalledWith({to: call.to, data: call.data, value: "5"});
@@ -32,10 +32,10 @@ describe("prepared transaction sending", () => {
     });
 
     it("force-sends the exact derived gas through the wallet without estimating", async () => {
-        const onResult = jest.fn();
+        const onResult = vi.fn();
         const provider = {
-            send: jest.fn().mockResolvedValue(HASH),
-            waitForTransaction: jest.fn().mockResolvedValue(receipt()),
+            send: vi.fn().mockResolvedValue(HASH),
+            waitForTransaction: vi.fn().mockResolvedValue(receipt()),
         } as unknown as ethers.BrowserProvider;
 
         await forceSendPreparedTransaction(provider, call, BigInt(120), onResult);
@@ -51,10 +51,10 @@ describe("prepared transaction sending", () => {
 
     it("rejects malformed wallet transaction hashes before polling", async () => {
         const provider = {
-            send: jest.fn().mockResolvedValue("0x1234"),
-            waitForTransaction: jest.fn(),
+            send: vi.fn().mockResolvedValue("0x1234"),
+            waitForTransaction: vi.fn(),
         } as unknown as ethers.BrowserProvider;
-        await expect(forceSendPreparedTransaction(provider, call, BigInt(120), jest.fn()))
+        await expect(forceSendPreparedTransaction(provider, call, BigInt(120), vi.fn()))
             .rejects.toMatchObject({code: "INVALID_WALLET_RESPONSE"});
         expect(provider.waitForTransaction).not.toHaveBeenCalled();
     });

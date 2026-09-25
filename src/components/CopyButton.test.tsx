@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import "@testing-library/jest-dom";
+import type { Mock } from "vitest";
+import "@testing-library/jest-dom/vitest";
 import CopyButton from "./CopyButton";
 
-function setClipboard(writeText: jest.Mock) {
+function setClipboard(writeText: Mock) {
     Object.defineProperty(navigator, "clipboard", {
         configurable: true,
         value: {writeText},
@@ -11,7 +12,7 @@ function setClipboard(writeText: jest.Mock) {
 
 describe("CopyButton", () => {
     it("copies the complete value and confirms success", async () => {
-        const writeText = jest.fn().mockResolvedValue(undefined);
+        const writeText = vi.fn().mockResolvedValue(undefined);
         setClipboard(writeText);
         render(<CopyButton value="0x1234" label="Copy address" />);
 
@@ -22,7 +23,7 @@ describe("CopyButton", () => {
     });
 
     it("reports clipboard failures", async () => {
-        setClipboard(jest.fn().mockRejectedValue(new Error("denied")));
+        setClipboard(vi.fn().mockRejectedValue(new Error("denied")));
         render(<CopyButton value="0x1234" label="Copy address" />);
 
         fireEvent.click(screen.getByRole("button", {name: "Copy address"}));
@@ -31,7 +32,7 @@ describe("CopyButton", () => {
     });
 
     it("copies URL values without rendering a navigable link", async () => {
-        const writeText = jest.fn().mockResolvedValue(undefined);
+        const writeText = vi.fn().mockResolvedValue(undefined);
         setClipboard(writeText);
         render(<CopyButton value="https://rpc.example" label="Copy RPC URL" variant="url" />);
 

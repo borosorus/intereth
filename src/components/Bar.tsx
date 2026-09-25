@@ -24,7 +24,7 @@ export default function Bar(){
               <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: {xs: "1 1 150px", sm: "1 1 0"}, order: 1}}>
                 <Box
                   component="img"
-                  src={`${process.env.PUBLIC_URL}/intereth-mark.svg`}
+                  src={`${import.meta.env.BASE_URL}intereth-mark.svg`}
                   alt="Intereth logo"
                   sx={{width: {xs: 36, sm: 44}, height: {xs: 36, sm: 44}, flex: '0 0 auto'}}
                 />
