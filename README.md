@@ -60,7 +60,7 @@ Always verify the contract address, network, function arguments, and wallet tran
 
 ## Development
 
-Requires Node.js 20.19+, 22.12+, or 24+ and npm.
+Requires Node.js 22.12+, 24.x, or 26+ and npm.
 
 ```bash
 npm install
