@@ -177,7 +177,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
         setBusy(true);
         setError(null);
         try {
-            await forceSendPreparedTransaction(wallet.provider, request.originalCall, validated.gasLimit, reportOriginalResult);
+            await forceSendPreparedTransaction(wallet.provider, request.originalCall.from, request.originalCall, validated.gasLimit, reportOriginalResult);
             onClose();
         } catch (sendError) {
             setError(normalizeError(sendError, "Forced transaction failed"));
