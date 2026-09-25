@@ -8,18 +8,15 @@ import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../t
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import { useSimulation } from "../../simulation/context";
 import TransactionQueuePanel from "./TransactionQueuePanel";
-import { useWorkspaceMode } from "../../workspace/context";
 import { TRANSFER_TOPIC } from "../../simulation/balanceChanges";
 
 vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 vi.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
-vi.mock("../../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
 const mockedWalletSession = vi.mocked(useWalletSession);
 const mockedSimulation = vi.mocked(useSimulation);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
@@ -95,7 +92,6 @@ function mockFreshSimulation(statuses: Array<"0x0" | "0x1"> = ["0x1", "0x1"]) {
 
 describe("TransactionQueuePanel", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
             watchActive: false,
@@ -180,8 +176,7 @@ describe("TransactionQueuePanel", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
     });
 
-    it("shows automatic queued-state simulation in the plan drawer", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
+    it("shows the speculative preview in the plan drawer", () => {
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
             active: true,
@@ -200,7 +195,8 @@ describe("TransactionQueuePanel", () => {
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
-        expect(screen.getByText("Automatically refreshed after queue changes.")).toBeInTheDocument();
+        expect(screen.getByText("Speculative preview")).toBeInTheDocument();
+        expect(screen.getByText("Preparing the queue preview…")).toBeInTheDocument();
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
@@ -238,8 +234,7 @@ describe("TransactionQueuePanel", () => {
         expect(screen.getByText("-5 TKN")).toBeInTheDocument();
     });
 
-    it("keeps execution controls out of Simulate mode", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
+    it("offers execution controls alongside the preview in the plan drawer", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
@@ -251,8 +246,22 @@ describe("TransactionQueuePanel", () => {
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
 
-        expect(screen.getByText("Switch to Interact to execute this transaction plan.")).toBeInTheDocument();
-        expect(screen.queryByRole("button", {name: "Check wallet batching"})).not.toBeInTheDocument();
+        expect(screen.queryByText(/Switch to Interact/)).not.toBeInTheDocument();
+        expect(screen.getByText("Speculative preview")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Check wallet batching"})).toBeInTheDocument();
+    });
+
+    it("opens the plan for a watches-only queue", () => {
+        mockWallet();
+        const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: {
+            id: "watch-1", chainId: "1", from: ACCOUNT, to: TARGET, data: "0xabcd", value: "0",
+            display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 1,
+        }});
+        mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<TransactionQueuePanel />);
+        fireEvent.click(screen.getByRole("button", {name: /1 watched expression · Review plan/}));
+        expect(screen.getByText(/pinned watches but no queued calls/)).toBeInTheDocument();
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {

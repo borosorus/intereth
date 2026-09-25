@@ -38,10 +38,8 @@ import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
 import { useAtomicBatchExecution } from "./AtomicBatchExecution";
-import SimulationControls from "./SimulationControls";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import ResponsiveDialog from "../ResponsiveDialog";
-import { useWorkspaceMode } from "../../workspace/context";
 import InteractSimulationPreview from "./InteractSimulationPreview";
 import SimulationInspector from "../simulation/SimulationInspector";
 import CopyButton from "../CopyButton";
@@ -478,17 +476,17 @@ export default function TransactionQueuePanel() {
     const [open, setOpen] = useState(false);
     const [confirmClear, setConfirmClear] = useState(false);
     const {reviewRequest} = useTransactionPlanUi();
-    const workspace = useWorkspaceMode();
     const simulation = useSimulation();
-    const batchController = useAtomicBatchExecution(open && workspace.mode === "interact");
+    const batchController = useAtomicBatchExecution(open);
     const calls = state.plan.calls;
+    const watches = state.plan.watches;
     const context = state.plan.context;
 
     useEffect(() => {
         if (reviewRequest > 0 && calls.length > 0) setOpen(true);
     }, [calls.length, reviewRequest]);
 
-    if (calls.length === 0) {
+    if (calls.length === 0 && watches.length === 0) {
         return null;
     }
 
@@ -511,7 +509,9 @@ export default function TransactionQueuePanel() {
                     onClick={() => setOpen(true)}
                     sx={{py: 1.25, px: 2, minHeight: {xs: 44, sm: "auto"}, textTransform: "none", fontWeight: 800}}
                 >
-                    {calls.length} queued {calls.length === 1 ? "call" : "calls"} · Review plan
+                    {calls.length > 0
+                        ? `${calls.length} queued ${calls.length === 1 ? "call" : "calls"}`
+                        : `${watches.length} watched ${watches.length === 1 ? "expression" : "expressions"}`} · Review plan
                 </Button>
             </Paper>
             <Drawer
@@ -559,19 +559,16 @@ export default function TransactionQueuePanel() {
                                     metadataByAddress={simulation.tokenMetadataByAddress}
                                 />
                             ))}
-                            {workspace.mode === "simulate" && (
-                                <>
-                                    <SimulationControls />
-                                    <SimulationInspector />
-                                </>
-                            )}
-                            {workspace.mode === "interact" ? (
+                            {calls.length === 0 ? (
+                                <Typography variant="body2" color="text.secondary">
+                                    This plan has pinned watches but no queued calls. Watch expressions are evaluated in the watch panel above the contract.
+                                </Typography>
+                            ) : (
                                 <>
                                     <InteractSimulationPreview />
+                                    {simulation.snapshot && <SimulationInspector />}
                                     <TransactionExecutionOptions controller={batchController} />
                                 </>
-                            ) : (
-                                <Alert severity="info">Switch to Interact to execute this transaction plan.</Alert>
                             )}
                         </Stack>
                     </Box>

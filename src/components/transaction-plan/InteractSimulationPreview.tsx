@@ -142,7 +142,7 @@ export default function InteractSimulationPreview() {
                     </Typography>
                     {!simulation.configured && (
                         <Alert severity="info">
-                            No compatible simulation RPC is available. Switch to Simulate to check the connected wallet RPC.
+                            No compatible simulation RPC is available for this network. Connect a wallet on this chain to check its RPC.
                         </Alert>
                     )}
                     {(simulation.status === "waiting" || simulation.status === "simulating") && !snapshot && (

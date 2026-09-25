@@ -8,7 +8,6 @@ import { useTransactionPlan } from "../transaction-plan/context";
 import { SimulatedRead, SimulatedReadResult } from "../simulation/types";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
 import { usePinWatch } from "../simulation/usePinWatch";
-import { useWorkspaceMode } from "../workspace/context";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
 import { ReadLoadingMode } from "./ReadActions";
@@ -35,7 +34,6 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
     const transactionPlan = useTransactionPlan();
     const simulatedRead = useSimulatedRead(chainId);
     const watchPin = usePinWatch(chainId);
-    const workspace = useWorkspaceMode();
 
     const [isResponseLoading, setIsResponseLoading] = useState(false);
     const [isQueueing, setIsQueueing] = useState(false);
@@ -46,12 +44,11 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
     const [approvalRequest, setApprovalRequest] = useState<ApprovalRecoveryRequest | null>(null);
 
     // Simulated results are only meaningful for the queue revision they were
-    // produced against; a new revision clears them but never touches real
-    // transaction results or in-flight approval recovery outside simulation.
+    // produced against; a new queue revision clears them but never touches
+    // real transaction results or in-flight approval recovery.
     useEffect(() => {
         setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
-        if (workspace.mode === "simulate") setApprovalRequest(null);
-    }, [simulatedRead.revision, workspace.mode]);
+    }, [simulatedRead.revision]);
 
     const sendNow = useCallback(async (prepare: PreparedCallFactory) => {
         let attemptedCall: QueuedCall | null = null;
@@ -148,8 +145,8 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
         transactionPlan,
         simulatedRead,
         watchPin,
-        // The simulated-read capability is owned by the simulation hook; the
-        // workspace-mode check lives there, not in each authoring component.
+        // Whether queued-state reads can run right now; owned by the
+        // simulation hook as a capability of the plan and endpoint.
         simulationAvailable: simulatedRead.available,
         readActionsLoading: (simulatedRead.loading ? "simulated" : isResponseLoading ? readLoading : null) as ReadLoadingMode,
         isResponseLoading,

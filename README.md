@@ -15,7 +15,7 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Shows the active RPC URL and chain ID on read-only contract instances.
 - Builds an ordered, browser-persisted transaction plan without opening the wallet.
 - Sends compatible plans as atomic wallet batches through EIP-5792.
-- Separates execution-focused Interact mode from a technical Simulate workspace with speculative reads and watches.
+- Offers speculative reads, watches, and plan previews as explicit actions driven by current capabilities.
 - Decodes simulated events, reverts, return data, and supported ERC-20/native balance changes.
 
 ## Usage
@@ -31,13 +31,13 @@ If immediate gas estimation returns the standardized ERC-20 insufficient-allowan
 
 Changing accounts on the same network keeps wallet-backed contract cards, rebinds them to the new signer, and resets their interaction forms. Changing networks removes wallet-backed cards from the previous network. Explicit read-only RPC contract cards stay pinned to their configured network in both cases. Disconnecting pauses wallet interactions without clearing their forms.
 
-## Workspace modes and simulation
+## Execution and simulation
 
-**Interact** is the default execution workspace. Reads use canonical on-chain state, while queued writes receive a compact speculative preview before wallet execution.
+Every call exposes its actions directly instead of switching the application into a separate mode. State-changing functions and raw calls offer **Send now** through the connected wallet and **Add to queue** into the plan. Read functions always offer **Run on-chain** against canonical state; whenever queued-state simulation is ready for the current plan, **Run speculative** additionally executes the read after the queued writes without sending anything. Read calls can also be pinned as watches; Intereth recomputes their base-block and speculative values whenever the queue or the watches change.
 
-**Simulate** is the technical workspace. Reads can run after the queued writes without sending anything, and an explicit **Run on-chain** action remains available. Writes can be added to the shared queue, but transaction submission stays in Interact. Read calls can also be pinned as watches; Intereth recomputes their base-block and speculative values whenever the queue changes. The transaction-plan drawer provides decoded per-call results, events, reverts, gas, balance changes, and optional raw RPC details. All simulated values are speculative and are labeled separately from canonical values.
+The transaction-plan drawer combines the queued calls with a speculative preview and, once a simulation snapshot exists, decoded per-call results, events, reverts, gas, balance changes, and optional raw RPC details alongside the execution controls. All simulated values are speculative and are labeled separately from canonical values.
 
-Predefined chain `rpcUrl` endpoints are preferred for simulation and must support `eth_simulateV1`. In Simulate mode, Intereth also checks the connected wallet's RPC and uses it as a fallback, including on networks outside the predefined list. Queue previews and watches use one pinned base block per snapshot so their comparisons share the same canonical starting state.
+Predefined chain `rpcUrl` endpoints are preferred for simulation and must support `eth_simulateV1`. Once a plan exists, Intereth also checks the connected wallet's RPC and uses it as a fallback, including on networks outside the predefined list. Queue previews and watches use one pinned base block per snapshot so their comparisons share the same canonical starting state.
 
 ## Atomic transaction plans
 

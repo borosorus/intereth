@@ -3,16 +3,13 @@ import "@testing-library/jest-dom/vitest";
 import { useSimulation } from "../../simulation/context";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../transaction-plan/reducer";
-import { useWorkspaceMode } from "../../workspace/context";
 import WatchPanel from "./WatchPanel";
 
 vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
 vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
-vi.mock("../../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedSimulation = vi.mocked(useSimulation);
 const mockedPlan = vi.mocked(useTransactionPlan);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
 const account = "0x0000000000000000000000000000000000000001";
 const target = "0x0000000000000000000000000000000000000010";
@@ -33,7 +30,6 @@ describe("WatchPanel", () => {
     it("compares base and speculative values and exposes refresh and removal", () => {
         const dispatch = vi.fn();
         const retry = vi.fn();
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedPlan.mockReturnValue({state: watchedState(), dispatch, sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
             active: true, watchActive: true, status: "ready", chainId: "1", error: null, revision: "queue", queuedCallCount: 1,
@@ -58,16 +54,18 @@ describe("WatchPanel", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "REMOVE_WATCH", watchId: "watch-1"});
     });
 
-    it("is absent from Interact mode", () => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
+    it("shows pin guidance when nothing is pinned", () => {
         mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: false});
-        mockedSimulation.mockReturnValue({} as ReturnType<typeof useSimulation>);
-        const {container} = render(<WatchPanel />);
-        expect(container).toBeEmptyDOMElement();
+        mockedSimulation.mockReturnValue({
+            active: false, watchActive: false, status: "idle", chainId: null, error: null, revision: "queue", queuedCallCount: 0,
+            configured: false, retry: vi.fn(), canSimulateChain: vi.fn().mockReturnValue(false), simulateRead: vi.fn(),
+            snapshot: null, watchEvaluations: {}, tokenMetadataByAddress: {}, tokenMetadataResolving: false,
+        } as ReturnType<typeof useSimulation>);
+        render(<WatchPanel />);
+        expect(screen.getByText(/Open a read-only function/)).toBeInTheDocument();
     });
 
     it("shows browser RPC capability checks beside watches", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedPlan.mockReturnValue({state: watchedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
             active: false, watchActive: false, status: "idle", chainId: "999", error: null, revision: "queue", queuedCallCount: 1,

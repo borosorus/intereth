@@ -6,21 +6,17 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useSimulation } from "../simulation/context";
-import { useWorkspaceMode } from "../workspace/context";
 
 vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedWalletSession = vi.mocked(useWalletSession);
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
 const mockedSimulation = vi.mocked(useSimulation);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
 describe("RawCall queueing", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
             watchActive: false,
@@ -112,7 +108,8 @@ describe("RawCall queueing", () => {
         } as unknown as ethers.BaseContract;
 
         render(<RawCall contract={contract} />);
-        expect(screen.queryByRole("button", {name: "Send now"})).not.toBeInTheDocument();
+        // Both actions are offered; queueing must not touch the runner.
+        expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));

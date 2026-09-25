@@ -17,7 +17,6 @@ import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
-import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
@@ -148,7 +147,6 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
     const [address, setAddress] = useState('loading...');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
-    const workspace = useWorkspaceMode();
     const walletReady = Boolean(signer && activeWalletChainId === contractChainId);
     const activeContract = useMemo(
         () => contract.connect(walletReady ? signer : null),
@@ -190,15 +188,15 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
             {!walletReady && (
                 <Alert severity="info">
                     Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
-                    {workspace.mode === "simulate" && simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
+                    {simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
                 </Alert>
             )}
-            {workspace.mode === "simulate" && simulation.active && simulation.chainId !== contractChainId && (
+            {simulation.active && simulation.chainId !== contractChainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
             <ContractFunctionBrowser
                     contractId={contractId}
-                    readDescription={workspace.mode === "simulate"
+                    readDescription={simulation.canSimulateChain(contractChainId)
                         ? "Read canonical state or speculative queued state without modifying the contract."
                         : "Read canonical on-chain state without modifying the contract."}
                     functions={functions}

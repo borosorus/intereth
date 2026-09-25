@@ -13,7 +13,6 @@ import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions from "./ReadActions";
-import { useWorkspaceMode } from "../workspace/context";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
@@ -114,7 +113,6 @@ export default function StaticContractItem({contractId = "static-contract", cont
     const [detectedChainId, setDetectedChainId] = useState<string>('');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
-    const workspace = useWorkspaceMode();
 
     useEffect(() => {
         contract.getAddress()
@@ -171,12 +169,12 @@ export default function StaticContractItem({contractId = "static-contract", cont
                 </Grid>
             </Box>
             <Stack spacing={2} sx={{p: {xs: 1.5, md: 2}}}>
-            {workspace.mode === "simulate" && simulation.active && chainId && simulation.chainId !== chainId && (
+            {simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
             <ContractFunctionBrowser
                     contractId={contractId}
-                    readDescription={workspace.mode === "simulate"
+                    readDescription={chainId && simulation.canSimulateChain(chainId)
                         ? "Read canonical state or speculative queued state without sending a transaction."
                         : "Read canonical on-chain state without sending a transaction."}
                     functions={functions}
