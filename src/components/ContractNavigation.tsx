@@ -3,26 +3,26 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
-import { DynamicContract } from "../App";
+import { ContractInstance } from "../contracts/workspace";
 import ResponsiveDialog from "./ResponsiveDialog";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
-function chainId(contract: DynamicContract) {
+function chainId(contract: ContractInstance) {
     return contract.isStatic ? contract.providerDetails?.chainId ?? "Unknown chain" : contract.walletChainId;
 }
 
 export default function ContractNavigation({contracts, selectedId, onSelect, onRename, onDelete, onAdd}: {
-    contracts: DynamicContract[];
+    contracts: ContractInstance[];
     selectedId: string;
     onSelect: (id: string) => void;
     onRename: (id: string, label: string) => void;
     onDelete: (id: string) => void;
     onAdd: () => void;
 }) {
-    const [renaming, setRenaming] = useState<DynamicContract | null>(null);
+    const [renaming, setRenaming] = useState<ContractInstance | null>(null);
     const [label, setLabel] = useState("");
     useEffect(() => setLabel(renaming?.label ?? ""), [renaming]);
     const selected = contracts.find((contract) => contract.id === selectedId) ?? contracts[0];

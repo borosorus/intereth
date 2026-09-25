@@ -22,7 +22,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { DynamicContract } from "../App";
+import { ContractInstance } from "../contracts/workspace";
 import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
@@ -47,7 +47,7 @@ type AbiLookupState =
     | {status: "not-found" | "error"};
 
 interface ContractManagerProps {
-    addContract: (contract: DynamicContract) => void;
+    addContract: (contract: ContractInstance) => void;
     showExamples: boolean;
 }
 
