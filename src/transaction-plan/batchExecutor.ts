@@ -147,7 +147,7 @@ export class Eip5792BatchExecutor implements AtomicBatchExecutor {
         if (!isRecord(response)) {
             return invalidStatus(validBatchId, "The wallet returned invalid batch status data.");
         }
-        let responseChainId: string | null = null;
+        let responseChainId: string | null;
         try {
             responseChainId = typeof response.chainId === "string" ? chainQuantity(ethers.getBigInt(response.chainId).toString()) : null;
         } catch {

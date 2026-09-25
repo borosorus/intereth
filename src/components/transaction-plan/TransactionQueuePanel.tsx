@@ -200,7 +200,7 @@ function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (
     if (call.editor.kind === "abi") {
         try {
             fragment = ethers.FunctionFragment.from(call.editor.functionFragment);
-        } catch (fragmentError) {
+        } catch {
             return (
                 <Alert severity="error" action={<Button onClick={onCancel}>Close editor</Button>}>
                     The saved function definition is invalid and cannot be edited.

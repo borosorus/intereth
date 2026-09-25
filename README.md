@@ -73,6 +73,7 @@ The development server runs at [http://localhost:5173/intereth/](http://localhos
 npm test              # run the test suite once (Vitest)
 npm run test:watch    # interactive test watcher
 npm run typecheck     # TypeScript check only
+npm run lint          # ESLint
 npm run build         # typecheck + production build
 ```
 
