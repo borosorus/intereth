@@ -7,13 +7,13 @@ import { useWorkspaceMode } from "../workspace/context";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { usePinWatch } from "./usePinWatch";
 
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 
-const mockedPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
-const mockedWallet = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
+const mockedPlan = vi.mocked(useTransactionPlan);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
+const mockedWallet = vi.mocked(useWalletSession);
 const account = "0x0000000000000000000000000000000000000001";
 const target = "0x0000000000000000000000000000000000000010";
 const watch: WatchExpression = {
@@ -42,15 +42,15 @@ function Probe() {
 
 describe("usePinWatch", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedWallet.mockReturnValue({
             status: "ready", account, chainId: "1", provider: null, signer: null, error: null,
-            clearError: jest.fn(), connectWallet: jest.fn(), switchChain: jest.fn(),
+            clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),
         });
     });
 
     it("pins a watch directly without a queued call", async () => {
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         mockedPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(), dispatch, sessionStatus: "empty", canEdit: true,
         });
@@ -61,7 +61,7 @@ describe("usePinWatch", () => {
     });
 
     it("dispatches a prepared watch for the matching editable plan", async () => {
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         mockedPlan.mockReturnValue({state: planState(), dispatch, sessionStatus: "ready", canEdit: true});
         render(<Probe />);
         expect(screen.getByText("available")).toBeInTheDocument();
@@ -71,7 +71,7 @@ describe("usePinWatch", () => {
     });
 
     it("centralizes duplicate detection", async () => {
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         const state = transactionPlanReducer(planState(), {type: "ADD_WATCH", watch});
         mockedPlan.mockReturnValue({state, dispatch, sessionStatus: "ready", canEdit: true});
         render(<Probe />);

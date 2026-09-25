@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type { Mock } from "vitest";
 import "@testing-library/jest-dom";
 import { ethers } from "ethers";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
@@ -10,15 +11,15 @@ import TransactionQueuePanel from "./TransactionQueuePanel";
 import { useWorkspaceMode } from "../../workspace/context";
 import { TRANSFER_TOPIC } from "../../simulation/balanceChanges";
 
-jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedWalletSession = vi.mocked(useWalletSession);
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
@@ -56,13 +57,13 @@ function mockWallet(chainId = "1") {
         account: ACCOUNT,
         chainId,
         error: null,
-        clearError: jest.fn(),
-        connectWallet: jest.fn(),
-        switchChain: jest.fn(),
+        clearError: vi.fn(),
+        connectWallet: vi.fn(),
+        switchChain: vi.fn(),
     });
 }
 
-function mockRpcWallet(send: jest.Mock, chainId = "1") {
+function mockRpcWallet(send: Mock, chainId = "1") {
     mockWallet(chainId);
     mockedWalletSession.mockReturnValue({
         ...mockedWalletSession(),
@@ -94,7 +95,7 @@ function mockFreshSimulation(statuses: Array<"0x0" | "0x1"> = ["0x1", "0x1"]) {
 
 describe("TransactionQueuePanel", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
             watchActive: false,
@@ -108,14 +109,14 @@ describe("TransactionQueuePanel", () => {
             watchEvaluations: {},
             tokenMetadataByAddress: {},
             tokenMetadataResolving: false,
-            retry: jest.fn(),
-            canSimulateChain: jest.fn().mockReturnValue(false),
-            simulateRead: jest.fn(),
+            retry: vi.fn(),
+            canSimulateChain: vi.fn().mockReturnValue(false),
+            simulateRead: vi.fn(),
         });
     });
 
     it("reviews, reorders, duplicates, and edits ABI and raw calls", async () => {
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
@@ -160,7 +161,7 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("makes a restored matching draft immediately editable and confirms clearing", () => {
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
@@ -180,7 +181,7 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("shows automatic queued-state simulation in the plan drawer", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
             active: true,
@@ -192,7 +193,7 @@ describe("TransactionQueuePanel", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "ready",
             canEdit: true,
         });
@@ -226,7 +227,7 @@ describe("TransactionQueuePanel", () => {
             },
         });
         mockWallet();
-        mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
@@ -238,11 +239,11 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("keeps execution controls out of Simulate mode", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "ready",
             canEdit: true,
         });
@@ -255,12 +256,12 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {
-        const switchChain = jest.fn().mockResolvedValue(undefined);
+        const switchChain = vi.fn().mockResolvedValue(undefined);
         mockWallet("10");
         mockedWalletSession.mockReturnValue({...mockedWalletSession(), switchChain});
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "chain_mismatch",
             canEdit: false,
         });
@@ -275,8 +276,8 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("disables status RPC controls when a submitted batch has a session mismatch", () => {
-        const send = jest.fn();
-        const dispatch = jest.fn();
+        const send = vi.fn();
+        const dispatch = vi.fn();
         mockRpcWallet(send, "10");
         mockedTransactionPlan.mockReturnValue({
             state: stateWithExecution({status: "pending", batchId: "0x1234"}),
@@ -299,7 +300,7 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("shows the original account and a reconnect action on account mismatch", async () => {
-        const connectWallet = jest.fn().mockResolvedValue(null);
+        const connectWallet = vi.fn().mockResolvedValue(null);
         mockWallet();
         mockedWalletSession.mockReturnValue({
             ...mockedWalletSession(),
@@ -308,7 +309,7 @@ describe("TransactionQueuePanel", () => {
         });
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "account_mismatch",
             canEdit: false,
         });
@@ -321,8 +322,8 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("checks atomic capability lazily and submits the queue with wallet_sendCalls", async () => {
-        const dispatch = jest.fn();
-        const send = jest.fn(async (method: string) => {
+        const dispatch = vi.fn();
+        const send = vi.fn(async (method: string) => {
             if (method === "wallet_getCapabilities") {
                 return {"0x1": {atomic: {status: "supported"}}};
             }
@@ -361,11 +362,11 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("warns before a wallet-managed smart-account upgrade", async () => {
-        const send = jest.fn().mockResolvedValue({"0x1": {atomic: {status: "ready"}}});
+        const send = vi.fn().mockResolvedValue({"0x1": {atomic: {status: "ready"}}});
         mockRpcWallet(send);
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "ready",
             canEdit: true,
         });
@@ -380,11 +381,11 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("requires explicit risk acceptance without a fresh simulation", async () => {
-        const send = jest.fn(async (method: string) => method === "wallet_getCapabilities"
+        const send = vi.fn(async (method: string) => method === "wallet_getCapabilities"
             ? {"0x1": {atomic: {status: "supported"}}}
             : {id: "0x1234"});
         mockRpcWallet(send);
-        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
@@ -397,10 +398,10 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("blocks submission when the current simulation contains a revert", async () => {
-        const send = jest.fn().mockResolvedValue({"0x1": {atomic: {status: "supported"}}});
+        const send = vi.fn().mockResolvedValue({"0x1": {atomic: {status: "supported"}}});
         mockRpcWallet(send);
         mockFreshSimulation(["0x1", "0x0"]);
-        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
         render(<TransactionQueuePanel />);
         fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
@@ -412,11 +413,11 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("keeps manual sending as the fallback when wallet batching is unavailable", async () => {
-        const send = jest.fn().mockRejectedValue({code: -32601, message: "method not found"});
+        const send = vi.fn().mockRejectedValue({code: -32601, message: "method not found"});
         mockRpcWallet(send);
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "ready",
             canEdit: true,
         });
@@ -429,10 +430,10 @@ describe("TransactionQueuePanel", () => {
     });
 
     it("polls a restored pending batch while the review drawer is closed", async () => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         try {
-            const dispatch = jest.fn();
-            const send = jest.fn().mockResolvedValue({
+            const dispatch = vi.fn();
+            const send = vi.fn().mockResolvedValue({
                 version: "2.0.0",
                 id: "0x1234",
                 chainId: "0x1",
@@ -450,7 +451,7 @@ describe("TransactionQueuePanel", () => {
 
             render(<TransactionQueuePanel />);
             await act(async () => {
-                jest.advanceTimersByTime(5000);
+                vi.advanceTimersByTime(5000);
                 await Promise.resolve();
             });
             expect(send).toHaveBeenCalledWith("wallet_getCallsStatus", ["0x1234"]);
@@ -459,13 +460,13 @@ describe("TransactionQueuePanel", () => {
                 execution: expect.objectContaining({status: "confirmed", atomic: true}),
             }));
         } finally {
-            jest.useRealTimers();
+            vi.useRealTimers();
         }
     });
 
     it("requires confirmation before turning a failed batch back into a draft", () => {
         mockWallet();
-        const dispatch = jest.fn();
+        const dispatch = vi.fn();
         mockedTransactionPlan.mockReturnValue({
             state: stateWithExecution({status: "reverted", batchId: "0x1234", walletStatus: 500, atomic: true}),
             dispatch,

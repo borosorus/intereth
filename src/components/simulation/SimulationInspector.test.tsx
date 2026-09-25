@@ -6,11 +6,11 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../transaction-plan/reducer";
 import SimulationInspector from "./SimulationInspector";
 
-jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedPlan = vi.mocked(useTransactionPlan);
 const account = "0x0000000000000000000000000000000000000001";
 const target = "0x0000000000000000000000000000000000000010";
 const token = "0x0000000000000000000000000000000000000020";
@@ -54,11 +54,11 @@ function snapshot(): PlanSimulationSnapshot {
 
 describe("SimulationInspector", () => {
     beforeEach(() => {
-        mockedPlan.mockReturnValue({state: planState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedPlan.mockReturnValue({state: planState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
             active: true, watchActive: true, status: "ready", chainId: "1", error: null, snapshot: snapshot(), revision: "queue", queuedCallCount: 2,
             configured: true, watchEvaluations: {}, tokenMetadataByAddress: {}, tokenMetadataResolving: false,
-            retry: jest.fn(), canSimulateChain: jest.fn().mockReturnValue(true), simulateRead: jest.fn(),
+            retry: vi.fn(), canSimulateChain: vi.fn().mockReturnValue(true), simulateRead: vi.fn(),
         });
     });
 

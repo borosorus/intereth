@@ -7,7 +7,7 @@ const noop = () => undefined;
 
 describe("FunctionCallEditor calldata copy", () => {
     it("copies calldata encoded from the current function arguments", async () => {
-        const clipboardWrite = jest.fn().mockResolvedValue(undefined);
+        const clipboardWrite = vi.fn().mockResolvedValue(undefined);
         Object.defineProperty(navigator, "clipboard", {
             configurable: true,
             value: {writeText: clipboardWrite},

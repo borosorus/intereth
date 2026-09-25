@@ -7,7 +7,7 @@ function response(status: number, payload: unknown): Response {
     return {
         ok: status >= 200 && status < 300,
         status,
-        json: jest.fn().mockResolvedValue(payload),
+        json: vi.fn().mockResolvedValue(payload),
     } as unknown as Response;
 }
 
@@ -16,11 +16,11 @@ describe("fetchVerifiedAbi", () => {
 
     afterEach(() => {
         global.fetch = originalFetch;
-        jest.restoreAllMocks();
+        vi.restoreAllMocks();
     });
 
     it("returns a Sourcify ABI without querying Blockscout", async () => {
-        global.fetch = jest.fn().mockResolvedValue(response(200, {abi: ABI}));
+        global.fetch = vi.fn().mockResolvedValue(response(200, {abi: ABI}));
 
         await expect(fetchVerifiedAbi({address: ADDRESS, chainId: "1", signal: new AbortController().signal}))
             .resolves.toEqual({abi: ABI, source: "Sourcify"});
@@ -28,7 +28,7 @@ describe("fetchVerifiedAbi", () => {
     });
 
     it("falls back to the configured Blockscout instance", async () => {
-        global.fetch = jest.fn()
+        global.fetch = vi.fn()
             .mockResolvedValueOnce(response(404, {}))
             .mockResolvedValueOnce(response(200, {status: "1", result: JSON.stringify(ABI)}));
 
@@ -42,7 +42,7 @@ describe("fetchVerifiedAbi", () => {
     });
 
     it("does not query Blockscout when the chain has no configured instance", async () => {
-        global.fetch = jest.fn().mockResolvedValue(response(404, {}));
+        global.fetch = vi.fn().mockResolvedValue(response(404, {}));
 
         await expect(fetchVerifiedAbi({address: ADDRESS, chainId: "999999", signal: new AbortController().signal}))
             .rejects.toMatchObject<Partial<AbiLookupError>>({kind: "not-found"});
@@ -50,7 +50,7 @@ describe("fetchVerifiedAbi", () => {
     });
 
     it("reports provider failures separately from an unverified contract", async () => {
-        global.fetch = jest.fn()
+        global.fetch = vi.fn()
             .mockResolvedValueOnce(response(500, {}))
             .mockResolvedValueOnce(response(200, {status: "0", result: "Contract source code not verified"}));
 
@@ -60,7 +60,7 @@ describe("fetchVerifiedAbi", () => {
 
     it("propagates cancellation without falling back", async () => {
         const controller = new AbortController();
-        global.fetch = jest.fn().mockImplementation(async () => {
+        global.fetch = vi.fn().mockImplementation(async () => {
             controller.abort();
             throw new DOMException("Aborted", "AbortError");
         });

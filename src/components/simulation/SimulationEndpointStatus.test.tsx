@@ -3,9 +3,9 @@ import "@testing-library/jest-dom";
 import { useSimulation } from "../../simulation/context";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
 
-jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
+vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
 
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
+const mockedSimulation = vi.mocked(useSimulation);
 
 function simulationValue(overrides: Partial<ReturnType<typeof useSimulation>> = {}): ReturnType<typeof useSimulation> {
     return {
@@ -21,9 +21,9 @@ function simulationValue(overrides: Partial<ReturnType<typeof useSimulation>> = 
         watchEvaluations: {},
         tokenMetadataByAddress: {},
         tokenMetadataResolving: false,
-        retry: jest.fn(),
-        canSimulateChain: jest.fn().mockReturnValue(false),
-        simulateRead: jest.fn(),
+        retry: vi.fn(),
+        canSimulateChain: vi.fn().mockReturnValue(false),
+        simulateRead: vi.fn(),
         ...overrides,
     };
 }
@@ -42,7 +42,7 @@ describe("SimulationEndpointStatus", () => {
     });
 
     it("explains unsupported browser RPCs and retries the capability check", () => {
-        const retry = jest.fn();
+        const retry = vi.fn();
         mockedSimulation.mockReturnValue(simulationValue({
             endpointStatus: "unavailable",
             browserCapability: {status: "unsupported", chainId: "999", error: null},

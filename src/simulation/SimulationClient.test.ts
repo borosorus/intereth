@@ -29,7 +29,7 @@ const rawWatch: WatchExpression = {
 };
 
 function clientWith(response: unknown) {
-    const send = jest.fn().mockResolvedValue(response);
+    const send = vi.fn().mockResolvedValue(response);
     return {client: new SimulationClient({send} as SimulationRpcTransport), send};
 }
 
@@ -55,7 +55,7 @@ describe("SimulationClient", () => {
     });
 
     it("probes eth_simulateV1 with a harmless identity-precompile call", async () => {
-        const send = jest.fn()
+        const send = vi.fn()
             .mockResolvedValueOnce("0x1")
             .mockResolvedValueOnce([{calls: [callResult("0x1")]}]);
         const client = new SimulationClient({send});
@@ -73,7 +73,7 @@ describe("SimulationClient", () => {
             traceTransfers: false,
         }, "latest"]);
 
-        const malformed = new SimulationClient({send: jest.fn()
+        const malformed = new SimulationClient({send: vi.fn()
             .mockResolvedValueOnce("0x1")
             .mockResolvedValueOnce([])});
         await expect(malformed.assertSimulationSupport("1", ACCOUNT))
@@ -213,10 +213,10 @@ describe("SimulationClient", () => {
 });
 
 describe("HttpJsonRpcTransport", () => {
-    afterEach(() => jest.restoreAllMocks());
+    afterEach(() => vi.restoreAllMocks());
 
     it("returns valid JSON-RPC results", async () => {
-        jest.spyOn(global, "fetch").mockResolvedValue({
+        vi.spyOn(global, "fetch").mockResolvedValue({
             ok: true,
             json: async () => ({jsonrpc: "2.0", id: 1, result: "0x1"}),
         } as Response);
@@ -225,7 +225,7 @@ describe("HttpJsonRpcTransport", () => {
     });
 
     it("normalizes unsupported, failed, and malformed responses", async () => {
-        jest.spyOn(global, "fetch")
+        vi.spyOn(global, "fetch")
             .mockResolvedValueOnce({
                 ok: true,
                 json: async () => ({jsonrpc: "2.0", id: 1, error: {code: -32601, message: "Method not found"}}),
@@ -249,7 +249,7 @@ describe("HttpJsonRpcTransport", () => {
 
 describe("BrowserProviderRpcTransport", () => {
     it("forwards JSON-RPC requests through the browser provider", async () => {
-        const send = jest.fn().mockResolvedValue("0x1");
+        const send = vi.fn().mockResolvedValue("0x1");
         const transport = new BrowserProviderRpcTransport({send});
 
         await expect(transport.send("eth_chainId", [])).resolves.toBe("0x1");
@@ -258,10 +258,10 @@ describe("BrowserProviderRpcTransport", () => {
 
     it("distinguishes unsupported methods from other provider failures", async () => {
         const unsupported = new BrowserProviderRpcTransport({
-            send: jest.fn().mockRejectedValue({code: "UNKNOWN_ERROR", error: {code: -32601, message: "Method not found"}}),
+            send: vi.fn().mockRejectedValue({code: "UNKNOWN_ERROR", error: {code: -32601, message: "Method not found"}}),
         });
         const rejected = new BrowserProviderRpcTransport({
-            send: jest.fn().mockRejectedValue({code: 4001, message: "User rejected the request"}),
+            send: vi.fn().mockRejectedValue({code: 4001, message: "User rejected the request"}),
         });
 
         await expect(unsupported.send("eth_simulateV1", [])).rejects.toMatchObject({code: "SIMULATION_UNSUPPORTED"});

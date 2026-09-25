@@ -8,19 +8,19 @@ import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useSimulation } from "../simulation/context";
 import { useWorkspaceMode } from "../workspace/context";
 
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
-const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+const mockedWalletSession = vi.mocked(useWalletSession);
+const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
 describe("RawCall queueing", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
             watchActive: false,
@@ -34,14 +34,14 @@ describe("RawCall queueing", () => {
             watchEvaluations: {},
             tokenMetadataByAddress: {},
             tokenMetadataResolving: false,
-            retry: jest.fn(),
-            canSimulateChain: jest.fn().mockReturnValue(false),
-            simulateRead: jest.fn(),
+            retry: vi.fn(),
+            canSimulateChain: vi.fn().mockReturnValue(false),
+            simulateRead: vi.fn(),
         });
     });
 
     it("runs a raw simulated read without an ordinary provider", async () => {
-        const simulateRead = jest.fn().mockResolvedValue({returnData: "0x1234", gasUsed: "0x20"});
+        const simulateRead = vi.fn().mockResolvedValue({returnData: "0x1234", gasUsed: "0x20"});
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
             active: true,
@@ -49,7 +49,7 @@ describe("RawCall queueing", () => {
             chainId: "1",
             revision: "ready:1",
             queuedCallCount: 1,
-            canSimulateChain: jest.fn().mockReturnValue(true),
+            canSimulateChain: vi.fn().mockReturnValue(true),
             simulateRead,
         });
         mockedWalletSession.mockReturnValue({
@@ -59,19 +59,19 @@ describe("RawCall queueing", () => {
             account: null,
             chainId: null,
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "disconnected",
             canEdit: false,
         });
         const contract = {
             runner: null,
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         } as unknown as ethers.BaseContract;
 
         render(<RawCall contract={contract} isStaticOnly chainId="1" disabled />);
@@ -87,8 +87,8 @@ describe("RawCall queueing", () => {
         expect(screen.getByText(/after 1 queued call/)).toBeInTheDocument();
     });
     it("adds a prepared call without invoking the transaction runner", async () => {
-        const sendTransaction = jest.fn();
-        const dispatch = jest.fn();
+        const sendTransaction = vi.fn();
+        const dispatch = vi.fn();
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: null,
@@ -96,9 +96,9 @@ describe("RawCall queueing", () => {
             account: "0x0000000000000000000000000000000000000001",
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
@@ -107,8 +107,8 @@ describe("RawCall queueing", () => {
             canEdit: true,
         });
         const contract = {
-            runner: {sendTransaction, call: jest.fn()},
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            runner: {sendTransaction, call: vi.fn()},
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
         } as unknown as ethers.BaseContract;
 
         render(<RawCall contract={contract} />);

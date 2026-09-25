@@ -60,25 +60,27 @@ Always verify the contract address, network, function arguments, and wallet tran
 
 ## Development
 
-Requires Node.js and npm.
+Requires Node.js 20.19+, 22.12+, or 24+ and npm.
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-The development server runs at [http://localhost:3000](http://localhost:3000).
+The development server runs at [http://localhost:5173/intereth/](http://localhost:5173/intereth/).
 
 ```bash
-npm test -- --watchAll=false
-npm run build
+npm test              # run the test suite once (Vitest)
+npm run test:watch    # interactive test watcher
+npm run typecheck     # TypeScript check only
+npm run build         # typecheck + production build
 ```
 
-The production build is written to `build/` and uses `/intereth/` as its GitHub Pages base path.
+The production build is written to `dist/` and uses `/intereth/` as its GitHub Pages base path. Inspect the production bundle locally with `npm run preview`.
 
 ## Deployment
 
-The `homepage` field in `package.json` controls the GitHub Pages URL. To build and publish the `build/` directory to the `gh-pages` branch:
+The `base` setting in `vite.config.ts` controls the GitHub Pages URL. To build and publish the `dist/` directory to the `gh-pages` branch:
 
 ```bash
 npm run deploy

@@ -15,9 +15,9 @@ function memoryStorage(initial?: string) {
     const entries = new Map<string, string>();
     if (initial !== undefined) entries.set(TOKEN_METADATA_STORAGE_KEY, initial);
     return {
-        getItem: jest.fn((key: string) => entries.get(key) ?? null),
-        setItem: jest.fn((key: string, value: string) => entries.set(key, value)),
-        removeItem: jest.fn((key: string) => entries.delete(key)),
+        getItem: vi.fn((key: string) => entries.get(key) ?? null),
+        setItem: vi.fn((key: string, value: string) => entries.set(key, value)),
+        removeItem: vi.fn((key: string) => entries.delete(key)),
     };
 }
 
@@ -28,7 +28,7 @@ function metadataTransport(overrides: Partial<Record<keyof typeof selectors, unk
         decimals: coder.encode(["uint8"], [6]),
         ...overrides,
     };
-    const send = jest.fn(async (_method: string, params: unknown[]) => {
+    const send = vi.fn(async (_method: string, params: unknown[]) => {
         const [{data}] = params as [{data: string}, string];
         const entry = (Object.entries(selectors) as Array<[keyof typeof selectors, string]>).find(([, selector]) => selector === data);
         if (!entry) throw new Error("Unknown selector");

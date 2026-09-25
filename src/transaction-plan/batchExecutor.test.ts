@@ -21,7 +21,7 @@ const call: QueuedCall = {
 };
 
 function executorWith(response: unknown) {
-    const send = jest.fn().mockResolvedValue(response);
+    const send = vi.fn().mockResolvedValue(response);
     return {executor: new Eip5792BatchExecutor({send} as WalletRpcTransport), send};
 }
 
@@ -59,12 +59,12 @@ describe("Eip5792BatchExecutor capabilities", () => {
 
     it("distinguishes unsupported methods from malformed and failed responses", async () => {
         const unavailable = new Eip5792BatchExecutor({
-            send: jest.fn().mockRejectedValue({code: -32601, message: "Method not found"}),
+            send: vi.fn().mockRejectedValue({code: -32601, message: "Method not found"}),
         });
         await expect(unavailable.getCapability(context)).resolves.toEqual({status: "unavailable"});
 
         const wrappedUnavailable = new Eip5792BatchExecutor({
-            send: jest.fn().mockRejectedValue({code: "UNKNOWN_ERROR", info: {error: {code: -32601, message: "Method not found"}}}),
+            send: vi.fn().mockRejectedValue({code: "UNKNOWN_ERROR", info: {error: {code: -32601, message: "Method not found"}}}),
         });
         await expect(wrappedUnavailable.getCapability(context)).resolves.toEqual({status: "unavailable"});
 
@@ -75,7 +75,7 @@ describe("Eip5792BatchExecutor capabilities", () => {
         });
 
         const failed = new Eip5792BatchExecutor({
-            send: jest.fn().mockRejectedValue({code: 4100, message: "Unauthorized"}),
+            send: vi.fn().mockRejectedValue({code: 4100, message: "Unauthorized"}),
         });
         await expect(failed.getCapability(context)).resolves.toEqual({
             status: "error",

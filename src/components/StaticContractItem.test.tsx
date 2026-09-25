@@ -8,32 +8,32 @@ import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 
-jest.mock("../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
-const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedWallet = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
+const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedWallet = vi.mocked(useWalletSession);
 
 describe("StaticFunctionItem simulated reads", () => {
     beforeEach(() => {
         mockedWallet.mockReturnValue({
             status: "ready", account: "0x0000000000000000000000000000000000000001", chainId: "1",
-            provider: null, signer: null, error: null, clearError: jest.fn(), connectWallet: jest.fn(), switchChain: jest.fn(),
+            provider: null, signer: null, error: null, clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),
         });
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
-            dispatch: jest.fn(),
+            dispatch: vi.fn(),
             sessionStatus: "empty",
             canEdit: false,
         });
     });
     it("uses queued-state simulation as the primary action", async () => {
-        const simulateRead = jest.fn().mockResolvedValue({
+        const simulateRead = vi.fn().mockResolvedValue({
             returnData: ethers.AbiCoder.defaultAbiCoder().encode(["bool"], [true]),
             gasUsed: "0x30",
         });
@@ -50,16 +50,16 @@ describe("StaticFunctionItem simulated reads", () => {
             watchEvaluations: {},
             tokenMetadataByAddress: {},
             tokenMetadataResolving: false,
-            retry: jest.fn(),
-            canSimulateChain: jest.fn().mockReturnValue(true),
+            retry: vi.fn(),
+            canSimulateChain: vi.fn().mockReturnValue(true),
             simulateRead,
         });
         const fragment = new ethers.Interface(["function active() view returns (bool)"]).getFunction("active")!;
-        const onChainCall = jest.fn();
+        const onChainCall = vi.fn();
         const contract = {
             runner: {call: onChainCall},
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
-            getFunction: jest.fn(),
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getFunction: vi.fn(),
         } as unknown as ethers.BaseContract;
 
         const view = render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
@@ -74,14 +74,14 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
 
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
         view.rerender(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         expect(screen.queryByText("Simulated")).not.toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
     });
 
     it("keeps an explicit ordinary on-chain action", async () => {
-        const simulateRead = jest.fn();
+        const simulateRead = vi.fn();
         mockedSimulation.mockReturnValue({
             active: true,
             watchActive: true,
@@ -95,15 +95,15 @@ describe("StaticFunctionItem simulated reads", () => {
             watchEvaluations: {},
             tokenMetadataByAddress: {},
             tokenMetadataResolving: false,
-            retry: jest.fn(),
-            canSimulateChain: jest.fn().mockReturnValue(true),
+            retry: vi.fn(),
+            canSimulateChain: vi.fn().mockReturnValue(true),
             simulateRead,
         });
         const fragment = new ethers.Interface(["function active() view returns (bool)"]).getFunction("active")!;
-        const onChainRead = jest.fn().mockResolvedValue(false);
+        const onChainRead = vi.fn().mockResolvedValue(false);
         const contract = {
-            runner: {call: jest.fn()},
-            getFunction: jest.fn().mockReturnValue(onChainRead),
+            runner: {call: vi.fn()},
+            getFunction: vi.fn().mockReturnValue(onChainRead),
         } as unknown as ethers.BaseContract;
 
         render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
@@ -120,8 +120,8 @@ describe("StaticFunctionItem simulated reads", () => {
         mockedSimulation.mockReturnValue({
             active: false, watchActive: false, status: "idle", chainId: null, error: null, snapshot: null,
             revision: "disabled", queuedCallCount: 0, configured: false, watchEvaluations: {},
-            tokenMetadataByAddress: {}, tokenMetadataResolving: false, retry: jest.fn(),
-            canSimulateChain: jest.fn().mockReturnValue(false), simulateRead: jest.fn(),
+            tokenMetadataByAddress: {}, tokenMetadataResolving: false, retry: vi.fn(),
+            canSimulateChain: vi.fn().mockReturnValue(false), simulateRead: vi.fn(),
         });
         const iface = new ethers.Interface([
             "function balance() view returns (uint256)",
@@ -129,9 +129,9 @@ describe("StaticFunctionItem simulated reads", () => {
         ]);
         const contract = {
             interface: iface,
-            runner: {call: jest.fn()},
-            getAddress: jest.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
-            getFunction: jest.fn(),
+            runner: {call: vi.fn()},
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getFunction: vi.fn(),
         } as unknown as ethers.BaseContract;
 
         render(

@@ -7,15 +7,15 @@ function mockViewport(mobile: boolean) {
     Object.defineProperty(window, "matchMedia", {
         configurable: true,
         writable: true,
-        value: jest.fn().mockImplementation((query: string) => ({
+        value: vi.fn().mockImplementation((query: string) => ({
             matches: mobile && query.includes("max-width"),
             media: query,
             onchange: null,
-            addListener: jest.fn(),
-            removeListener: jest.fn(),
-            addEventListener: jest.fn(),
-            removeEventListener: jest.fn(),
-            dispatchEvent: jest.fn(),
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
         })),
     });
 }

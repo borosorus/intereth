@@ -7,11 +7,11 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../transaction-plan/reducer";
 import InteractSimulationPreview from "./InteractSimulationPreview";
 
-jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
+vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedPlan = vi.mocked(useTransactionPlan);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const OTHER = "0x0000000000000000000000000000000000000002";
 const TARGET = "0x0000000000000000000000000000000000000010";
@@ -71,7 +71,7 @@ function snapshot(): PlanSimulationSnapshot {
 }
 
 function mockReady() {
-    mockedPlan.mockReturnValue({state: planState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+    mockedPlan.mockReturnValue({state: planState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
     mockedSimulation.mockReturnValue({
         active: true,
         watchActive: true,
@@ -85,9 +85,9 @@ function mockReady() {
         watchEvaluations: {},
         tokenMetadataByAddress: {},
         tokenMetadataResolving: false,
-        retry: jest.fn(),
-        canSimulateChain: jest.fn().mockReturnValue(true),
-        simulateRead: jest.fn(),
+        retry: vi.fn(),
+        canSimulateChain: vi.fn().mockReturnValue(true),
+        simulateRead: vi.fn(),
     });
 }
 

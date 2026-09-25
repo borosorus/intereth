@@ -72,7 +72,7 @@ describe("ERC-20 approval recovery preparation", () => {
         createdAt: 1,
     };
 
-    afterEach(() => jest.restoreAllMocks());
+    afterEach(() => vi.restoreAllMocks());
 
     it("encodes exact approvals and verifies direct token candidates by allowance", async () => {
         const approval = createErc20ApprovalCall(context, TOKEN, SPENDER, BigInt(12));
@@ -82,14 +82,14 @@ describe("ERC-20 approval recovery preparation", () => {
         ]);
         expect(tokenInterface.decodeFunctionData("approve", approval.data)).toEqual(expect.arrayContaining([SPENDER, BigInt(12)]));
 
-        const send = jest.fn().mockResolvedValue(tokenInterface.encodeFunctionResult("allowance", [BigInt(4)]));
+        const send = vi.fn().mockResolvedValue(tokenInterface.encodeFunctionResult("allowance", [BigInt(4)]));
         await expect(inferDirectApprovalToken({send} as SimulationRpcTransport, context, TOKEN, requirement)).resolves.toBe(TOKEN);
         send.mockResolvedValueOnce(tokenInterface.encodeFunctionResult("allowance", [BigInt(3)]));
         await expect(inferDirectApprovalToken({send} as SimulationRpcTransport, context, TOKEN, requirement)).resolves.toBeNull();
     });
 
     it("validates the ordered sequence and derives target-only gas with a 20 percent margin", async () => {
-        const fetchMock = jest.spyOn(global, "fetch")
+        const fetchMock = vi.spyOn(global, "fetch")
             .mockResolvedValueOnce({ok: true, json: async () => ({jsonrpc: "2.0", id: 1, result: "0x1"})} as Response)
             .mockResolvedValueOnce({
                 ok: true,
@@ -114,13 +114,13 @@ describe("ERC-20 approval recovery preparation", () => {
         expect(result.gasLimit).toBe(BigInt(120));
         expect(result.blockNumber).toBe("0x20");
 
-        const request = JSON.parse(String(jest.mocked(fetchMock).mock.calls[1][1]?.body));
+        const request = JSON.parse(String(vi.mocked(fetchMock).mock.calls[1][1]?.body));
         expect(request.params[0].blockStateCalls[0].calls).toHaveLength(2);
         expect(request.params[0].blockStateCalls[0].calls[1]).toMatchObject({to: TARGET, input: "0xabcd"});
     });
 
     it("rejects insufficient proposed approvals before calling the RPC", async () => {
-        const fetchMock = jest.spyOn(global, "fetch");
+        const fetchMock = vi.spyOn(global, "fetch");
         await expect(validateApprovalRecovery(
             "https://simulate.example",
             context,

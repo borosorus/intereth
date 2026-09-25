@@ -3,23 +3,23 @@ import "@testing-library/jest-dom";
 import { useWorkspaceMode } from "../workspace/context";
 import ReadActions from "./ReadActions";
 
-jest.mock("../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
 describe("ReadActions workspace modes", () => {
     it("offers only the canonical call in Interact mode", () => {
-        const onChain = jest.fn();
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
+        const onChain = vi.fn();
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
 
         render(
             <ReadActions
                 simulationAvailable
                 onChainAvailable
                 loading={null}
-                onSimulated={jest.fn()}
+                onSimulated={vi.fn()}
                 onOnChain={onChain}
-                onPinWatch={jest.fn()}
+                onPinWatch={vi.fn()}
                 canPinWatch
             />,
         );
@@ -31,16 +31,16 @@ describe("ReadActions workspace modes", () => {
     });
 
     it("offers canonical and speculative calls in Simulate mode", () => {
-        const onPinWatch = jest.fn();
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        const onPinWatch = vi.fn();
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
 
         render(
             <ReadActions
                 simulationAvailable
                 onChainAvailable
                 loading={null}
-                onSimulated={jest.fn()}
-                onOnChain={jest.fn()}
+                onSimulated={vi.fn()}
+                onOnChain={vi.fn()}
                 onPinWatch={onPinWatch}
                 canPinWatch
             />,

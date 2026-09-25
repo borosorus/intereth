@@ -6,13 +6,13 @@ import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../t
 import { useWorkspaceMode } from "../../workspace/context";
 import WatchPanel from "./WatchPanel";
 
-jest.mock("../../simulation/context", () => ({useSimulation: jest.fn()}));
-jest.mock("../../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../../workspace/context", () => ({useWorkspaceMode: jest.fn()}));
+vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
-const mockedSimulation = useSimulation as jest.MockedFunction<typeof useSimulation>;
-const mockedPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedWorkspace = useWorkspaceMode as jest.MockedFunction<typeof useWorkspaceMode>;
+const mockedSimulation = vi.mocked(useSimulation);
+const mockedPlan = vi.mocked(useTransactionPlan);
+const mockedWorkspace = vi.mocked(useWorkspaceMode);
 
 const account = "0x0000000000000000000000000000000000000001";
 const target = "0x0000000000000000000000000000000000000010";
@@ -31,13 +31,13 @@ function watchedState() {
 
 describe("WatchPanel", () => {
     it("compares base and speculative values and exposes refresh and removal", () => {
-        const dispatch = jest.fn();
-        const retry = jest.fn();
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
+        const dispatch = vi.fn();
+        const retry = vi.fn();
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedPlan.mockReturnValue({state: watchedState(), dispatch, sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
             active: true, watchActive: true, status: "ready", chainId: "1", error: null, revision: "queue", queuedCallCount: 1,
-            configured: true, retry, canSimulateChain: jest.fn().mockReturnValue(true), simulateRead: jest.fn(),
+            configured: true, retry, canSimulateChain: vi.fn().mockReturnValue(true), simulateRead: vi.fn(),
             snapshot: {revision: "queue", capturedAt: 1, chainId: "1", account, baseBlockNumber: "0x64", calls: [], balanceChanges: [], raw: {}},
             watchEvaluations: {"watch-1": {
                 watchId: "watch-1", revision: "queue|watch", baseBlockNumber: "0x64", status: "ready",
@@ -59,21 +59,21 @@ describe("WatchPanel", () => {
     });
 
     it("is absent from Interact mode", () => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: jest.fn()});
-        mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: jest.fn(), sessionStatus: "empty", canEdit: false});
+        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
+        mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: false});
         mockedSimulation.mockReturnValue({} as ReturnType<typeof useSimulation>);
         const {container} = render(<WatchPanel />);
         expect(container).toBeEmptyDOMElement();
     });
 
     it("shows browser RPC capability checks beside watches", () => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: jest.fn()});
-        mockedPlan.mockReturnValue({state: watchedState(), dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
+        mockedPlan.mockReturnValue({state: watchedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
         mockedSimulation.mockReturnValue({
             active: false, watchActive: false, status: "idle", chainId: "999", error: null, revision: "queue", queuedCallCount: 1,
             configured: false, endpointStatus: "checking",
             browserCapability: {status: "checking", chainId: "999", error: null},
-            retry: jest.fn(), canSimulateChain: jest.fn().mockReturnValue(false), simulateRead: jest.fn(),
+            retry: vi.fn(), canSimulateChain: vi.fn().mockReturnValue(false), simulateRead: vi.fn(),
             snapshot: null, watchEvaluations: {}, tokenMetadataByAddress: {}, tokenMetadataResolving: false,
         });
 

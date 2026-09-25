@@ -10,15 +10,15 @@ import { TRANSFER_TOPIC } from "./balanceChanges";
 import { tokenMetadataKey } from "./tokenMetadata";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 
-jest.mock("../transaction-plan/context", () => ({useTransactionPlan: jest.fn()}));
-jest.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: jest.fn()})}));
-jest.mock("../wallet/WalletSessionContext", () => ({useWalletSession: jest.fn()}));
-jest.mock("../chainConfig", () => ({
+vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: vi.fn()})}));
+vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
+vi.mock("../chainConfig", () => ({
     chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),
 }));
 
-const mockedTransactionPlan = useTransactionPlan as jest.MockedFunction<typeof useTransactionPlan>;
-const mockedWalletSession = useWalletSession as jest.MockedFunction<typeof useWalletSession>;
+const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedWalletSession = vi.mocked(useWalletSession);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 const call: QueuedCall = {
@@ -52,7 +52,7 @@ function planState() {
 function mockPlan(sessionStatus: "ready" | "disconnected" = "ready", execution = planState().execution) {
     mockedTransactionPlan.mockReturnValue({
         state: {...planState(), execution},
-        dispatch: jest.fn(),
+        dispatch: vi.fn(),
         sessionStatus,
         canEdit: sessionStatus === "ready",
     });
@@ -60,17 +60,17 @@ function mockPlan(sessionStatus: "ready" | "disconnected" = "ready", execution =
 
 function mockPlanCall(nextCall: QueuedCall) {
     const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_CALL", call: nextCall});
-    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 }
 
 function mockWatchedPlan() {
     const state = transactionPlanReducer(planState(), {type: "ADD_WATCH", watch});
-    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 }
 
 function mockWatchOnlyPlan() {
     const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch});
-    mockedTransactionPlan.mockReturnValue({state, dispatch: jest.fn(), sessionStatus: "ready", canEdit: true});
+    mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 }
 
 function rpcResult(method: string, params: unknown[]) {
@@ -98,7 +98,7 @@ function Wrapper({children}: {children: ReactNode}) {
 
 async function runDebounce() {
     await act(async () => {
-        jest.advanceTimersByTime(350);
+        vi.advanceTimersByTime(350);
         await Promise.resolve();
         await Promise.resolve();
         await Promise.resolve();
@@ -108,7 +108,7 @@ async function runDebounce() {
 
 describe("SimulationProvider", () => {
     beforeEach(() => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
         window.sessionStorage.clear();
         mockedWalletSession.mockReturnValue({
             status: "disconnected",
@@ -117,19 +117,19 @@ describe("SimulationProvider", () => {
             account: null,
             chainId: null,
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
-        jest.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
+        vi.spyOn(global, "fetch").mockImplementation(async (_input, init) => {
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
         });
     });
 
     afterEach(() => {
-        jest.useRealTimers();
-        jest.restoreAllMocks();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     it("automatically pins a base block and remains ready across wallet disconnects", async () => {
@@ -165,7 +165,7 @@ describe("SimulationProvider", () => {
     });
 
     it("moves endpoint failures into retryable error state", async () => {
-        jest.mocked(global.fetch).mockResolvedValueOnce({ok: false, status: 503} as Response);
+        vi.mocked(global.fetch).mockResolvedValueOnce({ok: false, status: 503} as Response);
         mockPlan();
         render(<Probe />, {wrapper: Wrapper});
 
@@ -176,7 +176,7 @@ describe("SimulationProvider", () => {
     });
 
     it("uses a compatible browser RPC for a chain without a configured endpoint", async () => {
-        const browserSend = jest.fn(async (method: string, params: unknown[]) => (
+        const browserSend = vi.fn(async (method: string, params: unknown[]) => (
             method === "eth_chainId" ? "0xa" : rpcResult(method, params)
         ));
         mockedWalletSession.mockReturnValue({
@@ -186,9 +186,9 @@ describe("SimulationProvider", () => {
             account: ACCOUNT,
             chainId: "10",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockPlanCall({...call, chainId: "10"});
         render(<Probe />, {wrapper: Wrapper});
@@ -205,12 +205,12 @@ describe("SimulationProvider", () => {
         expect(currentSimulation.endpointSource).toBe("browser");
         expect(currentSimulation.browserCapability?.status).toBe("supported");
         expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(true);
-        expect(jest.mocked(global.fetch)).not.toHaveBeenCalled();
+        expect(vi.mocked(global.fetch)).not.toHaveBeenCalled();
     });
 
     it("falls back from a failing configured endpoint to a compatible browser RPC", async () => {
-        jest.mocked(global.fetch).mockResolvedValue({ok: false, status: 503} as Response);
-        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        vi.mocked(global.fetch).mockResolvedValue({ok: false, status: 503} as Response);
+        const browserSend = vi.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: {send: browserSend} as unknown as ethers.BrowserProvider,
@@ -218,9 +218,9 @@ describe("SimulationProvider", () => {
             account: ACCOUNT,
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockPlan();
         render(<Probe />, {wrapper: Wrapper});
@@ -235,12 +235,12 @@ describe("SimulationProvider", () => {
 
         expect(screen.getByText("ready")).toBeInTheDocument();
         expect(currentSimulation.endpointSource).toBe("browser");
-        expect(jest.mocked(global.fetch)).toHaveBeenCalled();
+        expect(vi.mocked(global.fetch)).toHaveBeenCalled();
         expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(true);
     });
 
     it("keeps the configured endpoint ahead of a compatible browser RPC", async () => {
-        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        const browserSend = vi.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: {send: browserSend} as unknown as ethers.BrowserProvider,
@@ -248,9 +248,9 @@ describe("SimulationProvider", () => {
             account: ACCOUNT,
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockPlan();
         render(<Probe />, {wrapper: Wrapper});
@@ -264,18 +264,18 @@ describe("SimulationProvider", () => {
         await runDebounce();
 
         expect(currentSimulation.endpointSource).toBe("fixed");
-        expect(jest.mocked(global.fetch)).toHaveBeenCalled();
+        expect(vi.mocked(global.fetch)).toHaveBeenCalled();
         expect(browserSend.mock.calls.some(([method]) => method === "eth_blockNumber")).toBe(false);
     });
 
     it("switches a speculative read to the browser when the selected endpoint goes down", async () => {
         let fixedAvailable = true;
-        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+        vi.mocked(global.fetch).mockImplementation(async (_input, init) => {
             if (!fixedAvailable) return {ok: false, status: 503} as Response;
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             return {ok: true, json: async () => ({jsonrpc: "2.0", id: body.id, result: rpcResult(body.method, body.params)})} as Response;
         });
-        const browserSend = jest.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
+        const browserSend = vi.fn(async (method: string, params: unknown[]) => rpcResult(method, params));
         mockedWalletSession.mockReturnValue({
             status: "ready",
             provider: {send: browserSend} as unknown as ethers.BrowserProvider,
@@ -283,9 +283,9 @@ describe("SimulationProvider", () => {
             account: ACCOUNT,
             chainId: "1",
             error: null,
-            clearError: jest.fn(),
-            connectWallet: jest.fn(),
-            switchChain: jest.fn(),
+            clearError: vi.fn(),
+            connectWallet: vi.fn(),
+            switchChain: vi.fn(),
         });
         mockPlan();
         render(<Probe />, {wrapper: Wrapper});
@@ -326,13 +326,13 @@ describe("SimulationProvider", () => {
             base: {returnData: "0x002a"},
             simulated: {returnData: "0x002b"},
         });
-        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string; params: unknown[]});
+        const requests = vi.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string; params: unknown[]});
         expect(requests.find((request) => request.method === "eth_call")?.params[1]).toBe("0x64");
         expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(1);
     });
 
     it("keeps the queue result and blocks watches when a queued call reverts", async () => {
-        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+        vi.mocked(global.fetch).mockImplementation(async (_input, init) => {
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             const result = body.method === "eth_simulateV1"
                 ? [{number: "0x65", calls: [
@@ -348,7 +348,7 @@ describe("SimulationProvider", () => {
         await runDebounce();
         expect(currentSimulation.snapshot?.calls[0].status).toBe("0x0");
         expect(currentSimulation.watchEvaluations[watch.id]).toMatchObject({status: "blocked", base: {returnData: "0x002a"}});
-        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
+        const requests = vi.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
         expect(requests.filter((request) => request.method === "eth_simulateV1")).toHaveLength(1);
     });
 
@@ -357,7 +357,7 @@ describe("SimulationProvider", () => {
         render(<Probe />, {wrapper: Wrapper});
 
         await act(async () => {
-            jest.advanceTimersByTime(0);
+            vi.advanceTimersByTime(0);
             await Promise.resolve();
             await Promise.resolve();
             await Promise.resolve();
@@ -370,7 +370,7 @@ describe("SimulationProvider", () => {
             base: {returnData: "0x002a"},
         });
         expect(currentSimulation.watchEvaluations[watch.id].simulated).toBeUndefined();
-        const requests = jest.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
+        const requests = vi.mocked(global.fetch).mock.calls.map(([, init]) => JSON.parse(String(init?.body)) as {method: string});
         expect(requests.some((request) => request.method === "eth_call")).toBe(true);
         expect(requests.some((request) => request.method === "eth_simulateV1")).toBe(false);
     });
@@ -382,7 +382,7 @@ describe("SimulationProvider", () => {
             "function symbol() view returns (string)",
             "function decimals() view returns (uint8)",
         ]);
-        jest.mocked(global.fetch).mockImplementation(async (_input, init) => {
+        vi.mocked(global.fetch).mockImplementation(async (_input, init) => {
             const body = JSON.parse(String(init?.body)) as {id: number; method: string; params: unknown[]};
             let result: unknown;
             if (body.method === "eth_chainId") result = "0x1";
@@ -417,7 +417,7 @@ describe("SimulationProvider", () => {
         expect(currentSimulation.tokenMetadataByAddress[tokenMetadataKey("1", TARGET)]).toMatchObject({
             name: "USD Coin", symbol: "USDC", decimals: 6, fetchedAtBlock: "0x64",
         });
-        const metadataCalls = () => jest.mocked(global.fetch).mock.calls.filter(([, request]) => (
+        const metadataCalls = () => vi.mocked(global.fetch).mock.calls.filter(([, request]) => (
             JSON.parse(String(request?.body)) as {method: string}
         ).method === "eth_call").length;
         expect(metadataCalls()).toBe(3);
