@@ -5,7 +5,6 @@ import { useSimulation } from "../../simulation/context";
 import { WatchResultValue } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
-import { useWorkspaceMode } from "../../workspace/context";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
 import { StateBadge, watchPresentation } from "../StateBadge";
 
@@ -92,11 +91,9 @@ function WatchCard({watch}: {watch: WatchExpression}) {
 }
 
 export default function WatchPanel() {
-    const workspace = useWorkspaceMode();
     const transactionPlan = useTransactionPlan();
     const simulation = useSimulation();
     const watches = transactionPlan.state.plan.watches;
-    if (workspace.mode !== "simulate") return null;
     const watchBaseBlock = Object.values(simulation.watchEvaluations).find((evaluation) => evaluation.baseBlockNumber)?.baseBlockNumber;
 
     return (

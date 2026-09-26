@@ -11,7 +11,6 @@ import { tokenMetadataKey } from "./tokenMetadata";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: () => ({mode: "simulate", setMode: vi.fn()})}));
 vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../chainConfig", () => ({
     chainsById: new Map([["1", {id: "1", rpcUrl: "https://simulate.example"}]]),

@@ -1,4 +1,5 @@
 import { ParamValue } from "../calls/parameters";
+import { ExecutableCall } from "../calls/executable";
 
 export interface PlanContext {
     account: string;
@@ -21,13 +22,12 @@ export type CallEditorMetadata =
         kind: "raw";
     };
 
-export interface QueuedCall {
+// Execution fields (inherited) live alongside queue/editor metadata; the
+// persisted shape stays flat — see transaction-plan/persistence.ts.
+export interface QueuedCall extends ExecutableCall {
     id: string;
     chainId: string;
     from: string;
-    to: string;
-    data: string;
-    value: string;
     decoderAbi: string[];
     display: {
         kind: "abi" | "raw";
@@ -44,13 +44,10 @@ export type WatchDecoderMetadata =
     | {kind: "abi"; functionFragment: string}
     | {kind: "raw"};
 
-export interface WatchExpression {
+export interface WatchExpression extends ExecutableCall {
     id: string;
     chainId: string;
     from: string;
-    to: string;
-    data: string;
-    value: string;
     display: {
         kind: "abi" | "raw";
         functionSignature?: string;

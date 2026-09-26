@@ -1,5 +1,4 @@
 import { Button, CircularProgress, Stack } from "@mui/material";
-import { useWorkspaceMode } from "../workspace/context";
 
 export type ReadLoadingMode = "simulated" | "onchain" | null;
 
@@ -13,6 +12,9 @@ interface ReadActionsProps {
     canPinWatch?: boolean;
 }
 
+// Read actions come from capabilities, not modes: on-chain reads whenever a
+// runner can answer, speculative reads whenever queued-state simulation is
+// ready for this queue revision, and pinning whenever the plan is editable.
 export default function ReadActions({
     simulationAvailable,
     onChainAvailable,
@@ -22,22 +24,7 @@ export default function ReadActions({
     onPinWatch,
     canPinWatch = false,
 }: ReadActionsProps) {
-    const workspace = useWorkspaceMode();
-
-    if (workspace.mode === "interact") {
-        return (
-            <Button
-                variant="contained"
-                color="secondary"
-                fullWidth
-                disabled={!onChainAvailable || loading !== null}
-                onClick={onOnChain}
-                sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
-            >
-                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
-            </Button>
-        );
-    }
+    const styling = {py: 1.2, borderRadius: 2, textTransform: "none" as const, fontWeight: 700};
 
     if (!simulationAvailable) {
         return (
@@ -48,7 +35,7 @@ export default function ReadActions({
                     fullWidth
                     disabled={!onChainAvailable || loading !== null}
                     onClick={onOnChain}
-                    sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
+                    sx={styling}
                 >
                     {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
                 </Button>
@@ -69,7 +56,7 @@ export default function ReadActions({
                 fullWidth
                 disabled={loading !== null}
                 onClick={onSimulated}
-                sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
+                sx={styling}
             >
                 {loading === "simulated" ? <CircularProgress size={20} color="inherit" /> : "Run speculative"}
             </Button>
@@ -79,7 +66,7 @@ export default function ReadActions({
                 fullWidth
                 disabled={!onChainAvailable || loading !== null}
                 onClick={onOnChain}
-                sx={{py: 1.2, borderRadius: 2, textTransform: "none", fontWeight: 700}}
+                sx={styling}
             >
                 {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
             </Button>

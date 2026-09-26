@@ -110,7 +110,7 @@ describe("ApprovalRecoveryDialog", () => {
     });
 
     it("requires force-send confirmation and blocks retries after an unresolved hash", async () => {
-        mockedForceSend.mockImplementation(async (_provider, _call, _gasLimit, onResult) => {
+        mockedForceSend.mockImplementation(async (_provider, _from, _call, _gasLimit, onResult) => {
             onResult({kind: "transaction", status: "submitted", hash: `0x${"11".repeat(32)}`});
             throw Object.assign(new Error("confirmation timed out"), {code: "TIMEOUT"});
         });
@@ -121,7 +121,7 @@ describe("ApprovalRecoveryDialog", () => {
         expect(screen.getByText(/expected to revert and consume gas/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Confirm force send"}));
         await waitFor(() => expect(mockedForceSend).toHaveBeenCalledWith(
-            expect.anything(), originalCall, BigInt(120), expect.any(Function),
+            expect.anything(), originalCall.from, originalCall, BigInt(120), expect.any(Function),
         ));
         expect(await screen.findByText(/original transaction was submitted but remains unresolved/)).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: "Confirm force send"})).not.toBeInTheDocument();

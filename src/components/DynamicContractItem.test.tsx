@@ -6,19 +6,14 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useSimulation } from "../simulation/context";
-import { useWorkspaceMode } from "../workspace/context";
 
 vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedWalletSession = vi.mocked(useWalletSession);
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
 const mockedSimulation = vi.mocked(useSimulation);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
-
-beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()}));
 
 function mockSimulation(overrides: Partial<ReturnType<typeof useSimulation>> = {}) {
     mockedSimulation.mockReturnValue({
@@ -72,7 +67,8 @@ describe("DynamicFunctionItem queueing", () => {
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} />);
         fireEvent.click(screen.getByRole("button", {name: /pause\(\) Write/}));
-        expect(screen.queryByRole("button", {name: "Send now"})).not.toBeInTheDocument();
+        // Both actions are offered; queueing must not touch the runner.
+        expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
         fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
@@ -135,7 +131,6 @@ describe("DynamicFunctionItem queueing", () => {
 describe("DynamicContractItem wallet lifecycle", () => {
     beforeEach(mockSimulation);
     it("rebinds raw calls to the active signer and preserves the form while disconnected", async () => {
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
         const oldSendTransaction = vi.fn();
         const sendTransaction = vi.fn().mockResolvedValue({
             hash: `0x${"11".repeat(32)}`,
@@ -261,7 +256,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText("Read functions")).toBeInTheDocument();
-        expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();
+        expect(screen.getByText(/Read canonical on-chain state/)).toBeInTheDocument();
         expect(screen.getByText("Write functions")).toBeInTheDocument();
         expect(screen.getByText("View")).toBeInTheDocument();
         expect(screen.getByText("Pure")).toBeInTheDocument();

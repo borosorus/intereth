@@ -1,10 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
-import { DynamicContract } from "../App";
+import { ContractInstance } from "../contracts/workspace";
 import ContractNavigation from "./ContractNavigation";
 
-const contracts: DynamicContract[] = [
+const contracts: ContractInstance[] = [
     {id: "one", label: "Token", address: "0x0000000000000000000000000000000000000001", contract: {} as ethers.BaseContract, isStatic: false, walletChainId: "1"},
     {id: "two", label: "Vault", address: "0x0000000000000000000000000000000000000002", contract: {} as ethers.BaseContract, isStatic: true, providerDetails: {label: "Base", url: "https://rpc.example", chainId: "8453"}},
 ];

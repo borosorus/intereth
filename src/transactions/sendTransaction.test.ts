@@ -38,7 +38,7 @@ describe("prepared transaction sending", () => {
             waitForTransaction: vi.fn().mockResolvedValue(receipt()),
         } as unknown as ethers.BrowserProvider;
 
-        await forceSendPreparedTransaction(provider, call, BigInt(120), onResult);
+        await forceSendPreparedTransaction(provider, call.from, call, BigInt(120), onResult);
         expect(provider.send).toHaveBeenCalledWith("eth_sendTransaction", [{
             from: call.from,
             to: call.to,
@@ -54,7 +54,7 @@ describe("prepared transaction sending", () => {
             send: vi.fn().mockResolvedValue("0x1234"),
             waitForTransaction: vi.fn(),
         } as unknown as ethers.BrowserProvider;
-        await expect(forceSendPreparedTransaction(provider, call, BigInt(120), vi.fn()))
+        await expect(forceSendPreparedTransaction(provider, call.from, call, BigInt(120), vi.fn()))
             .rejects.toMatchObject({code: "INVALID_WALLET_RESPONSE"});
         expect(provider.waitForTransaction).not.toHaveBeenCalled();
     });

@@ -3,16 +3,13 @@ import "@testing-library/jest-dom/vitest";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../transaction-plan/reducer";
 import { WatchExpression } from "../transaction-plan/types";
-import { useWorkspaceMode } from "../workspace/context";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { usePinWatch } from "./usePinWatch";
 
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 
 const mockedPlan = vi.mocked(useTransactionPlan);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 const mockedWallet = vi.mocked(useWalletSession);
 const account = "0x0000000000000000000000000000000000000001";
 const target = "0x0000000000000000000000000000000000000010";
@@ -42,7 +39,6 @@ function Probe() {
 
 describe("usePinWatch", () => {
     beforeEach(() => {
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedWallet.mockReturnValue({
             status: "ready", account, chainId: "1", provider: null, signer: null, error: null,
             clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),

@@ -3,7 +3,6 @@ import "@testing-library/jest-dom/vitest";
 import { ethers } from "ethers";
 import { useSimulation } from "../simulation/context";
 import StaticContractItem, { StaticFunctionItem } from "./StaticContractItem";
-import { useWorkspaceMode } from "../workspace/context";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { createEmptyTransactionPlanState } from "../transaction-plan/reducer";
 import { useWalletSession } from "../wallet/WalletSessionContext";
@@ -11,10 +10,8 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 vi.mock("../simulation/context", () => ({useSimulation: vi.fn()}));
 vi.mock("../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedSimulation = vi.mocked(useSimulation);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
 const mockedWallet = vi.mocked(useWalletSession);
 
@@ -24,7 +21,6 @@ describe("StaticFunctionItem simulated reads", () => {
             status: "ready", account: "0x0000000000000000000000000000000000000001", chainId: "1",
             provider: null, signer: null, error: null, clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),
         });
-        mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()});
         mockedTransactionPlan.mockReturnValue({
             state: createEmptyTransactionPlanState(),
             dispatch: vi.fn(),
@@ -62,7 +58,7 @@ describe("StaticFunctionItem simulated reads", () => {
             getFunction: vi.fn(),
         } as unknown as ethers.BaseContract;
 
-        const view = render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
+        render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         fireEvent.click(screen.getByRole("button", {name: /active\(\) View/}));
         fireEvent.click(screen.getByRole("button", {name: "Run speculative"}));
 
@@ -73,10 +69,7 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(await screen.findByText("true")).toBeInTheDocument();
         expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
-
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
-        view.rerender(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
-        expect(screen.queryByText("Simulated")).not.toBeInTheDocument();
+        // Canonical and speculative actions stay side by side after a run.
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
     });
 
@@ -142,7 +135,7 @@ describe("StaticFunctionItem simulated reads", () => {
         );
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
-        expect(screen.getByText(/Read canonical state or speculative queued state/)).toBeInTheDocument();
+        expect(screen.getByText(/Read canonical on-chain state/)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: /balance\(\) View/})).toBeInTheDocument();
         const writeGroup = screen.getByRole("button", {name: /Write functions · wallet required/});
         expect(writeGroup).toHaveAttribute("aria-expanded", "false");

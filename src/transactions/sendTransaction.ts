@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import { CallResultData } from "../callUtils";
+import { ExecutableCall } from "../calls/executable";
 import { isHash } from "../transaction-plan/rpcValidation";
-import { QueuedCall } from "../transaction-plan/types";
 
 export type TransactionResultCallback = (result: Extract<CallResultData, {kind: "transaction"}>) => void;
 
@@ -17,7 +17,7 @@ function resultFromReceipt(hash: string, receipt: ethers.TransactionReceipt | nu
 
 export async function sendPreparedTransaction(
     signer: ethers.JsonRpcSigner,
-    call: QueuedCall,
+    call: ExecutableCall,
     onResult: TransactionResultCallback,
 ) {
     const response = await signer.sendTransaction({to: call.to, data: call.data, value: call.value});
@@ -29,12 +29,13 @@ export async function sendPreparedTransaction(
 
 export async function forceSendPreparedTransaction(
     provider: ethers.BrowserProvider,
-    call: QueuedCall,
+    from: string,
+    call: ExecutableCall,
     gasLimit: bigint,
     onResult: TransactionResultCallback,
 ) {
     const response = await provider.send("eth_sendTransaction", [{
-        from: call.from,
+        from,
         to: call.to,
         data: call.data,
         value: ethers.toQuantity(BigInt(call.value)),

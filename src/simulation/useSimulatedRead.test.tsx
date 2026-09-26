@@ -2,13 +2,10 @@ import { act, render } from "@testing-library/react";
 import type { Mock } from "vitest";
 import { useSimulation } from "./context";
 import { useSimulatedRead } from "./useSimulatedRead";
-import { useWorkspaceMode } from "../workspace/context";
 
 vi.mock("./context", () => ({useSimulation: vi.fn()}));
-vi.mock("../workspace/context", () => ({useWorkspaceMode: vi.fn()}));
 
 const mockedSimulation = vi.mocked(useSimulation);
-const mockedWorkspace = vi.mocked(useWorkspaceMode);
 let hook: ReturnType<typeof useSimulatedRead>;
 
 function Probe() {
@@ -16,9 +13,9 @@ function Probe() {
     return <span>{hook.loading ? "loading" : "idle"}</span>;
 }
 
-function simulationValue(revision: string, simulateRead: Mock) {
+function simulationValue(revision: string, simulateRead: Mock, overrides: {canSimulateChain?: Mock; active?: boolean} = {}) {
     return {
-        active: true,
+        active: overrides.active ?? true,
         watchActive: true,
         status: "ready" as const,
         chainId: "1",
@@ -31,13 +28,12 @@ function simulationValue(revision: string, simulateRead: Mock) {
         tokenMetadataByAddress: {},
         tokenMetadataResolving: false,
         retry: vi.fn(),
-        canSimulateChain: vi.fn().mockReturnValue(true),
+        canSimulateChain: overrides.canSimulateChain ?? vi.fn().mockReturnValue(true),
         simulateRead,
     };
 }
 
 describe("useSimulatedRead", () => {
-    beforeEach(() => mockedWorkspace.mockReturnValue({mode: "simulate", setMode: vi.fn()}));
     it("discards an in-flight result when the queue revision changes", async () => {
         let resolveRead!: (value: {returnData: string; gasUsed: string}) => void;
         const simulateRead = vi.fn(() => new Promise<{returnData: string; gasUsed: string}>((resolve) => {
@@ -60,7 +56,7 @@ describe("useSimulatedRead", () => {
         await expect(pending).resolves.toBeNull();
     });
 
-    it("cancels an in-flight result when leaving Simulate mode", async () => {
+    it("cancels an in-flight result when simulation becomes unavailable", async () => {
         let resolveRead!: (value: {returnData: string; gasUsed: string}) => void;
         const simulateRead = vi.fn(() => new Promise<{returnData: string; gasUsed: string}>((resolve) => {
             resolveRead = resolve;
@@ -72,7 +68,10 @@ describe("useSimulatedRead", () => {
         act(() => {
             pending = hook.run({to: "0x0000000000000000000000000000000000000010", data: "0x"});
         });
-        mockedWorkspace.mockReturnValue({mode: "interact", setMode: vi.fn()});
+        mockedSimulation.mockReturnValue(simulationValue("queue-a", simulateRead, {
+            canSimulateChain: vi.fn().mockReturnValue(false),
+            active: false,
+        }));
         view.rerender(<Probe />);
         expect(hook.available).toBe(false);
         expect(hook.enabled).toBe(false);

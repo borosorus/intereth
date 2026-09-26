@@ -14,7 +14,6 @@ import {
     TokenMetadata,
     WatchEvaluation,
 } from "./types";
-import { useWorkspaceMode } from "../workspace/context";
 import { decodeWatchResult } from "./watchExpressions";
 import { tokenMetadataKey, TokenMetadataService } from "./tokenMetadata";
 
@@ -92,7 +91,6 @@ function isEndpointError(error: unknown) {
 
 export function SimulationProvider({children}: {children: ReactNode}) {
     const transactionPlan = useTransactionPlan();
-    const workspace = useWorkspaceMode();
     const wallet = useWalletSession();
     const [state, setState] = useState<SimulationState>(initialState);
     const [watchEvaluations, setWatchEvaluations] = useState<Record<string, WatchEvaluation>>({});
@@ -146,18 +144,19 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const configured = endpointCandidates.length > 0;
     const active = planAvailable && configured;
     const watchActive = Boolean(context && configured && sessionAllowed && isExecutionMutable(transactionPlan.state.execution));
-    const includedWatches = useMemo(() => workspace.mode === "simulate" ? watches : [], [watches, workspace.mode]);
+    // The queue revision drives snapshot freshness and speculative reads,
+    // which only depend on queued calls. Watch content has its own revision
+    // so editing a watch never marks the queue preview stale.
     const revision = useMemo(() => [
         context?.chainId,
         context?.account,
         ...calls.map((call) => `${call.id}:${call.to}:${call.data}:${call.value}`),
-        ...includedWatches.map((watch) => `${watch.id}:${watch.to}:${watch.data}:${watch.value}`),
-    ].join("|"), [calls, context?.account, context?.chainId, includedWatches]);
+    ].join("|"), [calls, context?.account, context?.chainId]);
+    const watchRevision = useMemo(() => `${revision}|${watches.map((watch) => `${watch.id}:${watch.to}:${watch.data}:${watch.value}`).join("|")}`, [revision, watches]);
 
     useEffect(() => {
-        if (workspace.mode !== "simulate") return;
         const requestId = ++probeRequestIdRef.current;
-        if (wallet.status !== "ready" || !wallet.provider || !wallet.account || !wallet.chainId) {
+        if (!context?.account || wallet.status !== "ready" || !wallet.provider || !wallet.account || !wallet.chainId) {
             setBrowserCapability({
                 status: "idle",
                 provider: wallet.provider,
@@ -193,14 +192,14 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         return () => {
             if (requestId === probeRequestIdRef.current) probeRequestIdRef.current += 1;
         };
-    }, [retryCount, wallet.account, wallet.chainId, wallet.provider, wallet.status, workspace.mode]);
+    }, [context?.account, context?.chainId, retryCount, wallet.account, wallet.chainId, wallet.provider, wallet.status]);
 
     useEffect(() => {
         const requestId = ++requestIdRef.current;
         const executionMutable = isExecutionMutable(transactionPlan.state.execution);
         const canRun = Boolean(context && configured && sessionAllowed && executionMutable);
         const hasQueuedCalls = calls.length > 0;
-        const shouldRun = canRun && (hasQueuedCalls || includedWatches.length > 0);
+        const shouldRun = canRun && (hasQueuedCalls || watches.length > 0);
         if (!shouldRun || !context) {
             clientRef.current = null;
             transportRef.current = null;
@@ -216,9 +215,9 @@ export function SimulationProvider({children}: {children: ReactNode}) {
                     : null;
                 return {status: snapshot ? "stale" : "idle", chainId: context?.chainId ?? null, error: null, snapshot};
             });
-            setWatchEvaluations((current) => includedWatches.length === 0
+            setWatchEvaluations((current) => watches.length === 0
                 ? {}
-                : Object.fromEntries(includedWatches
+                : Object.fromEntries(watches
                     .filter((watch) => current[watch.id])
                     .map((watch) => [watch.id, {...current[watch.id], status: "stale" as const}])));
             return;
@@ -236,7 +235,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         } else {
             setState({status: "idle", chainId: context.chainId, error: null, snapshot: null});
         }
-        setWatchEvaluations((current) => Object.fromEntries(includedWatches
+        setWatchEvaluations((current) => Object.fromEntries(watches
             .filter((watch) => current[watch.id])
             .map((watch) => [watch.id, {...current[watch.id], status: "stale" as const}])));
 
@@ -258,12 +257,11 @@ export function SimulationProvider({children}: {children: ReactNode}) {
                         await client.assertChain(context.chainId);
                         const baseBlockNumber = await client.getBlockNumber();
                         const planResult = hasQueuedCalls
-                            ? await client.simulatePlan(context, calls, includedWatches, baseBlockNumber)
+                            ? await client.simulatePlan(context, calls, watches, baseBlockNumber)
                             : null;
                         const queueSucceeded = planResult?.queue.calls.every((call) => call.status === "0x1") ?? true;
                         const simulatedByWatchId = new Map((planResult?.watches ?? []).map((watch) => [watch.watchId, watch]));
-                        const watchRevision = `${revision}|canonical`;
-                        const evaluations = await Promise.all(includedWatches.map(async (watch): Promise<WatchEvaluation> => {
+                        const evaluations = await Promise.all(watches.map(async (watch): Promise<WatchEvaluation> => {
                             try {
                                 const read = {to: watch.to, data: watch.data, value: watch.value};
                                 const base = decodeWatchResult(watch, await client.readAtBlock(context, read, baseBlockNumber));
@@ -352,9 +350,9 @@ export function SimulationProvider({children}: {children: ReactNode}) {
                 if (hasQueuedCalls) {
                     setState((current) => ({status: "error", chainId: context.chainId, error: normalized, snapshot: current.snapshot}));
                 } else {
-                    setWatchEvaluations(Object.fromEntries(includedWatches.map((watch) => [watch.id, {
+                    setWatchEvaluations(Object.fromEntries(watches.map((watch) => [watch.id, {
                         watchId: watch.id,
-                        revision,
+                        revision: watchRevision,
                         baseBlockNumber: "latest",
                         status: "error" as const,
                         error: {code: normalized.code, message: normalized.message},
@@ -367,7 +365,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
             window.clearTimeout(timer);
             if (requestId === requestIdRef.current) requestIdRef.current += 1;
         };
-    }, [calls, configured, context, endpointCandidates, includedWatches, retryCount, revision, sessionAllowed, transactionPlan.state.execution]);
+    }, [calls, configured, context, endpointCandidates, retryCount, revision, sessionAllowed, transactionPlan.state.execution, watchRevision, watches]);
 
     const retry = useCallback(() => setRetryCount((current) => current + 1), []);
 
@@ -477,12 +475,11 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const endpointStatus = useMemo<"idle" | "checking" | "ready" | "unavailable">(() => {
         if (!context) return "idle";
         if (endpointCandidates.length > 0) return "ready";
-        const probingCurrentChain = workspace.mode === "simulate"
-            && browserCapability.provider === wallet.provider
+        const probingCurrentChain = browserCapability.provider === wallet.provider
             && browserCapability.chainId === wallet.chainId
             && wallet.chainId === context.chainId;
         return probingCurrentChain && browserCapability.status === "checking" ? "checking" : "unavailable";
-    }, [browserCapability.chainId, browserCapability.provider, browserCapability.status, context, endpointCandidates.length, wallet.chainId, wallet.provider, workspace.mode]);
+    }, [browserCapability.chainId, browserCapability.provider, browserCapability.status, context, endpointCandidates.length, wallet.chainId, wallet.provider]);
 
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,

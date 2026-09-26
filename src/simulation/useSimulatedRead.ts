@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSimulation } from "./context";
 import { SimulatedRead, SimulatedReadResult } from "./types";
-import { useWorkspaceMode } from "../workspace/context";
 
 interface CompletedSimulatedRead {
     result: SimulatedReadResult;
     queuedCallCount: number;
 }
 
+// Queued-state simulation is a capability of the current plan and endpoint,
+// not an application mode: available whenever the queue state is simulatable.
 export function useSimulatedRead(chainId?: string) {
     const simulation = useSimulation();
-    const workspace = useWorkspaceMode();
     const [loading, setLoading] = useState(false);
     const requestId = useRef(0);
-    const available = Boolean(workspace.mode === "simulate" && chainId && simulation.canSimulateChain(chainId));
+    const available = Boolean(chainId && simulation.canSimulateChain(chainId));
 
     useEffect(() => {
         requestId.current += 1;
@@ -21,10 +21,10 @@ export function useSimulatedRead(chainId?: string) {
         return () => {
             requestId.current += 1;
         };
-    }, [simulation.revision, workspace.mode]);
+    }, [simulation.revision, available]);
 
     const run = useCallback(async (read: SimulatedRead): Promise<CompletedSimulatedRead | null> => {
-        if (workspace.mode !== "simulate" || !chainId || !simulation.canSimulateChain(chainId)) {
+        if (!chainId || !simulation.canSimulateChain(chainId)) {
             throw Object.assign(new Error("Queued-state simulation is not ready for this network."), {code: "SIMULATION_RPC_UNAVAILABLE"});
         }
         const currentRequest = ++requestId.current;
@@ -39,11 +39,11 @@ export function useSimulatedRead(chainId?: string) {
         } finally {
             if (currentRequest === requestId.current) setLoading(false);
         }
-    }, [chainId, simulation, workspace.mode]);
+    }, [chainId, simulation]);
 
     return {
         available,
-        enabled: workspace.mode === "simulate" && simulation.active,
+        enabled: simulation.active,
         loading,
         revision: simulation.revision,
         run,
