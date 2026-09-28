@@ -126,7 +126,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
             )}
             {queued && <Alert severity="success" action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>Added to execution.</Alert>}
             {watchPin.notice && (
-                <Alert severity="info" onClose={watchPin.clearNotice}>
+                <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>
                     {watchPin.notice} Raw watches are treated as read-only and evaluated after ABI watches.
                 </Alert>
             )}

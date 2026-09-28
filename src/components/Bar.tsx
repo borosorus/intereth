@@ -8,7 +8,7 @@ import { useTransactionPlanUi, WorkspaceView } from "../transaction-plan/uiConte
 export default function Bar(){
     const {state} = useTransactionPlan();
     const {activeView, setActiveView} = useTransactionPlanUi();
-    const planCount = state.plan.calls.length;
+    const planCount = state.plan.calls.length + state.plan.watches.length;
 
     return (
       <Box>
@@ -52,7 +52,7 @@ export default function Bar(){
                     <ExploreOutlinedIcon fontSize="small" />
                     Explore
                   </ToggleButton>
-                  <ToggleButton value="execution" sx={{gap: 0.75, fontWeight: 700}}>
+                  <ToggleButton value="execution" sx={{gap: 0.75, fontWeight: 700}} aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
                     <PlaylistPlayIcon fontSize="small" />
                     Execution
                     {planCount > 0 && <Box component="span" sx={{color: "secondary.main"}}>({planCount})</Box>}

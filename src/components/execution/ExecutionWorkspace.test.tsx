@@ -444,6 +444,24 @@ describe("ExecutionWorkspace", () => {
         expect(screen.queryByRole("button", {name: /send atomic batch/i})).not.toBeInTheDocument();
     });
 
+    it("closes an open submission review when the workspace view changes", async () => {
+        const send = vi.fn(async (method: string) => method === "wallet_getCapabilities"
+            ? {"0x1": {atomic: {status: "supported"}}}
+            : {id: "0x1234"});
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        const view = render(<ExecutionWorkspace />);
+        fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
+        expect(screen.getByRole("dialog", {name: "Review wallet submission"})).toBeInTheDocument();
+
+        // Browser "back" while reviewing: the view changes underneath, and the
+        // actionable submission dialog must not linger over Explore.
+        mockedPlanUi.mockReturnValue({activeView: "explore", setActiveView: vi.fn(), requestExecution: vi.fn()});
+        view.rerender(<ExecutionWorkspace active={false} />);
+        expect(screen.queryByRole("dialog", {name: "Review wallet submission"})).not.toBeInTheDocument();
+    });
+
     it("polls a restored pending batch while the Explore view is shown", async () => {
         vi.useFakeTimers();
         try {

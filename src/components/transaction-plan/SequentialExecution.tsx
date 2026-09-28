@@ -3,6 +3,7 @@ import SendIcon from "@mui/icons-material/Send";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { NormalizedError, normalizeError } from "../../callUtils";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { BatchExecutionError, QueuedCall, SequentialCallExecution } from "../../transaction-plan/types";
 import { sendPreparedTransaction } from "../../transactions/sendTransaction";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
@@ -31,6 +32,12 @@ export default function SequentialExecution() {
     const wallet = useWalletSession();
     const [reviewOpen, setReviewOpen] = useState(false);
     const [error, setError] = useState<NormalizedError | null>(null);
+    const {activeView} = useTransactionPlanUi();
+    // Views stay mounted across switches, so an open submission review must
+    // not linger (and remain actionable) over the Explore view.
+    useEffect(() => {
+        if (activeView !== "execution") setReviewOpen(false);
+    }, [activeView]);
     const execution = state.sequentialExecution;
     const records = execution.calls;
     const confirmedCount = records.filter((record) => record.status === "confirmed").length;

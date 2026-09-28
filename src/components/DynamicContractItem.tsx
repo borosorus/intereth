@@ -124,7 +124,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                             />
                         )}
                         {queued && <Alert severity="success" action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>Added to execution.</Alert>}
-                        {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
+                        {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>{watchPin.notice}</Alert>}
                     </Stack>
                 <CallResult result={result} />
             </AccordionDetails>

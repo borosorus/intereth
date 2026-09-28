@@ -95,14 +95,10 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                 </Stack>
             </Box>
 
-            {(calls.length > 0 || watches.length > 0) && (
-                <>
-                    <Divider />
-                    <Box sx={{py: 2.5}}>
-                        <WatchPanel emptyHint="Pin a read expression from Explore to track its on-chain and speculative values across this plan." />
-                    </Box>
-                </>
-            )}
+            <Divider />
+            <Box sx={{py: 2.5}}>
+                <WatchPanel emptyHint="Pin a read expression from Explore to track its on-chain and speculative values across this plan." />
+            </Box>
 
             {calls.length > 0 && (
                 <>
@@ -126,19 +122,23 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                 </>
             )}
 
-            <Divider />
-            <Box sx={{py: 2}}>
-                <Button
-                    color="error"
-                    variant="outlined"
-                    disabled={state.execution.status === "submitting"
-                        || state.execution.status === "pending"
-                        || state.sequentialExecution.status === "active"}
-                    onClick={() => setConfirmClear(true)}
-                >
-                    Clear plan
-                </Button>
-            </Box>
+            {(calls.length > 0 || watches.length > 0) && (
+                <>
+                    <Divider />
+                    <Box sx={{py: 2}}>
+                        <Button
+                            color="error"
+                            variant="outlined"
+                            disabled={state.execution.status === "submitting"
+                                || state.execution.status === "pending"
+                                || state.sequentialExecution.status === "active"}
+                            onClick={() => setConfirmClear(true)}
+                        >
+                            Clear plan
+                        </Button>
+                    </Box>
+                </>
+            )}
 
             <ResponsiveDialog open={confirmClear} onClose={() => setConfirmClear(false)}>
                 <DialogTitle>Clear execution plan?</DialogTitle>

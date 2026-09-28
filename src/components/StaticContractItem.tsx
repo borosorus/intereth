@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -16,6 +16,7 @@ import ReadActions from "./ReadActions";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract;
@@ -29,6 +30,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const actions = useCallActions({chainId});
+    const planUi = useTransactionPlanUi();
     const {watchPin, result, error, setError} = actions;
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
@@ -91,7 +93,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 onPinWatch={() => void actions.pinWatch(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}))}
                                 canPinWatch={watchPin.canPin}
                             />
-                            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
+                            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>{watchPin.notice}</Alert>}
                         </Stack>
                         <CallResult result={result} />
                     </>

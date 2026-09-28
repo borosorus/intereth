@@ -21,6 +21,7 @@ import {
     Eip5792BatchExecutor,
 } from "../../transaction-plan/batchExecutor";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { BatchExecutionError, BatchExecutionState } from "../../transaction-plan/types";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import CopyButton from "../CopyButton";
@@ -340,6 +341,12 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
 
 export default function AtomicBatchExecution({controller}: {controller: AtomicBatchController}) {
     const [reviewMechanism, setReviewMechanism] = useState<ExecutionMechanism | null>(null);
+    const {activeView} = useTransactionPlanUi();
+    // Views stay mounted across switches, so an open submission review must
+    // not linger (and remain actionable) over the Explore view.
+    useEffect(() => {
+        if (activeView !== "execution") setReviewMechanism(null);
+    }, [activeView]);
     return (
         <Stack spacing={1.5}>
             <Divider />
