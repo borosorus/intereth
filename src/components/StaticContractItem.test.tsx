@@ -135,9 +135,10 @@ describe("StaticFunctionItem simulated reads", () => {
         );
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
-        expect(screen.getByText(/Read canonical on-chain state/)).toBeInTheDocument();
+        fireEvent.mouseEnter(screen.getByRole("button", {name: "About Read functions"}));
+        expect(await screen.findByText(/Read canonical on-chain state/)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: /balance\(\) View/})).toBeInTheDocument();
-        const writeGroup = screen.getByRole("button", {name: /Write functions · wallet required/});
+        const writeGroup = screen.getByRole("button", {name: /^Write functions · wallet required/});
         expect(writeGroup).toHaveAttribute("aria-expanded", "false");
         expect(screen.queryByRole("button", {name: /update\(\) Write/})).not.toBeInTheDocument();
 

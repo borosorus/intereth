@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+import InfoHint from "../InfoHint";
 import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import {
@@ -196,10 +197,13 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
             <Stack spacing={1}>
-                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after the plan</Typography>
-                <Typography variant="caption" color="text.secondary">
-                    Speculative net changes per address across successful plan calls. Positive amounts were received; negative amounts were sent.
-                </Typography>
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
+                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after the plan</Typography>
+                    <InfoHint
+                        label="About balance changes"
+                        content="Speculative net changes per address across successful plan calls. Positive amounts were received; negative amounts were sent."
+                    />
+                </Box>
                 {resolving && changes.some((change) => change.asset === "erc20") && (
                     <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
                 )}

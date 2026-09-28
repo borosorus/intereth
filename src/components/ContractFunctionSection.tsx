@@ -3,6 +3,7 @@ import styled from "@emotion/styled";
 import { Accordion, Box, ButtonBase, Chip, Collapse, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { ReactNode, useState } from "react";
+import InfoHint from "./InfoHint";
 
 export function isReadFunction(fragment: ethers.FunctionFragment) {
     return fragment.stateMutability === "view" || fragment.stateMutability === "pure";
@@ -58,14 +59,13 @@ export default function ContractFunctionSection({
     const [expanded, setExpanded] = useState(defaultExpanded);
     if (functions.length === 0) return null;
 
-    const header = (
+    const heading = (
         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, width: 1, py: 1}}>
             <Box sx={{minWidth: 0, textAlign: "left"}}>
                 <Stack direction="row" spacing={1} alignItems="center">
                     <Typography variant="subtitle1" sx={{fontWeight: 800}}>{title}</Typography>
                     <Chip size="small" variant="outlined" label={functions.length} aria-label={`${functions.length} ${functions.length === 1 ? "function" : "functions"}`} />
                 </Stack>
-                <Typography variant="caption" color="text.secondary">{description}</Typography>
             </Box>
             {collapsible && (
                 <ExpandMoreIcon
@@ -78,16 +78,21 @@ export default function ContractFunctionSection({
 
     return (
         <Box>
-            {collapsible ? (
-                <ButtonBase
-                    onClick={() => setExpanded((current) => !current)}
-                    aria-expanded={expanded}
-                    aria-label={`${title}: ${description}`}
-                    sx={{display: "block", width: 1}}
-                >
-                    {header}
-                </ButtonBase>
-            ) : header}
+            <Box sx={{display: "flex", alignItems: "center", gap: 0.5, width: 1}}>
+                <Box sx={{flex: 1, minWidth: 0}}>
+                    {collapsible ? (
+                        <ButtonBase
+                            onClick={() => setExpanded((current) => !current)}
+                            aria-expanded={expanded}
+                            aria-label={`${title}: ${description}`}
+                            sx={{display: "block", width: 1, textAlign: "left"}}
+                        >
+                            {heading}
+                        </ButtonBase>
+                    ) : heading}
+                </Box>
+                {description && <InfoHint label={`About ${title}`} content={description} />}
+            </Box>
             <Collapse in={!collapsible || expanded} unmountOnExit={collapsible}>
                 <Stack spacing={1} sx={{pt: 0.75}}>
                     {functions.map(renderFunction)}

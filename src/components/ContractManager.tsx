@@ -27,6 +27,7 @@ import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
+import InfoHint from "./InfoHint";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
@@ -424,7 +425,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 <Stack spacing={1.25}>
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Network &amp; access</Typography>
-                        <Typography variant="caption" color="text.secondary">Choose the chain before entering a contract address.</Typography>
                     </Box>
                     <Grid container spacing={2} alignItems="center">
                         {!useBrowserWallet && (
@@ -468,7 +468,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     value={customRpc}
                                     onChange={(event) => setCustomRpc(event.target.value)}
                                     error={customRpc !== '' && customRpcState === CustomRpcState.failed}
-                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : 'A full HTTP RPC endpoint.'}
+                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : undefined}
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">
@@ -507,7 +507,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 <Stack spacing={1.25}>
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract</Typography>
-                        <Typography variant="caption" color="text.secondary">Choose the contract you want to inspect.</Typography>
                     </Box>
                     <TextField
                         inputRef={addressInputRef}
@@ -515,14 +514,13 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         value={address}
                         onChange={(event) => setAddress(event.target.value.trim())}
                         error={address !== '' && !isAddressValid}
-                        helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
+                        helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : undefined}
                         fullWidth
                     />
                     <TextField
                         label="Contract label"
                         value={label}
                         onChange={(event) => setLabel(event.target.value)}
-                        helperText="Optional name used in workspace navigation."
                         fullWidth
                     />
                 </Stack>
@@ -531,9 +529,12 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
                     <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
-                        <Box>
+                        <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: 0.5}}>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
-                            <Typography variant="caption" color="text.secondary">Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls.</Typography>
+                            <InfoHint
+                                label="About contract interfaces"
+                                content="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
+                            />
                         </Box>
                         <FormControlLabel
                             control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}

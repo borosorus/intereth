@@ -62,7 +62,7 @@ describe("SimulationInspector", () => {
         });
     });
 
-    it("shows decoded call details, failures, events, and queue-wide deltas", () => {
+    it("shows decoded call details, failures, events, and plan-wide deltas", async () => {
         render(<SimulationInspector />);
         expect(screen.getByText(/Speculative only · base block 100/)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: /1\. mint\(\)/})).toBeInTheDocument();
@@ -72,7 +72,8 @@ describe("SimulationInspector", () => {
         fireEvent.click(screen.getByRole("button", {name: /2\. withdraw\(\)/}));
         expect(screen.getByText("Unauthorized")).toBeInTheDocument();
         expect(screen.getByText("Net balance changes after the plan")).toBeInTheDocument();
-        expect(screen.getByText(/Positive amounts were received; negative amounts were sent/)).toBeInTheDocument();
+        fireEvent.mouseEnter(screen.getByRole("button", {name: "About balance changes"}));
+        expect(await screen.findByText(/Positive amounts were received; negative amounts were sent/)).toBeInTheDocument();
         expect(screen.getByText("Plan sender")).toBeInTheDocument();
         expect(screen.getByText("Plan call target")).toBeInTheDocument();
         expect(screen.getByText("+5 raw units")).toBeInTheDocument();

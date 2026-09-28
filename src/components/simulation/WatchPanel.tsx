@@ -6,6 +6,7 @@ import { WatchResultValue } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
+import InfoHint from "../InfoHint";
 import { StateBadge, watchPresentation } from "../StateBadge";
 
 function shortAddress(address: string) {
@@ -99,13 +100,17 @@ export default function WatchPanel({emptyHint}: {emptyHint?: string} = {}) {
     return (
         <Stack spacing={1.5}>
             <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1}}>
-                <Box sx={{minWidth: 0}}>
-                    <Typography variant="subtitle1" sx={{fontWeight: 800}}>Watches</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {simulation.snapshot || watchBaseBlock
-                            ? `Base block ${blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)} · ${simulation.queuedCallCount > 0 ? "speculative values recompute with the plan" : "canonical watches refresh together"}`
-                            : "Pinned read expressions; canonical values refresh together"}
-                    </Typography>
+                <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: 0.5}}>
+                    <Box sx={{minWidth: 0}}>
+                        <Typography variant="subtitle1" sx={{fontWeight: 800}}>Watches</Typography>
+                        {(simulation.snapshot || watchBaseBlock) && (
+                            <Typography variant="caption" color="text.secondary">Base block {blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)}</Typography>
+                        )}
+                    </Box>
+                    <InfoHint
+                        label="About watches"
+                        content="Watches are pinned read expressions. On-chain values come from the pinned base block; speculative values recompute after the plan calls on that same base block."
+                    />
                 </Box>
                 <Button size="small" sx={{alignSelf: {xs: "flex-start", sm: "center"}}} startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
                     Refresh

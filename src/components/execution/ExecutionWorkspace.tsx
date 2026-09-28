@@ -16,6 +16,7 @@ import { shortAddress } from "../../calls/displayValues";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { executionPresentation, StateBadge } from "../StateBadge";
+import InfoHint from "../InfoHint";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SimulationInspector from "../simulation/SimulationInspector";
 import WatchPanel from "../simulation/WatchPanel";
@@ -25,10 +26,13 @@ import { useAtomicBatchExecution } from "../transaction-plan/AtomicBatchExecutio
 import PlanCallItem from "./PlanCallItem";
 import SessionNotice from "./SessionNotice";
 
-function SectionHeader({title, description}: {title: string; description?: string}) {
+function SectionHeader({title, description, hintLabel, hintContent}: {title: string; description?: string; hintLabel?: string; hintContent?: string}) {
     return (
         <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
-            <Typography variant="subtitle1" sx={{fontWeight: 800}}>{title}</Typography>
+            <Box sx={{display: "flex", alignItems: "center", gap: 0.5}}>
+                <Typography variant="subtitle1" sx={{fontWeight: 800}}>{title}</Typography>
+                {hintContent && <InfoHint label={hintLabel ?? `About ${title}`} content={hintContent} />}
+            </Box>
             {description && <Typography variant="caption" color="text.secondary">{description}</Typography>}
         </Box>
     );
@@ -55,8 +59,8 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                 </Box>
                 <Typography variant="body2" color="text.secondary">
                     {context
-                        ? `Plan executes as ${shortAddress(context.account)} on chain ${context.chainId}, in the order shown below.`
-                        : "Calls you add from Explore run in the order shown below, under one account and chain."}
+                        ? `Plan executes as ${shortAddress(context.account)} on chain ${context.chainId}.`
+                        : "Calls you add from Explore run here, under one account and chain."}
                 </Typography>
             </Stack>
             <Divider />
@@ -85,7 +89,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                     ) : (
                         <Stack spacing={1.25} sx={{alignItems: "flex-start"}}>
                             <Typography variant="body2" color="text.secondary">
-                                Nothing in the plan yet. Open a contract in Explore and add a state-changing call with "Add to execution" to review it here before sending.
+                                Nothing in the plan yet. Add state-changing calls from Explore with "Add to execution" to review them here before sending.
                             </Typography>
                             <Button size="small" variant="outlined" startIcon={<PlaylistAddCheckIcon />} onClick={() => setActiveView("explore")}>
                                 Back to Explore
@@ -114,7 +118,8 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                         <Stack spacing={1.5}>
                             <SectionHeader
                                 title="Run plan"
-                                description="Choose how the plan reaches the network. Speculative values above are estimates, not confirmed state."
+                                hintLabel="About running a plan"
+                                hintContent="Choose how the plan reaches the network: as an atomic wallet batch when supported, or as individual transactions one at a time."
                             />
                             <TransactionExecutionOptions controller={batchController} />
                         </Stack>

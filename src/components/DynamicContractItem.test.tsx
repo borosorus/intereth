@@ -253,7 +253,8 @@ describe("DynamicContractItem wallet lifecycle", () => {
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText("Read functions")).toBeInTheDocument();
-        expect(screen.getByText(/Read canonical on-chain state/)).toBeInTheDocument();
+        fireEvent.mouseEnter(screen.getByRole("button", {name: "About Read functions"}));
+        expect(await screen.findByText(/Read canonical on-chain state/)).toBeInTheDocument();
         expect(screen.getByText("Write functions")).toBeInTheDocument();
         expect(screen.getByText("View")).toBeInTheDocument();
         expect(screen.getByText("Pure")).toBeInTheDocument();
