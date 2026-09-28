@@ -59,36 +59,7 @@ const formSectionSx = {
     border: "1px solid",
     borderColor: "divider",
     borderRadius: 2.5,
-    backgroundColor: "rgba(248, 250, 252, 0.58)",
-};
-
-const inputSurfaceSx = {
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "#fff",
-        transition: "border-color 160ms ease, box-shadow 160ms ease",
-        "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(69, 90, 100, 0.3)",
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "primary.main",
-        },
-        "&.Mui-focused": {
-            boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
-        },
-    },
-};
-
-const selectSurfaceSx = {
-    backgroundColor: "#fff",
-    "& .MuiOutlinedInput-notchedOutline": {
-        borderColor: "rgba(69, 90, 100, 0.3)",
-    },
-    "&:hover .MuiOutlinedInput-notchedOutline": {
-        borderColor: "primary.main",
-    },
-    "&.Mui-focused": {
-        boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
-    },
+    backgroundColor: "background.paper",
 };
 
 function renderCustomRpcProgress(state: CustomRpcState) {
@@ -466,7 +437,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         value={providerIndex}
                                         label="RPC Provider"
                                         onChange={(event) => setProviderIndex(event.target.value as number)}
-                                        sx={selectSurfaceSx}
+
                                     >
                                         {chains.map((chain, index) => (
                                             <MenuItem key={chain.id} value={index}>{chain.label} (Chain {chain.id})</MenuItem>
@@ -505,7 +476,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                             </InputAdornment>
                                         ),
                                     }}
-                                    sx={inputSurfaceSx}
                                 />
                             </Grid>
                         )}
@@ -547,7 +517,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         error={address !== '' && !isAddressValid}
                         helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
                         fullWidth
-                        sx={inputSurfaceSx}
                     />
                     <TextField
                         label="Contract label"
@@ -555,7 +524,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         onChange={(event) => setLabel(event.target.value)}
                         helperText="Optional name used in workspace navigation."
                         fullWidth
-                        sx={inputSurfaceSx}
                     />
                 </Stack>
             </Box>
@@ -583,7 +551,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     renderValue={(selection) => selection === "custom"
                                         ? "Custom ABI"
                                         : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
-                                    sx={selectSurfaceSx}
+
                                 >
                                     <MenuItem value="custom">Custom ABI</MenuItem>
                                     {ABI_PRESETS.map((preset) => (
@@ -608,7 +576,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 setInterfaceFormat(event.target.value as ContractInterfaceFormat);
                                 setAbiPreset("custom");
                             }}
-                            sx={selectSurfaceSx}
+
                         >
                             <MenuItem value="json">JSON ABI</MenuItem>
                             <MenuItem value="solidity">Solidity interface</MenuItem>
@@ -641,7 +609,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 : "Optional. Enter semicolon-separated Solidity function declarations or leave empty for raw calls."))}
                         fullWidth
                         sx={{
-                            ...inputSurfaceSx,
                             "& textarea": {
                                 overflowY: "auto",
                                 resize: "none",
@@ -697,7 +664,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                             height: "100%",
                                             p: 2,
                                             borderRadius: 2.5,
-                                            background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(238,242,248,0.72))",
                                         }}
                                     >
                                         <Stack spacing={1.5} sx={{height: "100%"}}>
