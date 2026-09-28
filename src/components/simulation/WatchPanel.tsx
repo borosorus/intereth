@@ -78,7 +78,7 @@ function WatchCard({watch}: {watch: WatchExpression}) {
                         <ResultValue result={evaluation?.base} emptyLabel="Not evaluated" />
                     </Box>
                     {hasQueuedCalls ? <Box>
-                        <Typography variant="caption" color="secondary.main" sx={{fontWeight: 700}}>Speculative after queue</Typography>
+                        <Typography variant="caption" color="info.main" sx={{fontWeight: 700}}>Speculative after queue</Typography>
                         <ResultValue result={evaluation?.simulated} emptyLabel={evaluation?.status === "blocked" ? "Blocked" : "Not evaluated"} />
                     </Box> : <Box>
                         <Typography variant="caption" color="text.secondary">Speculative value</Typography>

@@ -10,7 +10,7 @@ export default function WorkspaceEmptyGuidance() {
     return (
         <Paper
             variant="outlined"
-            sx={{p: 1.75, borderRadius: 2.5, borderColor: "secondary.light", bgcolor: "rgba(255,87,34,0.05)"}}
+            sx={{p: 1.75, borderRadius: 2.5, bgcolor: "background.paper"}}
         >
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <Box sx={{color: "secondary.main", mt: 0.15}}>

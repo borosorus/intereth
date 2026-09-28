@@ -6,13 +6,12 @@ export default function Bar(){
       <Box>
         <AppBar
           position="sticky"
-          color="transparent"
+          color="default"
           elevation={0}
           sx={{
             borderBottom: '1px solid',
-            borderColor: 'secondary.light',
-            backdropFilter: 'blur(14px)',
-            backgroundColor: 'rgba(255, 245, 240, 0.92)',
+            borderColor: 'divider',
+            backgroundColor: 'background.paper',
           }}
         >
             <Toolbar sx={{display: "flex", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1.25, sm: 1}, minHeight: {xs: 106, sm: 88}}}>

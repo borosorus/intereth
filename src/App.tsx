@@ -27,14 +27,10 @@ export default function App(){
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Stack spacing={3}>
             {contracts.length === 0 && <Paper
-              elevation={0}
+              variant="outlined"
               sx={{
                 p: {xs: 2, md: 3},
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: 'divider',
-                backgroundColor: 'rgba(255,255,255,0.78)',
-                backdropFilter: 'blur(18px)',
+                borderRadius: 2.5,
               }}
             >
               <ContractManager addContract={workspace.addContract} showExamples={contracts.length === 0}/>
