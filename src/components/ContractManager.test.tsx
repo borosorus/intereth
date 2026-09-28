@@ -95,6 +95,18 @@ describe("ContractManager", () => {
         expect(screen.getByText("Test chain")).toBeInTheDocument();
     });
 
+    it("keeps browser wallet access selected when an example fills the form", () => {
+        mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
+        render(<ContractManager addContract={vi.fn()} showExamples />);
+
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+
+        fireEvent.click(screen.getAllByRole("button", {name: "Use example"})[0]);
+        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+        expect(screen.getByLabelText("Contract address")).toHaveValue("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
+    });
+
     it("fetches a verified ABI in automatic mode and promotes it when disabled", async () => {
         vi.useFakeTimers();
         const fetched = [{type: "function", name: "owner", inputs: [], outputs: [{type: "address"}], stateMutability: "view"}];

@@ -408,13 +408,17 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         setAbi(formatAbi(example.abi));
         setAbiPreset("custom");
         setAutomaticAbi(false);
-        setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
-        setCustomRpc('');
-        setCustomRpcChainId('');
-        setCustomRpcState(CustomRpcState.disabled);
-        setUseBrowserWallet(false);
+        // An example fills the contract fields; it must not undo how the user
+        // chose to reach the chain. In wallet mode the switch and the wallet's
+        // own chain stay exactly as they are.
+        if (!useBrowserWallet) {
+            setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
+            setCustomRpc('');
+            setCustomRpcChainId('');
+            setCustomRpcState(CustomRpcState.disabled);
+        }
         requestAnimationFrame(() => {
-            addressInputRef.current?.scrollIntoView({behavior: "smooth", block: "center"});
+            addressInputRef.current?.scrollIntoView?.({behavior: "smooth", block: "center"});
             addressInputRef.current?.focus({preventScroll: true});
         });
     };
