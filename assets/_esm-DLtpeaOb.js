@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-B0Z9INg1.js";import{t}from"./defineChain-BAD-jvmT.js";function n({chains:e,id:t}){return e.find(e=>e.id===t)}var r=e({defineChain:()=>t,extractChain:()=>n,offchainLookupSignature:()=>offchainLookupSignature,presignMessagePrefix:()=>presignMessagePrefix,zeroAddress:()=>zeroAddress,zeroHash:()=>zeroHash});export{r as t};
