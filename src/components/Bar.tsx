@@ -54,12 +54,17 @@ export default function Bar(){
                     bgcolor: "background.paper",
                     p: 0.25,
                     gap: 0.25,
+                    // On phones the switcher owns its whole row below the brand
+                    // row, so the two groups never interleave; equal segments
+                    // read as one segmented control rather than two stray buttons.
+                    width: {xs: "100%", sm: "auto"},
                     "& .MuiToggleButton-root": {
                       border: 0,
                       borderRadius: "99px !important",
                       gap: 0.75,
                       fontWeight: 700,
-                      px: 1.75,
+                      px: {xs: 1, sm: 1.75},
+                      flex: {xs: 1, sm: "0 1 auto"},
                       color: "text.secondary",
                       "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
                     },
