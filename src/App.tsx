@@ -18,6 +18,7 @@ export default function App(){
     const {state} = useTransactionPlan();
     const [addContractOpen, setAddContractOpen] = useState(false);
     const [managerGeneration, setManagerGeneration] = useState(0);
+    const [trayHeight, setTrayHeight] = useState(0);
     const {contracts, selectedContract} = workspace;
     const trayVisible = state.plan.calls.length > 0 || state.plan.watches.length > 0;
 
@@ -82,7 +83,7 @@ export default function App(){
                   </Stack>
                 </Box>
               )}
-              <ExecutionTray />
+              <ExecutionTray onHeightChange={setTrayHeight} />
             </Stack>
           </Box>
           <Box sx={{display: activeView === "execution" ? "block" : "none"}}>
@@ -103,7 +104,7 @@ export default function App(){
             if (reason !== "clickaway") workspace.dismissNotice();
           }}
           anchorOrigin={{vertical: "bottom", horizontal: "center"}}
-          sx={{mb: activeView === "explore" && trayVisible ? 9 : 0}}
+          sx={{bottom: activeView === "explore" && trayVisible ? trayHeight + 24 : undefined}}
         >
           <Alert severity="info" variant="filled" onClose={workspace.dismissNotice}>{workspace.notice}</Alert>
         </Snackbar>

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { useTransactionPlan } from "../transaction-plan/context";
+import type { PlanSessionStatus } from "../transaction-plan/selectors";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../transaction-plan/reducer";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 import ExecutionTray from "./ExecutionTray";
@@ -13,8 +14,8 @@ const mockedPlanUi = vi.mocked(useTransactionPlanUi);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
 const TARGET = "0x0000000000000000000000000000000000000010";
 
-function mockPlan(state: ReturnType<typeof createEmptyTransactionPlanState>) {
-    mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+function mockPlan(state: ReturnType<typeof createEmptyTransactionPlanState>, sessionStatus: PlanSessionStatus = "ready") {
+    mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus, canEdit: true});
 }
 
 function planWithCalls(count: number) {
@@ -74,5 +75,26 @@ describe("ExecutionTray", () => {
         mockPlan(planWithWatches(2));
         render(<ExecutionTray />);
         expect(screen.getByText("2 pinned watches")).toBeInTheDocument();
+    });
+
+    it("mirrors a submitted batch instead of looking like a draft", () => {
+        const state = planWithCalls(1);
+        mockPlan({...state, execution: {...state.execution, status: "pending"}});
+        render(<ExecutionTray />);
+        expect(screen.getByText("Submitted")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Review execution"})).toBeInTheDocument();
+    });
+
+    it("marks an active sequential execution", () => {
+        const state = planWithCalls(1);
+        mockPlan({...state, sequentialExecution: {...state.sequentialExecution, status: "active"}});
+        render(<ExecutionTray />);
+        expect(screen.getByText("Sending one by one")).toBeInTheDocument();
+    });
+
+    it("flags session mismatches on the plan", () => {
+        mockPlan(planWithCalls(1), "chain_mismatch");
+        render(<ExecutionTray />);
+        expect(screen.getByText("Wrong network")).toBeInTheDocument();
     });
 });
