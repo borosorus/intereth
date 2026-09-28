@@ -268,14 +268,21 @@ describe("ExecutionWorkspace", () => {
 
     it("shows the watches-only plan state", () => {
         mockWallet();
+        const dispatch = vi.fn();
         const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: {
             id: "watch-1", chainId: "1", from: ACCOUNT, to: TARGET, data: "0xabcd", value: "0",
             display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 1,
         }});
-        mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+        mockedTransactionPlan.mockReturnValue({state, dispatch, sessionStatus: "ready", canEdit: true});
 
         render(<ExecutionWorkspace />);
         expect(screen.getByText(/pinned watches but no plan calls/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Clear plan"}));
+        const dialog = screen.getByRole("dialog", {name: "Clear execution plan?"});
+        expect(within(dialog).getByText(/removes 1 pinned watch/)).toBeInTheDocument();
+        fireEvent.click(within(dialog).getByRole("button", {name: "Clear plan"}));
+        expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {

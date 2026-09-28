@@ -267,7 +267,7 @@ export default function SimulationInspector() {
                 <Typography variant="caption" color="text.secondary">Speculative only · base block {quantity(snapshot.baseBlockNumber)}</Typography>
             </Box>
             {(simulation.status === "stale" || simulation.status === "simulating" || simulation.status === "error") && (
-                <Alert severity="warning">These details are from the last successful snapshot and may not match the current queue.</Alert>
+                <Alert severity="warning">These details are from the last successful snapshot and may not match the current plan.</Alert>
             )}
             <Stack spacing={1}>
                 {snapshot.calls.map((call, index) => {

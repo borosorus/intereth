@@ -22,7 +22,7 @@ export default function Bar(){
             backgroundColor: 'background.paper',
           }}
         >
-            <Toolbar sx={{display: "flex", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, minHeight: {xs: 64, sm: 72}}}>
+            <Toolbar sx={{display: "flex", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, minHeight: {xs: 64, sm: 72}, flexWrap: "wrap", rowGap: {xs: 1, sm: 0}}}>
               <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0}}>
                 <Box
                   component="img"
@@ -40,7 +40,7 @@ export default function Bar(){
                   </Typography>
                 </Box>
               </Stack>
-              <Box sx={{flex: 1, display: "flex", justifyContent: {xs: "flex-start", sm: "center"}}}>
+              <Box sx={{display: "flex", justifyContent: "center", order: {xs: 3, sm: 0}, flex: {xs: "1 0 100%", sm: 1}}}>
                 <ToggleButtonGroup
                   exclusive
                   size="small"

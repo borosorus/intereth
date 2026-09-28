@@ -143,7 +143,12 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
             <ResponsiveDialog open={confirmClear} onClose={() => setConfirmClear(false)}>
                 <DialogTitle>Clear execution plan?</DialogTitle>
                 <DialogContent>
-                    <Typography>This removes all {calls.length} plan {calls.length === 1 ? "call" : "calls"}. This action cannot be undone.</Typography>
+                    <Typography>
+                        This removes {[
+                            calls.length > 0 ? `all ${calls.length} plan ${calls.length === 1 ? "call" : "calls"}` : null,
+                            watches.length > 0 ? `${watches.length} pinned ${watches.length === 1 ? "watch" : "watches"}` : null,
+                        ].filter(Boolean).join(" and ")}. This action cannot be undone.
+                    </Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmClear(false)}>Cancel</Button>
