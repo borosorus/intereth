@@ -288,10 +288,10 @@ export class SimulationClient implements QueuedStateSimulationClient {
             throw Object.assign(new Error("Simulation requires at least one call."), {code: "INVALID_ARGUMENT"});
         }
         if (calls.some((call) => call.chainId !== context.chainId || call.from.toLowerCase() !== context.account.toLowerCase())) {
-            throw Object.assign(new Error("Every simulated call must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
+            throw Object.assign(new Error("Every simulated call must match the execution plan."), {code: "PLAN_CONTEXT_MISMATCH"});
         }
         if (watches.some((watch) => watch.chainId !== context.chainId || watch.from.toLowerCase() !== context.account.toLowerCase())) {
-            throw Object.assign(new Error("Every simulated watch must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
+            throw Object.assign(new Error("Every simulated watch must match the execution plan."), {code: "PLAN_CONTEXT_MISMATCH"});
         }
 
         const requestCalls = calls.map((call) => rpcCall(call.from, call.to, call.data, call.value));
@@ -321,10 +321,10 @@ export class SimulationClient implements QueuedStateSimulationClient {
 
     async simulateRead(context: PlanContext, calls: QueuedCall[], read: SimulatedRead, baseBlock = "latest"): Promise<SimulatedReadResult> {
         if (calls.length === 0) {
-            throw Object.assign(new Error("Queued-state simulation requires at least one queued call."), {code: "INVALID_ARGUMENT"});
+            throw Object.assign(new Error("Speculative reads require at least one plan call."), {code: "INVALID_ARGUMENT"});
         }
         if (calls.some((call) => call.chainId !== context.chainId || call.from.toLowerCase() !== context.account.toLowerCase())) {
-            throw Object.assign(new Error("Every simulated call must match the transaction plan."), {code: "PLAN_CONTEXT_MISMATCH"});
+            throw Object.assign(new Error("Every simulated call must match the execution plan."), {code: "PLAN_CONTEXT_MISMATCH"});
         }
 
         const requestCalls = calls.map((call) => rpcCall(call.from, call.to, call.data, call.value));
@@ -339,13 +339,13 @@ export class SimulationClient implements QueuedStateSimulationClient {
         const revertedIndex = parsed.calls.slice(0, calls.length).findIndex((call) => call.status === "0x0");
         if (revertedIndex !== -1) {
             throw Object.assign(
-                simulationError("SIMULATION_QUEUED_CALL_REVERTED", `Queued call ${revertedIndex + 1} reverted during simulation.`),
+                simulationError("SIMULATION_QUEUED_CALL_REVERTED", `Plan call ${revertedIndex + 1} reverted during simulation.`),
                 {callId: calls[revertedIndex].id, callIndex: revertedIndex},
             );
         }
         const readResult = parsed.calls[calls.length];
         if (readResult.status === "0x0") {
-            throw simulationError("SIMULATION_READ_REVERTED", "The read call reverted after applying the queued calls.");
+            throw simulationError("SIMULATION_READ_REVERTED", "The read call reverted after applying the plan calls.");
         }
         return {
             returnData: readResult.returnData,

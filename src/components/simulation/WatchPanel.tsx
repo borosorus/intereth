@@ -71,18 +71,18 @@ function WatchCard({watch}: {watch: WatchExpression}) {
                     </Typography>
                 )}
                 {evaluation?.status === "error" && <Alert severity="error">{evaluation.error?.message ?? "Watch evaluation failed."}</Alert>}
-                {evaluation?.status === "blocked" && <Alert severity="warning">Speculative value is unavailable because a queued call reverted.</Alert>}
+                {evaluation?.status === "blocked" && <Alert severity="warning">Speculative value is unavailable because a plan call reverted.</Alert>}
                 <Box sx={{display: "grid", gridTemplateColumns: {xs: "1fr", sm: "1fr 1fr"}, gap: 1.5}}>
                     <Box>
                         <Typography variant="caption" color="text.secondary">On-chain at base block</Typography>
                         <ResultValue result={evaluation?.base} emptyLabel="Not evaluated" />
                     </Box>
                     {hasQueuedCalls ? <Box>
-                        <Typography variant="caption" color="info.main" sx={{fontWeight: 700}}>Speculative after queue</Typography>
+                        <Typography variant="caption" color="info.main" sx={{fontWeight: 700}}>Speculative after plan</Typography>
                         <ResultValue result={evaluation?.simulated} emptyLabel={evaluation?.status === "blocked" ? "Blocked" : "Not evaluated"} />
                     </Box> : <Box>
                         <Typography variant="caption" color="text.secondary">Speculative value</Typography>
-                        <Typography variant="body2" color="text.secondary">No queued writes</Typography>
+                        <Typography variant="body2" color="text.secondary">No plan calls</Typography>
                     </Box>}
                 </Box>
             </Stack>

@@ -352,7 +352,7 @@ export default function AtomicBatchExecution({controller}: {controller: AtomicBa
             <Divider />
             <Box>
                 <Typography variant="subtitle1" sx={{fontWeight: 800}}>Atomic execution</Typography>
-                <Typography variant="caption" color="text.secondary">All queued calls must execute atomically or the wallet must reject the request.</Typography>
+                <Typography variant="caption" color="text.secondary">All plan calls must execute atomically or the wallet must reject the request.</Typography>
             </Box>
             {controller.execution.status === "idle" && controller.execution.error && (
                 <Alert severity="warning">{controller.execution.error.message}</Alert>

@@ -56,7 +56,7 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                     </Stack>
                 )}
             </Box>
-            <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 108}}>
+            <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 88}}>
                 <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
                     <Box><Typography variant="subtitle2" sx={{fontWeight: 800}}>Contracts</Typography><Typography variant="caption" color="text.secondary">{contracts.length} open {contracts.length === 1 ? "instance" : "instances"}</Typography></Box>
                     <IconButton size="small" color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>

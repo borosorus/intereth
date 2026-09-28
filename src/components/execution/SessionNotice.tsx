@@ -42,7 +42,7 @@ export default function SessionNotice() {
             <DialogTitle>Forget batch tracking?</DialogTitle>
             <DialogContent>
                 <Typography>
-                    This removes the local transaction plan and batch ID. It does not cancel, reverse, or change anything in the wallet or on-chain.
+                    This removes the local execution plan and batch ID. It does not cancel, reverse, or change anything in the wallet or on-chain.
                 </Typography>
             </DialogContent>
             <DialogActions>
@@ -71,7 +71,7 @@ export default function SessionNotice() {
                         {forgetButton}
                     </Stack>}
                 >
-                    This transaction plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
+                    This plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
                 </Alert>
                 {forgetDialog}
                 <ErrorDialog error={error} onClose={() => setError(null)} />
@@ -98,7 +98,7 @@ export default function SessionNotice() {
                         {forgetButton}
                     </Stack>}
                 >
-                    This transaction plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected.
+                    This plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected.
                 </Alert>
                 {forgetDialog}
                 <ErrorDialog error={error} onClose={() => setError(null)} />

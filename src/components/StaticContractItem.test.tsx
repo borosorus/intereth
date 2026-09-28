@@ -67,7 +67,7 @@ describe("StaticFunctionItem simulated reads", () => {
             data: fragment.selector,
         }));
         expect(await screen.findByText("true")).toBeInTheDocument();
-        expect(screen.getByText(/after 3 queued calls/)).toBeInTheDocument();
+        expect(screen.getByText(/after 3 plan calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
         // Canonical and speculative actions stay side by side after a run.
         expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();

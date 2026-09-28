@@ -124,7 +124,7 @@ describe("DynamicFunctionItem queueing", () => {
         }));
         expect(await screen.findByText("42")).toBeInTheDocument();
         expect(screen.getByText("Speculative")).toBeInTheDocument();
-        expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
+        expect(screen.getByText(/after 2 plan calls/)).toBeInTheDocument();
     });
 });
 

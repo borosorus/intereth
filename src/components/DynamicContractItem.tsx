@@ -191,7 +191,7 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
             <ContractFunctionBrowser
                     contractId={contractId}
                     readDescription={simulation.canSimulateChain(contractChainId)
-                        ? "Read canonical state or speculative queued state without modifying the contract."
+                        ? "Read canonical state or speculative plan state without modifying the contract."
                         : "Read canonical on-chain state without modifying the contract."}
                     functions={functions}
                     renderFunction={(fragment) => (

@@ -45,7 +45,7 @@ describe("WatchPanel", () => {
 
         render(<WatchPanel />);
         expect(screen.getByText("On-chain at base block")).toBeInTheDocument();
-        expect(screen.getByText("Speculative after queue")).toBeInTheDocument();
+        expect(screen.getByText("Speculative after plan")).toBeInTheDocument();
         expect(screen.getByText("10")).toBeInTheDocument();
         expect(screen.getByText("42")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Refresh"}));

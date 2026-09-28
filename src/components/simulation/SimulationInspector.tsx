@@ -181,7 +181,7 @@ function signedRawAmount(delta: bigint, asset: BalanceChange["asset"]) {
 function addressRole(address: string, planAccount: string, queuedTargets: Set<string>) {
     const normalized = address.toLowerCase();
     if (normalized === planAccount.toLowerCase()) return {label: "Plan sender", color: "primary" as const};
-    if (queuedTargets.has(normalized)) return {label: "Queued call target", color: "info" as const};
+    if (queuedTargets.has(normalized)) return {label: "Plan call target", color: "info" as const};
     return {label: "Other address", color: "default" as const};
 }
 
@@ -196,9 +196,9 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
             <Stack spacing={1}>
-                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after queue</Typography>
+                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after the plan</Typography>
                 <Typography variant="caption" color="text.secondary">
-                    Speculative net changes per address across successful queued calls. Positive amounts were received; negative amounts were sent.
+                    Speculative net changes per address across successful plan calls. Positive amounts were received; negative amounts were sent.
                 </Typography>
                 {resolving && changes.some((change) => change.asset === "erc20") && (
                     <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
@@ -255,7 +255,7 @@ export default function SimulationInspector() {
     const {state} = useTransactionPlan();
     const snapshot = simulation.snapshot;
     if (!snapshot) {
-        return <Alert severity="info">The detailed inspector will appear after the transaction plan has been simulated.</Alert>;
+        return <Alert severity="info">The detailed inspector will appear after the plan has been simulated.</Alert>;
     }
     const callsById = new Map(state.plan.calls.map((call) => [call.id, call]));
     const queuedTargets = new Set(state.plan.calls.map((call) => call.to.toLowerCase()));

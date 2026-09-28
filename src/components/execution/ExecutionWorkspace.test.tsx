@@ -197,7 +197,7 @@ describe("ExecutionWorkspace", () => {
 
         render(<ExecutionWorkspace />);
         expect(screen.getByText("Speculative preview")).toBeInTheDocument();
-        expect(screen.getByText("Preparing the queue preview…")).toBeInTheDocument();
+        expect(screen.getByText("Preparing the plan preview…")).toBeInTheDocument();
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
@@ -275,7 +275,7 @@ describe("ExecutionWorkspace", () => {
         mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
         render(<ExecutionWorkspace />);
-        expect(screen.getByText(/pinned watches but no queued calls/)).toBeInTheDocument();
+        expect(screen.getByText(/pinned watches but no plan calls/)).toBeInTheDocument();
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {

@@ -80,12 +80,12 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                         />
                     )) : watches.length > 0 ? (
                         <Typography variant="body2" color="text.secondary">
-                            This plan has pinned watches but no queued calls. Add a state-changing call from Explore to simulate their combined effect.
+                            This plan has pinned watches but no plan calls. Add a state-changing call from Explore to simulate their combined effect.
                         </Typography>
                     ) : (
                         <Stack spacing={1.25} sx={{alignItems: "flex-start"}}>
                             <Typography variant="body2" color="text.secondary">
-                                Nothing queued yet. Open a contract in Explore and add a state-changing call with "Add to execution" to review it here before sending.
+                                Nothing in the plan yet. Open a contract in Explore and add a state-changing call with "Add to execution" to review it here before sending.
                             </Typography>
                             <Button size="small" variant="outlined" startIcon={<PlaylistAddCheckIcon />} onClick={() => setActiveView("explore")}>
                                 Back to Explore
@@ -143,7 +143,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
             <ResponsiveDialog open={confirmClear} onClose={() => setConfirmClear(false)}>
                 <DialogTitle>Clear execution plan?</DialogTitle>
                 <DialogContent>
-                    <Typography>This removes all {calls.length} queued {calls.length === 1 ? "call" : "calls"}. This action cannot be undone.</Typography>
+                    <Typography>This removes all {calls.length} plan {calls.length === 1 ? "call" : "calls"}. This action cannot be undone.</Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setConfirmClear(false)}>Cancel</Button>

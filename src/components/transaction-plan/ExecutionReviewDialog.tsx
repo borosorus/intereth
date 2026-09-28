@@ -135,7 +135,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                             </Typography>
                         ) : (
                             <Alert severity="warning" sx={{mt: 1}}>
-                                A fresh simulation matching this exact queue is unavailable. The wallet may still reject the request or a transaction may revert.
+                                A fresh simulation matching this exact plan is unavailable. The wallet may still reject the request or a transaction may revert.
                             </Alert>
                         )}
                     </Box>
@@ -185,7 +185,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                     {requiresRiskAcceptance && (
                         <FormControlLabel
                             control={<Checkbox checked={riskAccepted} onChange={(event) => setRiskAccepted(event.target.checked)} />}
-                            label="I understand that this queue does not have a fresh successful simulation."
+                            label="I understand that this plan does not have a fresh successful simulation."
                         />
                     )}
                     {requiresDelegationAcceptance && (

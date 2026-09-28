@@ -115,7 +115,7 @@ describe("InteractSimulationPreview", () => {
         render(<InteractSimulationPreview />);
 
         fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
-        expect(screen.getByText("This preview is stale and does not match the current queue.")).toBeInTheDocument();
+        expect(screen.getByText("This preview is stale and does not match the current plan.")).toBeInTheDocument();
     });
 
     it("formats ERC-20 events and account deltas with lazily resolved metadata", () => {

@@ -80,7 +80,7 @@ describe("RawCall queueing", () => {
             data: "0xabcd",
         }));
         expect(await screen.findByText("0x1234")).toBeInTheDocument();
-        expect(screen.getByText(/after 1 queued call/)).toBeInTheDocument();
+        expect(screen.getByText(/after 1 plan call/)).toBeInTheDocument();
     });
     it("adds a prepared call without invoking the transaction runner", async () => {
         const sendTransaction = vi.fn();

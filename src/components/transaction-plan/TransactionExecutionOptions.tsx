@@ -17,7 +17,7 @@ export default function TransactionExecutionOptions({controller}: {controller: A
                     <Divider />
                     <Box>
                         <Typography variant="subtitle1" sx={{fontWeight: 800}}>Atomic execution</Typography>
-                        <Typography variant="caption" color="text.secondary">All queued calls execute together or not at all.</Typography>
+                        <Typography variant="caption" color="text.secondary">All plan calls execute together or not at all.</Typography>
                     </Box>
                     <Alert severity="info">Atomic submission is unavailable while an individual-transaction execution is being tracked.</Alert>
                 </>
@@ -26,10 +26,10 @@ export default function TransactionExecutionOptions({controller}: {controller: A
                     <Divider />
                     <Box>
                         <Typography variant="subtitle1" sx={{fontWeight: 800}}>Atomic execution</Typography>
-                        <Typography variant="caption" color="text.secondary">All queued calls execute together or not at all.</Typography>
+                        <Typography variant="caption" color="text.secondary">All plan calls execute together or not at all.</Typography>
                     </Box>
                     <Alert severity="info">
-                        Atomic batching is unavailable in this wallet on the plan network. Send the queued plan as individual transactions below. Use Send now from individual function or raw-call forms if you only want to submit a single call outside the plan.
+                        Atomic batching is unavailable in this wallet on the plan network. Send the plan as individual transactions below. Use Send now from individual function or raw-call forms if you only want to submit a single call outside the plan.
                     </Alert>
                 </>
             ) : (

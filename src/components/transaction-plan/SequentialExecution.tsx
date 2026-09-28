@@ -137,7 +137,7 @@ export default function SequentialExecution() {
             <Box>
                 <Typography variant="subtitle1" sx={{fontWeight: 800}}>Individual transactions</Typography>
                 <Typography variant="caption" color="text.secondary">
-                    Send queued calls one at a time in plan order. Confirmed calls stay on-chain if a later call fails.
+                    Send plan calls one at a time in order. Confirmed calls stay on-chain if a later call fails.
                 </Typography>
             </Box>
 

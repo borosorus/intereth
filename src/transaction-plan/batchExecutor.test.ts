@@ -104,7 +104,7 @@ describe("Eip5792BatchExecutor submission", () => {
 
     it("rejects empty, mismatched, and malformed submission results", async () => {
         const {executor} = executorWith({id: BATCH_ID});
-        await expect(executor.submit(context, [])).rejects.toThrow("empty transaction plan");
+        await expect(executor.submit(context, [])).rejects.toThrow("empty execution plan");
         await expect(executor.submit(context, [{...call, chainId: "10"}])).rejects.toThrow("match the plan");
 
         const malformed = executorWith({id: "not-hex"}).executor;

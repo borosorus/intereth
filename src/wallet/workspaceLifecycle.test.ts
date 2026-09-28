@@ -32,7 +32,7 @@ describe("wallet workspace lifecycle", () => {
 
         expect(result.accountChanged).toBe(true);
         expect(result.remainingContracts).toEqual([walletContract, rpcContract]);
-        expect(result.notice).toContain("transaction plan was cleared");
+        expect(result.notice).toContain("execution plan was cleared");
         expect(result.notice).toContain("inputs were reset");
     });
 

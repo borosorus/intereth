@@ -154,7 +154,7 @@ export default function StaticContractItem({contractId = "static-contract", cont
             <ContractFunctionBrowser
                     contractId={contractId}
                     readDescription={chainId && simulation.canSimulateChain(chainId)
-                        ? "Read canonical state or speculative queued state without sending a transaction."
+                        ? "Read canonical state or speculative plan state without sending a transaction."
                         : "Read canonical on-chain state without sending a transaction."}
                     functions={functions}
                     renderFunction={(fragment) => (
