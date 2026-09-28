@@ -79,7 +79,11 @@ describe("ContractManager", () => {
         const networkHeading = screen.getByText("Network & access");
         const contractHeading = screen.getByText("Contract");
         expect(networkHeading.compareDocumentPosition(contractHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(screen.getByText("Test chain (Chain 1)")).toBeInTheDocument();
+        expect(screen.getByText("Test chain · 1")).toBeInTheDocument();
+
+        // The compact collapsed display must not hide the full chain identity.
+        fireEvent.mouseDown(screen.getByLabelText("RPC Provider"));
+        expect(screen.getByRole("option", {name: "Test chain (Chain 1)"})).toBeInTheDocument();
     });
 
     it("shows the browser wallet chain ID", () => {

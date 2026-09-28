@@ -437,7 +437,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         value={providerIndex}
                                         label="RPC Provider"
                                         onChange={(event) => setProviderIndex(event.target.value as number)}
-
+                                        renderValue={(value) => value === -1 ? "Custom" : (() => { const chain = chains[value as number]; return chain ? `${chain.label} · ${chain.id}` : ""; })()}
                                     >
                                         {chains.map((chain, index) => (
                                             <MenuItem key={chain.id} value={index}>{chain.label} (Chain {chain.id})</MenuItem>

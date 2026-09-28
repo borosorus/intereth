@@ -78,6 +78,18 @@ export const theme = createTheme({
         },
       },
     },
+    MuiButtonBase: {
+      styleOverrides: {
+        root: {
+          // Touch devices need the platform minimum (~44px) regardless of the
+          // compact sizing that reads fine with a mouse; desktop is unaffected.
+          "@media (pointer: coarse)": {
+            minHeight: 44,
+            minWidth: 44,
+          },
+        },
+      },
+    },
     MuiChip: {
       styleOverrides: {
         root: {
