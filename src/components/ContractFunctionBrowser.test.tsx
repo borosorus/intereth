@@ -23,7 +23,7 @@ describe("ContractFunctionBrowser", () => {
         expect(screen.getByText("balanceOf")).toBeInTheDocument();
         expect(screen.queryByText("approve")).not.toBeInTheDocument();
         fireEvent.change(screen.getByLabelText("Search functions"), {target: {value: "missing"}});
-        expect(screen.getByText("No matching functions")).toBeInTheDocument();
+        expect(screen.getByText(/No matching functions/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Reset search"}));
         fireEvent.click(screen.getByRole("button", {name: "Payable 1"}));
         expect(screen.getByText("deposit")).toBeInTheDocument();

@@ -169,7 +169,6 @@ describe("DynamicContractItem wallet lifecycle", () => {
         });
 
         const {rerender} = render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         const calldata = screen.getByLabelText("Hex calldata");
         fireEvent.change(calldata, {target: {value: "0x1234"}});
@@ -224,7 +223,6 @@ describe("DynamicContractItem wallet lifecycle", () => {
         } as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         expect(screen.getByText(/simulation belongs to chain 10; this contract is on chain 1/)).toBeInTheDocument();
     });
@@ -252,7 +250,6 @@ describe("DynamicContractItem wallet lifecycle", () => {
         const contract = {...activeContract, connect: vi.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText("Read functions")).toBeInTheDocument();

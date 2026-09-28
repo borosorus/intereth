@@ -6,7 +6,6 @@ import StaticContractItem from './components/StaticContractItem';
 import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
-import WorkspaceEmptyGuidance from './components/WorkspaceEmptyGuidance';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
 
@@ -50,7 +49,6 @@ export default function App(){
                     onAdd={() => setAddContractOpen(true)}
                   />
                   <Stack spacing={2} sx={{minWidth: 0}}>
-                    <WorkspaceEmptyGuidance />
                     {selectedContract.isStatic ?
                         <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails}/> :
                         <DynamicContractItem

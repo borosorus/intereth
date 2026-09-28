@@ -48,7 +48,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     }), [contract, data, valueAmount, valueUnit]);
 
     return (
-    <Paper variant="outlined" sx={{mt: 2, p: {xs: 2, md: 3}, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.82)'}}>
+    <Paper variant="outlined" sx={{p: {xs: 2, md: 2.5}, borderRadius: 2.5}}>
         <Stack spacing={2}>
             <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap'}}>
                 <Box>

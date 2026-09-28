@@ -1,5 +1,6 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { Box, ButtonBase, Chip, Collapse, Divider, Paper, Stack, Typography } from "@mui/material";
+import styled from "@emotion/styled";
+import { Accordion, Box, ButtonBase, Chip, Collapse, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { ReactNode, useState } from "react";
 
@@ -7,16 +8,34 @@ export function isReadFunction(fragment: ethers.FunctionFragment) {
     return fragment.stateMutability === "view" || fragment.stateMutability === "pure";
 }
 
+// Shared chrome for per-function accordions in Explore: bordered, rounded,
+// no default MUI separator, so function lists work without an enclosing card.
+export const FunctionAccordion = styled(Accordion)({
+    borderRadius: "10px !important",
+    overflow: "hidden",
+    border: "1px solid",
+    borderColor: "rgba(0, 0, 0, 0.12)",
+    "&:before": {display: "none"},
+});
+
 export function FunctionMutabilityBadge({fragment}: {fragment: ethers.FunctionFragment}) {
     const details = fragment.stateMutability === "view"
         ? {label: "View", color: "info" as const}
         : fragment.stateMutability === "pure"
             ? {label: "Pure", color: "info" as const}
             : fragment.stateMutability === "payable"
-                ? {label: "Payable", color: "secondary" as const}
-                : {label: "Write", color: "warning" as const};
+                ? {label: "Payable", color: "warning" as const}
+                : {label: "Write", color: "default" as const};
 
-    return <Chip size="small" color={details.color} label={details.label} sx={{fontWeight: 800, flex: "0 0 auto"}} />;
+    return (
+        <Chip
+            size="small"
+            color={details.color}
+            variant={details.color === "default" ? "outlined" : "filled"}
+            label={details.label}
+            sx={{fontWeight: 800, flex: "0 0 auto"}}
+        />
+    );
 }
 
 interface ContractFunctionSectionProps {
@@ -40,10 +59,10 @@ export default function ContractFunctionSection({
     if (functions.length === 0) return null;
 
     const header = (
-        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, width: 1, p: 2}}>
+        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, width: 1, py: 1}}>
             <Box sx={{minWidth: 0, textAlign: "left"}}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>{title}</Typography>
+                    <Typography variant="subtitle1" sx={{fontWeight: 800}}>{title}</Typography>
                     <Chip size="small" variant="outlined" label={functions.length} aria-label={`${functions.length} ${functions.length === 1 ? "function" : "functions"}`} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">{description}</Typography>
@@ -58,7 +77,7 @@ export default function ContractFunctionSection({
     );
 
     return (
-        <Paper variant="outlined" sx={{borderRadius: 2, overflow: "hidden"}}>
+        <Box>
             {collapsible ? (
                 <ButtonBase
                     onClick={() => setExpanded((current) => !current)}
@@ -70,11 +89,10 @@ export default function ContractFunctionSection({
                 </ButtonBase>
             ) : header}
             <Collapse in={!collapsible || expanded} unmountOnExit={collapsible}>
-                <Divider />
-                <Stack spacing={1.5} sx={{p: 2}}>
+                <Stack spacing={1} sx={{pt: 0.75}}>
                     {functions.map(renderFunction)}
                 </Stack>
             </Collapse>
-        </Paper>
+        </Box>
     );
 }
