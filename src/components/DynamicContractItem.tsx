@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Grid, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Grid, Paper, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ethers } from "ethers";
@@ -20,6 +20,7 @@ import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract;
@@ -34,6 +35,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const actions = useCallActions({chainId});
+    const planUi = useTransactionPlanUi();
     const {wallet, transactionPlan, watchPin, result, error, setError, queued, resetWriteState} = actions;
     const [valueAmount, setValueAmount] = useState('');
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
@@ -121,7 +123,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 canPinWatch={watchPin.canPin}
                             />
                         )}
-                        {queued && <Alert severity="success">Added to transaction queue.</Alert>}
+                        {queued && <Alert severity="success" action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>Added to execution.</Alert>}
                         {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
                     </Stack>
                 <CallResult result={result} />

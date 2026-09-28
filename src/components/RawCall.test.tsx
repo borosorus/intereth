@@ -110,10 +110,10 @@ describe("RawCall queueing", () => {
         render(<RawCall contract={contract} />);
         // Both actions are offered; queueing must not touch the runner.
         expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
-        fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
+        fireEvent.click(screen.getByRole("button", {name: "Add to execution"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
         expect(sendTransaction).not.toHaveBeenCalled();
-        expect(screen.getByText("Added to transaction queue.")).toBeInTheDocument();
+        expect(screen.getByText("Added to execution.")).toBeInTheDocument();
     });
 });

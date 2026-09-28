@@ -42,7 +42,7 @@ export default function CallActionButtons({
                 onClick={onQueue}
                 sx={styling}
             >
-                {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to queue"}
+                {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to execution"}
             </Button>
         </Stack>
     );

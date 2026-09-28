@@ -6,11 +6,7 @@ import {
     Box,
     Button,
     Chip,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
     Divider,
-    Drawer,
     IconButton,
     Paper,
     Stack,
@@ -18,37 +14,26 @@ import {
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
-import PlaylistAddCheckIcon from "@mui/icons-material/PlaylistAddCheck";
 import { ethers } from "ethers";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ParamValue, ValueUnit } from "../../calls/parameters";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { normalizeError, NormalizedError } from "../../callUtils";
 import { useTransactionPlan } from "../../transaction-plan/context";
-import { selectCanForgetTrackedPlan } from "../../transaction-plan/selectors";
 import { QueuedCall } from "../../transaction-plan/types";
-import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import TransactionValueInput from "../TransactionValueInput";
-import { useAtomicBatchExecution } from "./AtomicBatchExecution";
-import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
-import ResponsiveDialog from "../ResponsiveDialog";
-import InteractSimulationPreview from "./InteractSimulationPreview";
-import SimulationInspector from "../simulation/SimulationInspector";
 import CopyButton from "../CopyButton";
 import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../calls/displayValues";
-import { useSimulation } from "../../simulation/context";
-import { CallImpact, prioritizeBalanceChanges, selectCallImpact } from "../../simulation/callImpact";
+import { CallImpact, prioritizeBalanceChanges } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
-import TransactionExecutionOptions from "./TransactionExecutionOptions";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -185,7 +170,7 @@ function CallImpactSummary({impact, call, metadataByAddress}: {
     );
 }
 
-function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (call: QueuedCall) => void; onCancel: () => void}) {
+function PlanCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (call: QueuedCall) => void; onCancel: () => void}) {
     const [error, setError] = useState<NormalizedError | null>(null);
     const [rawData, setRawData] = useState(call.data);
     const [valueAmount, setValueAmount] = useState(call.value);
@@ -278,129 +263,7 @@ function QueuedCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (
     );
 }
 
-const sessionAlertSx = {
-    flexDirection: {xs: "column", sm: "row"},
-    alignItems: {xs: "stretch", sm: "center"},
-    "& .MuiAlert-message": {minWidth: 0, width: {xs: "100%", sm: "auto"}},
-    "& .MuiAlert-action": {
-        alignSelf: {xs: "flex-end", sm: "center"},
-        ml: {xs: 0, sm: "auto"},
-        mr: 0,
-        pt: {xs: 1, sm: 0},
-        pl: {xs: 0, sm: 2},
-    },
-};
-
-function SessionNotice() {
-    const {state, dispatch, sessionStatus} = useTransactionPlan();
-    const wallet = useWalletSession();
-    const [error, setError] = useState<NormalizedError | null>(null);
-    const [confirmForget, setConfirmForget] = useState(false);
-    const context = state.plan.context;
-    if (!context || sessionStatus === "ready" || sessionStatus === "empty") {
-        return null;
-    }
-
-    const canForget = selectCanForgetTrackedPlan(state);
-    const forgetButton = canForget ? (
-        <Button color="inherit" size="small" onClick={() => setConfirmForget(true)}>
-            Forget tracking
-        </Button>
-    ) : null;
-    const forgetDialog = (
-        <ResponsiveDialog open={confirmForget} onClose={() => setConfirmForget(false)}>
-            <DialogTitle>Forget batch tracking?</DialogTitle>
-            <DialogContent>
-                <Typography>
-                    This removes the local transaction plan and batch ID. It does not cancel, reverse, or change anything in the wallet or on-chain.
-                </Typography>
-            </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setConfirmForget(false)}>Cancel</Button>
-                <Button color="error" onClick={() => dispatch({type: "FORGET_TRACKED_PLAN"})}>Forget tracking</Button>
-            </DialogActions>
-        </ResponsiveDialog>
-    );
-
-    if (sessionStatus === "chain_mismatch") {
-        return (
-            <>
-                <Alert
-                    severity="error"
-                    sx={sessionAlertSx}
-                    action={<Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap justifyContent="flex-end">
-                        <Button
-                            color="inherit"
-                            size="small"
-                            onClick={() => wallet.switchChain(context.chainId).catch((switchError) => {
-                                setError(normalizeError(switchError, "Network switch failed"));
-                            })}
-                        >
-                            Switch network
-                        </Button>
-                        {forgetButton}
-                    </Stack>}
-                >
-                    This transaction plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
-                </Alert>
-                {forgetDialog}
-                <ErrorDialog error={error} onClose={() => setError(null)} />
-            </>
-        );
-    }
-
-    if (sessionStatus === "account_mismatch") {
-        return (
-            <>
-                <Alert
-                    severity="error"
-                    sx={sessionAlertSx}
-                    action={<Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap justifyContent="flex-end">
-                        <Button
-                            color="inherit"
-                            size="small"
-                            onClick={() => wallet.connectWallet().catch((connectError) => {
-                                setError(normalizeError(connectError, "Wallet connection failed"));
-                            })}
-                        >
-                            Reconnect account
-                        </Button>
-                        {forgetButton}
-                    </Stack>}
-                >
-                    This transaction plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected.
-                </Alert>
-                {forgetDialog}
-                <ErrorDialog error={error} onClose={() => setError(null)} />
-            </>
-        );
-    }
-
-    return (
-        <>
-            <Alert
-                severity="warning"
-                sx={sessionAlertSx}
-                action={(
-                    <Button
-                        color="inherit"
-                        size="small"
-                        onClick={() => wallet.connectWallet().catch((connectError) => {
-                            setError(normalizeError(connectError, "Wallet connection failed"));
-                        })}
-                    >
-                        Connect wallet
-                    </Button>
-                )}
-            >
-                Connect {shortAddress(context.account)} on chain {context.chainId} to resume this plan.
-            </Alert>
-            <ErrorDialog error={error} onClose={() => setError(null)} />
-        </>
-    );
-}
-
-function QueuedCallItem({call, index, total, impact, metadataByAddress}: {
+export default function PlanCallItem({call, index, total, impact, metadataByAddress}: {
     call: QueuedCall;
     index: number;
     total: number;
@@ -413,7 +276,7 @@ function QueuedCallItem({call, index, total, impact, metadataByAddress}: {
     return (
         <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
             {editing ? (
-                <QueuedCallEditor
+                <PlanCallEditor
                     call={call}
                     onSave={(updated) => {
                         dispatch({type: "UPDATE_CALL", call: updated});
@@ -468,149 +331,5 @@ function QueuedCallItem({call, index, total, impact, metadataByAddress}: {
                 </Stack>
             )}
         </Paper>
-    );
-}
-
-export default function TransactionQueuePanel() {
-    const {state, dispatch} = useTransactionPlan();
-    const [open, setOpen] = useState(false);
-    const [confirmClear, setConfirmClear] = useState(false);
-    const {reviewRequest} = useTransactionPlanUi();
-    const simulation = useSimulation();
-    const batchController = useAtomicBatchExecution(open);
-    const calls = state.plan.calls;
-    const watches = state.plan.watches;
-    const context = state.plan.context;
-
-    useEffect(() => {
-        if (reviewRequest > 0 && calls.length > 0) setOpen(true);
-    }, [calls.length, reviewRequest]);
-
-    if (calls.length === 0 && watches.length === 0) {
-        return null;
-    }
-
-    return (
-        <>
-            <Paper
-                elevation={6}
-                sx={{
-                    position: "fixed",
-                    right: {xs: 16, sm: 24},
-                    bottom: {xs: "calc(72px + env(safe-area-inset-bottom))", sm: 24},
-                    maxWidth: {xs: "calc(100vw - 32px)", sm: "none"},
-                    zIndex: (theme) => theme.zIndex.appBar,
-                }}
-            >
-                <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<PlaylistAddCheckIcon />}
-                    onClick={() => setOpen(true)}
-                    sx={{py: 1.25, px: 2, minHeight: {xs: 44, sm: "auto"}, textTransform: "none", fontWeight: 800}}
-                >
-                    {calls.length > 0
-                        ? `${calls.length} queued ${calls.length === 1 ? "call" : "calls"}`
-                        : `${watches.length} watched ${watches.length === 1 ? "expression" : "expressions"}`} · Review plan
-                </Button>
-            </Paper>
-            <Drawer
-                anchor="right"
-                open={open}
-                onClose={() => setOpen(false)}
-                PaperProps={{sx: {
-                    width: {xs: "100%", sm: 560},
-                    maxWidth: "100%",
-                    height: {xs: "100dvh", sm: "100%"},
-                    maxHeight: {xs: "100dvh", sm: "100%"},
-                }}}
-            >
-                <Stack sx={{height: "100%"}}>
-                    <Box sx={{
-                        px: 2,
-                        pt: {xs: "calc(16px + env(safe-area-inset-top))", sm: 2},
-                        pb: 2,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        gap: 1,
-                    }}>
-                        <Box>
-                            <Typography variant="h6" sx={{fontWeight: 800}}>Transaction plan</Typography>
-                            {context && (
-                                <Typography variant="caption" color="text.secondary">
-                                    Chain {context.chainId} · {shortAddress(context.account)}
-                                </Typography>
-                            )}
-                        </Box>
-                        <IconButton aria-label="Close transaction plan" onClick={() => setOpen(false)}><CloseIcon /></IconButton>
-                    </Box>
-                    <Divider />
-                    <Box sx={{p: 2, overflowY: "auto", WebkitOverflowScrolling: "touch", flex: 1, minHeight: 0}}>
-                        <Stack spacing={2}>
-                            <SessionNotice />
-                            {calls.map((call, index) => (
-                                <QueuedCallItem
-                                    key={call.id}
-                                    call={call}
-                                    index={index}
-                                    total={calls.length}
-                                    impact={selectCallImpact({callId: call.id, revision: simulation.revision, status: simulation.status, snapshot: simulation.snapshot})}
-                                    metadataByAddress={simulation.tokenMetadataByAddress}
-                                />
-                            ))}
-                            {calls.length === 0 ? (
-                                <Typography variant="body2" color="text.secondary">
-                                    This plan has pinned watches but no queued calls. Watch expressions are evaluated in the watch panel above the contract.
-                                </Typography>
-                            ) : (
-                                <>
-                                    <InteractSimulationPreview />
-                                    {simulation.snapshot && <SimulationInspector />}
-                                    <TransactionExecutionOptions controller={batchController} />
-                                </>
-                            )}
-                        </Stack>
-                    </Box>
-                    <Divider />
-                    <Box sx={{
-                        px: 2,
-                        pt: 2,
-                        pb: {xs: "calc(16px + env(safe-area-inset-bottom))", sm: 2},
-                    }}>
-                        <Button
-                            color="error"
-                            variant="outlined"
-                            fullWidth
-                            disabled={state.execution.status === "submitting"
-                                || state.execution.status === "pending"
-                                || state.sequentialExecution.status === "active"}
-                            onClick={() => setConfirmClear(true)}
-                        >
-                            Clear plan
-                        </Button>
-                    </Box>
-                </Stack>
-            </Drawer>
-            <ResponsiveDialog open={confirmClear} onClose={() => setConfirmClear(false)}>
-                <DialogTitle>Clear transaction plan?</DialogTitle>
-                <DialogContent>
-                    <Typography>This removes all {calls.length} queued {calls.length === 1 ? "call" : "calls"}. This action cannot be undone.</Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setConfirmClear(false)}>Cancel</Button>
-                    <Button
-                        color="error"
-                        onClick={() => {
-                            dispatch({type: "CLEAR_PLAN"});
-                            setConfirmClear(false);
-                            setOpen(false);
-                        }}
-                    >
-                        Clear plan
-                    </Button>
-                </DialogActions>
-            </ResponsiveDialog>
-        </>
     );
 }

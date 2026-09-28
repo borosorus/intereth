@@ -135,7 +135,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
         if (!request || !validated || !plan.canEdit || !walletMatches) return;
         plan.dispatch({type: "ADD_CALL", call: validated.approvalCall});
         plan.dispatch({type: "ADD_CALL", call: request.originalCall});
-        planUi.requestReview();
+        planUi.requestExecution();
         onClose();
     };
 

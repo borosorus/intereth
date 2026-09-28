@@ -69,11 +69,11 @@ describe("DynamicFunctionItem queueing", () => {
         fireEvent.click(screen.getByRole("button", {name: /pause\(\) Write/}));
         // Both actions are offered; queueing must not touch the runner.
         expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
-        fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
+        fireEvent.click(screen.getByRole("button", {name: "Add to execution"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
         expect(sendTransaction).not.toHaveBeenCalled();
-        expect(screen.getByText("Added to transaction queue.")).toBeInTheDocument();
+        expect(screen.getByText("Added to execution.")).toBeInTheDocument();
     });
 
     it("decodes a simulated read without requiring a wallet runner", async () => {
@@ -183,7 +183,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         rerender(<DynamicContractItem contract={contract} walletChainId="1" />);
 
         expect(screen.getByLabelText("Hex calldata")).toHaveValue("0x1234");
-        expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Add to execution"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "Send now"})).toBeDisabled();
     });
 
