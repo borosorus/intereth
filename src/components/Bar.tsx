@@ -22,8 +22,8 @@ export default function Bar(){
             backgroundColor: 'background.paper',
           }}
         >
-            <Toolbar sx={{display: "flex", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, minHeight: {xs: 64, sm: 72}, flexWrap: "wrap", rowGap: {xs: 1, sm: 0}}}>
-              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0}}>
+            <Toolbar sx={{display: "flex", position: "relative", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1, sm: 0}, minHeight: {xs: 64, sm: 72}, flexWrap: "wrap", rowGap: {xs: 1, sm: 0}}}>
+              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: "0 1 auto"}}>
                 <Box
                   component="img"
                   src={`${import.meta.env.BASE_URL}intereth-mark.svg`}
@@ -40,7 +40,7 @@ export default function Bar(){
                   </Typography>
                 </Box>
               </Stack>
-              <Box sx={{display: "flex", justifyContent: "center", order: {xs: 3, sm: 0}, flex: {xs: "1 0 100%", sm: 1}}}>
+              <Box sx={{display: "flex", alignItems: "center", justifyContent: "center", order: {xs: 3, sm: 0}, flex: {xs: "1 0 100%", sm: 0}, position: {xs: "static", sm: "absolute"}, left: {sm: "50%"}, top: {sm: 0}, bottom: {sm: 0}, transform: {sm: "translateX(-50%)"}}}>
                 <ToggleButtonGroup
                   exclusive
                   size="small"
@@ -76,7 +76,7 @@ export default function Bar(){
                   </ToggleButton>
                 </ToggleButtonGroup>
               </Box>
-              <Box sx={{flex: "0 0 auto", ml: "auto"}}><ConnectionButton/></Box>
+              <Box sx={{display: "flex", justifyContent: "flex-end", flex: "0 0 auto", ml: "auto"}}><ConnectionButton/></Box>
             </Toolbar>
         </AppBar>
       </Box>
