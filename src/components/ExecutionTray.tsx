@@ -51,14 +51,14 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
         <Box ref={regionRef} sx={{position: "sticky", bottom: {xs: "calc(8px + env(safe-area-inset-bottom))", sm: 12}, zIndex: 1, pt: 1}}>
             <Paper variant="outlined" elevation={2} sx={{borderRadius: 2.5, px: 2, py: 1.25, bgcolor: "background.paper"}}>
                 <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" flexWrap="wrap" rowGap={1}>
-                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{minWidth: 0}}>
-                        <PlaylistPlayIcon fontSize="small" color="secondary" />
-                        <Typography variant="body2" sx={{fontWeight: 700}}>{counts}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{whiteSpace: "nowrap"}}>in your plan</Typography>
+                    <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" rowGap={0.5} sx={{minWidth: 0, maxWidth: "100%"}}>
+                        <PlaylistPlayIcon fontSize="small" color="secondary" sx={{flex: "0 0 auto"}} />
+                        <Typography variant="body2" sx={{fontWeight: 700, flex: "0 0 auto"}}>{counts}</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{whiteSpace: "nowrap", display: {xs: "none", sm: "inline"}}}>in your plan</Typography>
                         {status && <StateBadge {...status} />}
                         {context && (
                             <Typography variant="caption" color="text.secondary" noWrap sx={{minWidth: 0}}>
-                                · {shortAddress(context.account)} · chain {context.chainId}
+                                · chain {context.chainId} · {shortAddress(context.account)}
                             </Typography>
                         )}
                     </Stack>
