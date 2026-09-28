@@ -22,8 +22,10 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 
 Intereth has two workspace views, switched from the header (also addressable as `#/explore` and `#/execution`):
 
-- **Explore** — open contracts, inspect identity and network, search functions, edit arguments or raw calldata, run reads, send single transactions immediately, or add calls to the execution plan.
+- **Explore** — open contracts, inspect identity and network, search functions, edit arguments or raw calldata, run reads, send single transactions immediately, or add calls to the execution plan. While a plan exists, a slim tray at the bottom of Explore keeps its size and ownership visible and jumps back to Execution.
 - **Execution** — review the plan in order, track pinned watches, inspect the speculative simulation and its effects, choose how the plan runs, and follow submission status and receipts.
+
+Routine explanations sit behind info icons next to the surfaces they describe; validation problems, mismatches, and state remain directly on screen.
 
 To start working with a contract:
 

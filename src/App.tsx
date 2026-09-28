@@ -1,20 +1,25 @@
 import ContractManager from './components/ContractManager';
-import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack } from '@mui/material';
+import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, Typography } from '@mui/material';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
+import InfoHint from './components/InfoHint';
 import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
+import ExecutionTray from './components/ExecutionTray';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
+import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
 
 export default function App(){
     const workspace = useContractWorkspace();
     const {activeView} = useTransactionPlanUi();
+    const {state} = useTransactionPlan();
     const [addContractOpen, setAddContractOpen] = useState(false);
     const [managerGeneration, setManagerGeneration] = useState(0);
     const {contracts, selectedContract} = workspace;
+    const trayVisible = state.plan.calls.length > 0 || state.plan.watches.length > 0;
 
     const addFromDialog = (contract: ContractInstance) => {
       workspace.addContract(contract);
@@ -29,6 +34,23 @@ export default function App(){
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Box sx={{display: activeView === "explore" ? "block" : "none"}}>
             <Stack spacing={3}>
+              {contracts.length === 0 && (
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap", px: 0.5}}>
+                  <Typography variant="body1" color="text.secondary" sx={{minWidth: 0}}>
+                    Open a contract to explore its functions. Run a read, send one transaction now, or add calls to Execution to review them together.
+                  </Typography>
+                  <Stack direction="row" spacing={0.5}>
+                    <InfoHint
+                        label="About Explore"
+                        content="Explore is where you work with a contract: search functions, run canonical or speculative reads, edit raw calldata, send one transaction immediately, or add calls to your execution plan."
+                    />
+                    <InfoHint
+                        label="About Execution"
+                        content="Execution is the review destination: the ordered plan, pinned watches, a speculative simulation of its effects, and the choice of running everything as one atomic batch or one transaction at a time."
+                    />
+                  </Stack>
+                </Box>
+              )}
               {contracts.length === 0 && <Paper
                 variant="outlined"
                 sx={{
@@ -60,6 +82,7 @@ export default function App(){
                   </Stack>
                 </Box>
               )}
+              <ExecutionTray />
             </Stack>
           </Box>
           <Box sx={{display: activeView === "execution" ? "block" : "none"}}>
@@ -80,6 +103,7 @@ export default function App(){
             if (reason !== "clickaway") workspace.dismissNotice();
           }}
           anchorOrigin={{vertical: "bottom", horizontal: "center"}}
+          sx={{mb: activeView === "explore" && trayVisible ? 9 : 0}}
         >
           <Alert severity="info" variant="filled" onClose={workspace.dismissNotice}>{workspace.notice}</Alert>
         </Snackbar>

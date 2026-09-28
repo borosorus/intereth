@@ -47,15 +47,32 @@ export default function Bar(){
                   value={activeView}
                   onChange={(_, view: WorkspaceView | null) => view && setActiveView(view)}
                   aria-label="Workspace view"
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "99px",
+                    bgcolor: "background.paper",
+                    p: 0.25,
+                    gap: 0.25,
+                    "& .MuiToggleButton-root": {
+                      border: 0,
+                      borderRadius: "99px !important",
+                      gap: 0.75,
+                      fontWeight: 700,
+                      px: 1.75,
+                      color: "text.secondary",
+                      "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
+                    },
+                  }}
                 >
-                  <ToggleButton value="explore" sx={{gap: 0.75, fontWeight: 700}}>
+                  <ToggleButton value="explore">
                     <ExploreOutlinedIcon fontSize="small" />
                     Explore
                   </ToggleButton>
-                  <ToggleButton value="execution" sx={{gap: 0.75, fontWeight: 700}} aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
+                  <ToggleButton value="execution" aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
                     <PlaylistPlayIcon fontSize="small" />
                     Execution
-                    {planCount > 0 && <Box component="span" sx={{color: "secondary.main"}}>({planCount})</Box>}
+                    {planCount > 0 && <Box component="span" sx={{opacity: 0.75}}>({planCount})</Box>}
                   </ToggleButton>
                 </ToggleButtonGroup>
               </Box>
