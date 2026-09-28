@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+import InfoHint from "../InfoHint";
 import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import {
@@ -181,7 +182,7 @@ function signedRawAmount(delta: bigint, asset: BalanceChange["asset"]) {
 function addressRole(address: string, planAccount: string, queuedTargets: Set<string>) {
     const normalized = address.toLowerCase();
     if (normalized === planAccount.toLowerCase()) return {label: "Plan sender", color: "primary" as const};
-    if (queuedTargets.has(normalized)) return {label: "Queued call target", color: "info" as const};
+    if (queuedTargets.has(normalized)) return {label: "Plan call target", color: "info" as const};
     return {label: "Other address", color: "default" as const};
 }
 
@@ -196,10 +197,13 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
     return (
         <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
             <Stack spacing={1}>
-                <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after queue</Typography>
-                <Typography variant="caption" color="text.secondary">
-                    Speculative net changes per address across successful queued calls. Positive amounts were received; negative amounts were sent.
-                </Typography>
+                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
+                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after the plan</Typography>
+                    <InfoHint
+                        label="About balance changes"
+                        content="Speculative net changes per address across successful plan calls. Positive amounts were received; negative amounts were sent."
+                    />
+                </Box>
                 {resolving && changes.some((change) => change.asset === "erc20") && (
                     <Typography variant="caption" color="text.secondary">Resolving token metadata…</Typography>
                 )}
@@ -255,7 +259,7 @@ export default function SimulationInspector() {
     const {state} = useTransactionPlan();
     const snapshot = simulation.snapshot;
     if (!snapshot) {
-        return <Alert severity="info">The detailed inspector will appear after the transaction plan has been simulated.</Alert>;
+        return <Alert severity="info">The detailed inspector will appear after the plan has been simulated.</Alert>;
     }
     const callsById = new Map(state.plan.calls.map((call) => [call.id, call]));
     const queuedTargets = new Set(state.plan.calls.map((call) => call.to.toLowerCase()));
@@ -267,7 +271,7 @@ export default function SimulationInspector() {
                 <Typography variant="caption" color="text.secondary">Speculative only · base block {quantity(snapshot.baseBlockNumber)}</Typography>
             </Box>
             {(simulation.status === "stale" || simulation.status === "simulating" || simulation.status === "error") && (
-                <Alert severity="warning">These details are from the last successful snapshot and may not match the current queue.</Alert>
+                <Alert severity="warning">These details are from the last successful snapshot and may not match the current plan.</Alert>
             )}
             <Stack spacing={1}>
                 {snapshot.calls.map((call, index) => {

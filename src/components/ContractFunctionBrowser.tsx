@@ -1,5 +1,5 @@
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, Button, InputAdornment, Paper, Stack, TextField, ToggleButton, Typography } from "@mui/material";
+import { Box, Button, InputAdornment, Stack, TextField, ToggleButton, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import ContractFunctionSection, { isReadFunction } from "./ContractFunctionSection";
@@ -42,36 +42,44 @@ export default function ContractFunctionBrowser({contractId, functions, renderFu
     const reads = visible.filter(isReadFunction);
     const writes = visible.filter((fragment) => !isReadFunction(fragment));
 
+    if (functions.length === 0) {
+        return (
+            <Box sx={{py: 2}}>
+                <Typography variant="body2" color="text.secondary">
+                    This contract&apos;s ABI exposes no functions. Use the raw call below to interact with it directly.
+                </Typography>
+            </Box>
+        );
+    }
+
     return (
         <Stack spacing={2}>
-            <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
-                <Stack spacing={1.25}>
-                    <TextField
-                        size="small"
-                        fullWidth
-                        label="Search functions"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        InputProps={{startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>}}
-                    />
-                    <Box role="group" aria-label="Function filter" sx={{display: "grid", gridTemplateColumns: {xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(4, auto)"}, gap: 0.75, alignSelf: {sm: "flex-start"}}}>
-                        {([
-                            ["all", `All ${functions.length}`],
-                            ["read", `Read ${readCount}`],
-                            ["write", `Write ${writeCount}`],
-                            ["payable", `Payable ${payableCount}`],
-                        ] as Array<[FunctionFilter, string]>).map(([value, label]) => (
-                            <ToggleButton key={value} size="small" value={value} selected={filter === value} onChange={() => setFilter(value)} sx={{minWidth: 0}}>{label}</ToggleButton>
-                        ))}
-                    </Box>
-                </Stack>
-            </Paper>
+            <Stack direction={{xs: "column", sm: "row"}} spacing={1} alignItems={{sm: "center"}}>
+                <TextField
+                    size="small"
+                    fullWidth
+                    sx={{sm: {maxWidth: 320}}}
+                    label="Search functions"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    InputProps={{startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>}}
+                />
+                <Box role="group" aria-label="Function filter" sx={{display: "flex", gap: 0.75, flexWrap: "wrap"}}>
+                    {([
+                        ["all", `All ${functions.length}`],
+                        ["read", `Read ${readCount}`],
+                        ["write", `Write ${writeCount}`],
+                        ["payable", `Payable ${payableCount}`],
+                    ] as Array<[FunctionFilter, string]>).map(([value, label]) => (
+                        <ToggleButton key={value} size="small" value={value} selected={filter === value} onChange={() => setFilter(value)} sx={{minWidth: 0}}>{label}</ToggleButton>
+                    ))}
+                </Box>
+            </Stack>
             {visible.length === 0 ? (
-                <Paper variant="outlined" sx={{p: 3, borderRadius: 2, textAlign: "center"}}>
-                    <Typography variant="subtitle2" sx={{fontWeight: 800}}>No matching functions</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{mb: 1.5}}>Try another name, signature, argument, or filter.</Typography>
+                <Stack spacing={1} sx={{py: 2, alignItems: "flex-start"}}>
+                    <Typography variant="body2" color="text.secondary">No matching functions. Try another name, signature, argument, or filter.</Typography>
                     <Button onClick={() => {setQuery(""); setFilter("all");}}>Reset search</Button>
-                </Paper>
+                </Stack>
             ) : <>
                 <ContractFunctionSection title="Read functions" description={readDescription} functions={reads} renderFunction={renderFunction} />
                 <ContractFunctionSection

@@ -80,7 +80,7 @@ describe("RawCall queueing", () => {
             data: "0xabcd",
         }));
         expect(await screen.findByText("0x1234")).toBeInTheDocument();
-        expect(screen.getByText(/after 1 queued call/)).toBeInTheDocument();
+        expect(screen.getByText(/after 1 plan call/)).toBeInTheDocument();
     });
     it("adds a prepared call without invoking the transaction runner", async () => {
         const sendTransaction = vi.fn();
@@ -110,10 +110,10 @@ describe("RawCall queueing", () => {
         render(<RawCall contract={contract} />);
         // Both actions are offered; queueing must not touch the runner.
         expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
-        fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
+        fireEvent.click(screen.getByRole("button", {name: "Add to execution"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
         expect(sendTransaction).not.toHaveBeenCalled();
-        expect(screen.getByText("Added to transaction queue.")).toBeInTheDocument();
+        expect(screen.getByText("Added to execution.")).toBeInTheDocument();
     });
 });

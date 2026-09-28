@@ -94,7 +94,7 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                 </Box>
                 {result.kind !== "transaction" && result.source.kind === "simulated" && (
                     <Typography variant="caption" color="text.secondary">
-                        Computed after {result.source.queuedCallCount} queued {result.source.queuedCallCount === 1 ? "call" : "calls"} using the latest state when run.
+                        Computed after {result.source.queuedCallCount} plan {result.source.queuedCallCount === 1 ? "call" : "calls"} using the latest state when run.
                     </Typography>
                 )}
                 {result.kind === "function" && <FunctionResult result={result} />}

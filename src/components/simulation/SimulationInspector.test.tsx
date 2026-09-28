@@ -62,7 +62,7 @@ describe("SimulationInspector", () => {
         });
     });
 
-    it("shows decoded call details, failures, events, and queue-wide deltas", () => {
+    it("shows decoded call details, failures, events, and plan-wide deltas", async () => {
         render(<SimulationInspector />);
         expect(screen.getByText(/Speculative only · base block 100/)).toBeInTheDocument();
         expect(screen.getByRole("button", {name: /1\. mint\(\)/})).toBeInTheDocument();
@@ -71,10 +71,11 @@ describe("SimulationInspector", () => {
         expect(screen.getByText("Transfer")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: /2\. withdraw\(\)/}));
         expect(screen.getByText("Unauthorized")).toBeInTheDocument();
-        expect(screen.getByText("Net balance changes after queue")).toBeInTheDocument();
-        expect(screen.getByText(/Positive amounts were received; negative amounts were sent/)).toBeInTheDocument();
+        expect(screen.getByText("Net balance changes after the plan")).toBeInTheDocument();
+        fireEvent.mouseEnter(screen.getByRole("button", {name: "About balance changes"}));
+        expect(await screen.findByText(/Positive amounts were received; negative amounts were sent/)).toBeInTheDocument();
         expect(screen.getByText("Plan sender")).toBeInTheDocument();
-        expect(screen.getByText("Queued call target")).toBeInTheDocument();
+        expect(screen.getByText("Plan call target")).toBeInTheDocument();
         expect(screen.getByText("+5 raw units")).toBeInTheDocument();
         expect(screen.getByText("-5 raw units")).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Raw simulation response"})).toBeInTheDocument();
@@ -103,6 +104,6 @@ describe("SimulationInspector", () => {
         expect(screen.getByText("Raw amount: -5 base units")).toBeInTheDocument();
         expect(screen.getAllByText(/Test Token · TKN · 0x0000000000000000000000000000000000000020/)).toHaveLength(2);
         expect(screen.getByLabelText(`Plan sender ${account}: +0.000005 TKN`)).toBeInTheDocument();
-        expect(screen.getByLabelText(`Queued call target ${target}: -0.000005 TKN`)).toBeInTheDocument();
+        expect(screen.getByLabelText(`Plan call target ${target}: -0.000005 TKN`)).toBeInTheDocument();
     });
 });

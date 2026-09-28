@@ -5,8 +5,8 @@ import Bar from './components/Bar';
 import { Web3OnboardProvider } from '@web3-onboard/react';
 import { web3Onboard } from './onboard';
 import App from './App';
-import { ThemeProvider, createTheme, responsiveFontSizes, GlobalStyles } from '@mui/material';
-import { blueGrey, deepOrange } from '@mui/material/colors';
+import { ThemeProvider, GlobalStyles } from '@mui/material';
+import theme from './ui/theme';
 import { WalletSessionProvider } from './wallet/WalletSessionContext';
 import { TransactionPlanProvider } from './transaction-plan/context';
 import { SimulationProvider } from './simulation/context';
@@ -16,30 +16,6 @@ const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 
-const theme = responsiveFontSizes(createTheme({
-  typography: {
-    fontFamily: [
-      'Roboto',
-      'system-ui',
-      '-apple-system',
-      'BlinkMacSystemFont',
-      'sans-serif',
-    ].join(','),
-  },
-  palette: {
-    primary: {
-      main: blueGrey[700],
-    },
-    secondary: {
-      main: deepOrange[500],
-    },
-    background: {
-      default: '#f4f7fb',
-      paper: '#ffffff',
-    },
-  },
-}));
-
 root.render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
@@ -47,10 +23,7 @@ root.render(
       <GlobalStyles
         styles={{
           html: { height: '100%' },
-          body: {
-            minHeight: '100%',
-            background: `radial-gradient(circle at top, ${blueGrey[50]} 0%, #f4f7fb 42%, #eef2f8 100%)`,
-          },
+          body: { minHeight: '100%' },
           '#root': { minHeight: '100%' },
         }}
       />

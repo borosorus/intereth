@@ -32,16 +32,16 @@ export function reconcileWalletWorkspace<T extends ContractConnection>(
             : `${removedWalletContracts.length} wallet contract instances were cleared.`;
         notice = [
             "Wallet network changed.",
-            planWillClear ? "The transaction plan was cleared." : "",
+            planWillClear ? "The execution plan was cleared." : "",
             removedWalletContracts.length > 0 ? removed : "",
             "Read-only RPC contracts were kept.",
         ].filter(Boolean).join(" ");
     } else if (accountChanged) {
         notice = planWillClear
-            ? "Wallet account changed. The transaction plan was cleared and wallet contract inputs were reset."
+            ? "Wallet account changed. The execution plan was cleared and wallet contract inputs were reset."
             : "Wallet account changed. Wallet contract inputs were reset.";
     } else if (!previous && planWillClear) {
-        notice = "The saved transaction plan was cleared because it belongs to another wallet account or network.";
+        notice = "The saved execution plan was cleared because it belongs to another wallet account or network.";
     }
 
     return {

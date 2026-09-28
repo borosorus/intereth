@@ -29,7 +29,7 @@ export function StateBadge({kind, label, variant}: {kind: StateKind; label: stri
 
 export function simulationPresentation(status: SimulationStatus): {label: string; kind: StateKind} {
     switch (status) {
-        case "waiting": return {label: "Preview queued", kind: "neutral"};
+        case "waiting": return {label: "Preview waiting", kind: "neutral"};
         case "simulating": return {label: "Refreshing preview", kind: "speculative"};
         case "ready": return {label: "Simulation valid", kind: "success"};
         case "stale": return {label: "Preview stale", kind: "warning"};

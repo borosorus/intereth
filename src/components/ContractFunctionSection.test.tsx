@@ -35,7 +35,7 @@ describe("contract function presentation", () => {
             />,
         );
 
-        const toggle = screen.getByRole("button", {name: /Write functions · wallet required/});
+        const toggle = screen.getByRole("button", {name: /^Write functions · wallet required/});
         expect(toggle).toHaveAttribute("aria-expanded", "false");
         expect(screen.queryByText("update")).not.toBeInTheDocument();
         fireEvent.click(toggle);

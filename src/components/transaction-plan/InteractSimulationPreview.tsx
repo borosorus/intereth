@@ -129,7 +129,7 @@ export default function InteractSimulationPreview() {
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Speculative preview</Typography>
                         <Typography variant="caption" color="text.secondary">
-                            {snapshot ? `Base block ${decimalQuantity(snapshot.baseBlockNumber)}` : "Queued writes only"}
+                            {snapshot ? `Base block ${decimalQuantity(snapshot.baseBlockNumber)}` : "Plan only"}
                         </Typography>
                     </Box>
                     <StateBadge {...presentation} />
@@ -146,13 +146,13 @@ export default function InteractSimulationPreview() {
                         </Alert>
                     )}
                     {(simulation.status === "waiting" || simulation.status === "simulating") && !snapshot && (
-                        <Typography variant="body2">Preparing the queue preview…</Typography>
+                        <Typography variant="body2">Preparing the plan preview…</Typography>
                     )}
                     {simulation.status === "stale" && snapshot && (
-                        <Alert severity="warning">This preview is stale and does not match the current queue.</Alert>
+                        <Alert severity="warning">This preview is stale and does not match the current plan.</Alert>
                     )}
                     {simulation.status === "simulating" && snapshot && (
-                        <Alert severity="info">Refreshing the preview; the results below are from the previous queue revision.</Alert>
+                        <Alert severity="info">Refreshing the preview; the results below are from the previous plan revision.</Alert>
                     )}
                     {simulation.status === "error" && snapshot && (
                         <Alert severity="warning">Showing the last successful preview. It may be stale.</Alert>
@@ -172,7 +172,7 @@ export default function InteractSimulationPreview() {
                                     <CallPreview
                                         key={call.callId}
                                         call={call}
-                                        label={labels.get(call.callId) ?? `${index + 1}. Previous queued call`}
+                                        label={labels.get(call.callId) ?? `${index + 1}. Previous plan call`}
                                         chainId={snapshot.chainId}
                                         metadataByAddress={simulation.tokenMetadataByAddress}
                                     />

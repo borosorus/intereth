@@ -5,16 +5,19 @@ import { ethers } from "ethers";
 import { prepareAbiCall, prepareRawCall } from "../../calls/prepareCall";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { createEmptyTransactionPlanState, transactionPlanReducer } from "../../transaction-plan/reducer";
+import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import { useSimulation } from "../../simulation/context";
-import TransactionQueuePanel from "./TransactionQueuePanel";
+import ExecutionWorkspace from "./ExecutionWorkspace";
 import { TRANSFER_TOPIC } from "../../simulation/balanceChanges";
 
 vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
+vi.mock("../../transaction-plan/uiContext", () => ({useTransactionPlanUi: vi.fn()}));
 vi.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
 
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
+const mockedPlanUi = vi.mocked(useTransactionPlanUi);
 const mockedWalletSession = vi.mocked(useWalletSession);
 const mockedSimulation = vi.mocked(useSimulation);
 const ACCOUNT = "0x0000000000000000000000000000000000000001";
@@ -90,8 +93,9 @@ function mockFreshSimulation(statuses: Array<"0x0" | "0x1"> = ["0x1", "0x1"]) {
     });
 }
 
-describe("TransactionQueuePanel", () => {
+describe("ExecutionWorkspace", () => {
     beforeEach(() => {
+        mockedPlanUi.mockReturnValue({activeView: "execution", setActiveView: vi.fn(), requestExecution: vi.fn()});
         mockedSimulation.mockReturnValue({
             active: false,
             watchActive: false,
@@ -121,8 +125,7 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /2 queued calls · Review plan/}));
+        render(<ExecutionWorkspace />);
 
         expect(screen.getByText(/pause\(\)/)).toBeInTheDocument();
         expect(screen.getByText(/Raw transaction/)).toBeInTheDocument();
@@ -166,17 +169,16 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(screen.getAllByRole("button", {name: /Edit/})[0]).toBeEnabled();
 
         fireEvent.click(screen.getByRole("button", {name: "Clear plan"}));
-        const dialog = screen.getByRole("dialog", {name: "Clear transaction plan?"});
+        const dialog = screen.getByRole("dialog", {name: "Clear execution plan?"});
         fireEvent.click(within(dialog).getByRole("button", {name: "Clear plan"}));
         expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
     });
 
-    it("shows the speculative preview in the plan drawer", () => {
+    it("shows the speculative preview in the execution workspace", () => {
         mockedSimulation.mockReturnValue({
             ...mockedSimulation(),
             active: true,
@@ -193,10 +195,9 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(screen.getByText("Speculative preview")).toBeInTheDocument();
-        expect(screen.getByText("Preparing the queue preview…")).toBeInTheDocument();
+        expect(screen.getByText("Preparing the plan preview…")).toBeInTheDocument();
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
 
@@ -225,8 +226,7 @@ describe("TransactionQueuePanel", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
 
         expect(screen.getByText("21,000 gas")).toBeInTheDocument();
         expect(screen.getByText("1 decoded event")).toBeInTheDocument();
@@ -234,7 +234,7 @@ describe("TransactionQueuePanel", () => {
         expect(screen.getByText("-5 TKN")).toBeInTheDocument();
     });
 
-    it("offers execution controls alongside the preview in the plan drawer", () => {
+    it("offers execution controls alongside the preview", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
@@ -243,25 +243,46 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
 
         expect(screen.queryByText(/Switch to Interact/)).not.toBeInTheDocument();
         expect(screen.getByText("Speculative preview")).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Check wallet batching"})).toBeInTheDocument();
     });
 
-    it("opens the plan for a watches-only queue", () => {
+    it("shows an empty plan state that returns to Explore", () => {
+        const setActiveView = vi.fn();
+        mockedPlanUi.mockReturnValue({activeView: "execution", setActiveView, requestExecution: vi.fn()});
         mockWallet();
+        mockedTransactionPlan.mockReturnValue({
+            state: createEmptyTransactionPlanState(),
+            dispatch: vi.fn(),
+            sessionStatus: "empty",
+            canEdit: true,
+        });
+
+        render(<ExecutionWorkspace />);
+        fireEvent.click(screen.getByRole("button", {name: /Back to Explore/}));
+        expect(setActiveView).toHaveBeenCalledWith("explore");
+    });
+
+    it("shows the watches-only plan state", () => {
+        mockWallet();
+        const dispatch = vi.fn();
         const state = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: {
             id: "watch-1", chainId: "1", from: ACCOUNT, to: TARGET, data: "0xabcd", value: "0",
             display: {kind: "raw"}, decoder: {kind: "raw"}, createdAt: 1,
         }});
-        mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+        mockedTransactionPlan.mockReturnValue({state, dispatch, sessionStatus: "ready", canEdit: true});
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /1 watched expression · Review plan/}));
-        expect(screen.getByText(/pinned watches but no queued calls/)).toBeInTheDocument();
+        render(<ExecutionWorkspace />);
+        expect(screen.getByText(/pinned watches but no plan calls/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Clear plan"}));
+        const dialog = screen.getByRole("dialog", {name: "Clear execution plan?"});
+        expect(within(dialog).getByText(/removes 1 pinned watch/)).toBeInTheDocument();
+        fireEvent.click(within(dialog).getByRole("button", {name: "Clear plan"}));
+        expect(dispatch).toHaveBeenCalledWith({type: "CLEAR_PLAN"});
     });
 
     it("blocks editing and offers an explicit network switch on mismatch", async () => {
@@ -275,8 +296,7 @@ describe("TransactionQueuePanel", () => {
             canEdit: false,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(screen.getByText(/plan belongs to chain 1/)).toBeInTheDocument();
         expect(screen.getAllByRole("button", {name: /Edit/})[0]).toBeDisabled();
         expect(screen.getByRole("button", {name: "Check wallet batching"})).toBeDisabled();
@@ -295,8 +315,7 @@ describe("TransactionQueuePanel", () => {
             canEdit: false,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(screen.getByRole("button", {name: "Refresh status"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "View in wallet"})).toBeDisabled();
         expect(send).not.toHaveBeenCalled();
@@ -323,8 +342,7 @@ describe("TransactionQueuePanel", () => {
             canEdit: false,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(screen.getByText(/plan belongs to 0x000000…000001/)).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Reconnect account"}));
         await waitFor(() => expect(connectWallet).toHaveBeenCalled());
@@ -350,9 +368,9 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
+        const view = render(<ExecutionWorkspace active={false} />);
         expect(send).not.toHaveBeenCalled();
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        view.rerender(<ExecutionWorkspace active />);
         expect(await screen.findByText(/supports atomic transaction batches/)).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", {name: "Send atomic batch"}));
@@ -380,10 +398,8 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
-        expect(await screen.findByText(/persistent EIP-7702 delegation/)).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Enable smart account and send"}));
+        render(<ExecutionWorkspace />);
+        fireEvent.click(await screen.findByRole("button", {name: "Enable smart account and send"}));
         const review = screen.getByRole("dialog", {name: "Review wallet submission"});
         expect(within(review).getByRole("checkbox", {name: /persistent smart-account delegation/})).toBeInTheDocument();
         expect(within(review).getByRole("button", {name: "Enable and submit"})).toBeDisabled();
@@ -396,8 +412,7 @@ describe("TransactionQueuePanel", () => {
         mockRpcWallet(send);
         mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
         const review = screen.getByRole("dialog", {name: "Review wallet submission"});
         const submit = within(review).getByRole("button", {name: "Submit atomic batch"});
@@ -412,8 +427,7 @@ describe("TransactionQueuePanel", () => {
         mockFreshSimulation(["0x1", "0x0"]);
         mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
         const review = screen.getByRole("dialog", {name: "Review wallet submission"});
         expect(within(review).getByText(/contains 1 reverting call/)).toBeInTheDocument();
@@ -431,14 +445,31 @@ describe("TransactionQueuePanel", () => {
             canEdit: true,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         expect(await screen.findByText(/Atomic batching is unavailable/)).toBeInTheDocument();
         expect(screen.getByText(/Use Send now from individual function or raw-call forms/)).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: /send atomic batch/i})).not.toBeInTheDocument();
     });
 
-    it("polls a restored pending batch while the review drawer is closed", async () => {
+    it("closes an open submission review when the workspace view changes", async () => {
+        const send = vi.fn(async (method: string) => method === "wallet_getCapabilities"
+            ? {"0x1": {atomic: {status: "supported"}}}
+            : {id: "0x1234"});
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        const view = render(<ExecutionWorkspace />);
+        fireEvent.click(await screen.findByRole("button", {name: "Send atomic batch"}));
+        expect(screen.getByRole("dialog", {name: "Review wallet submission"})).toBeInTheDocument();
+
+        // Browser "back" while reviewing: the view changes underneath, and the
+        // actionable submission dialog must not linger over Explore.
+        mockedPlanUi.mockReturnValue({activeView: "explore", setActiveView: vi.fn(), requestExecution: vi.fn()});
+        view.rerender(<ExecutionWorkspace active={false} />);
+        expect(screen.queryByRole("dialog", {name: "Review wallet submission"})).not.toBeInTheDocument();
+    });
+
+    it("polls a restored pending batch while the Explore view is shown", async () => {
         vi.useFakeTimers();
         try {
             const dispatch = vi.fn();
@@ -458,7 +489,9 @@ describe("TransactionQueuePanel", () => {
                 canEdit: false,
             });
 
-            render(<TransactionQueuePanel />);
+            // The execution workspace stays mounted (hidden) while Explore is
+            // shown, so status polling must continue without visiting it.
+            render(<ExecutionWorkspace active={false} />);
             await act(async () => {
                 vi.advanceTimersByTime(5000);
                 await Promise.resolve();
@@ -483,8 +516,7 @@ describe("TransactionQueuePanel", () => {
             canEdit: false,
         });
 
-        render(<TransactionQueuePanel />);
-        fireEvent.click(screen.getByRole("button", {name: /Review plan/}));
+        render(<ExecutionWorkspace />);
         fireEvent.click(screen.getByRole("button", {name: "Create retry draft"}));
         const dialog = screen.getByRole("dialog", {name: "Create a retry draft?"});
         fireEvent.click(within(dialog).getByRole("button", {name: "Create draft"}));

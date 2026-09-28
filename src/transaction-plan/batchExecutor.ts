@@ -118,7 +118,7 @@ export class Eip5792BatchExecutor implements AtomicBatchExecutor {
 
     async submit(context: PlanContext, calls: QueuedCall[]) {
         if (calls.length === 0) {
-            throw Object.assign(new Error("An empty transaction plan cannot be submitted."), {code: "INVALID_ARGUMENT"});
+            throw Object.assign(new Error("An empty execution plan cannot be submitted."), {code: "INVALID_ARGUMENT"});
         }
         if (calls.some((call) => call.chainId !== context.chainId || call.from.toLowerCase() !== context.account.toLowerCase())) {
             throw Object.assign(new Error("Every call must match the plan account and chain."), {code: "PLAN_CONTEXT_MISMATCH"});

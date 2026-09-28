@@ -69,11 +69,11 @@ describe("DynamicFunctionItem queueing", () => {
         fireEvent.click(screen.getByRole("button", {name: /pause\(\) Write/}));
         // Both actions are offered; queueing must not touch the runner.
         expect(screen.getByRole("button", {name: "Send now"})).toBeEnabled();
-        fireEvent.click(screen.getByRole("button", {name: "Add to queue"}));
+        fireEvent.click(screen.getByRole("button", {name: "Add to execution"}));
 
         await waitFor(() => expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({type: "ADD_CALL"})));
         expect(sendTransaction).not.toHaveBeenCalled();
-        expect(screen.getByText("Added to transaction queue.")).toBeInTheDocument();
+        expect(screen.getByText("Added to execution.")).toBeInTheDocument();
     });
 
     it("decodes a simulated read without requiring a wallet runner", async () => {
@@ -124,7 +124,7 @@ describe("DynamicFunctionItem queueing", () => {
         }));
         expect(await screen.findByText("42")).toBeInTheDocument();
         expect(screen.getByText("Speculative")).toBeInTheDocument();
-        expect(screen.getByText(/after 2 queued calls/)).toBeInTheDocument();
+        expect(screen.getByText(/after 2 plan calls/)).toBeInTheDocument();
     });
 });
 
@@ -169,7 +169,6 @@ describe("DynamicContractItem wallet lifecycle", () => {
         });
 
         const {rerender} = render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         const calldata = screen.getByLabelText("Hex calldata");
         fireEvent.change(calldata, {target: {value: "0x1234"}});
@@ -183,7 +182,7 @@ describe("DynamicContractItem wallet lifecycle", () => {
         rerender(<DynamicContractItem contract={contract} walletChainId="1" />);
 
         expect(screen.getByLabelText("Hex calldata")).toHaveValue("0x1234");
-        expect(screen.getByRole("button", {name: "Add to queue"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Add to execution"})).toBeDisabled();
         expect(screen.getByRole("button", {name: "Send now"})).toBeDisabled();
     });
 
@@ -224,7 +223,6 @@ describe("DynamicContractItem wallet lifecycle", () => {
         } as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
         expect(screen.getByText(/simulation belongs to chain 10; this contract is on chain 1/)).toBeInTheDocument();
     });
@@ -252,11 +250,11 @@ describe("DynamicContractItem wallet lifecycle", () => {
         const contract = {...activeContract, connect: vi.fn().mockReturnValue(activeContract)} as unknown as ethers.BaseContract;
 
         render(<DynamicContractItem contract={contract} walletChainId="1" />);
-        fireEvent.click(screen.getByText("RPC: Browser Wallet"));
         await screen.findByText("0x0000000000000000000000000000000000000010");
 
         expect(screen.getByText("Read functions")).toBeInTheDocument();
-        expect(screen.getByText(/Read canonical on-chain state/)).toBeInTheDocument();
+        fireEvent.mouseEnter(screen.getByRole("button", {name: "About Read functions"}));
+        expect(await screen.findByText(/Read canonical on-chain state/)).toBeInTheDocument();
         expect(screen.getByText("Write functions")).toBeInTheDocument();
         expect(screen.getByText("View")).toBeInTheDocument();
         expect(screen.getByText("Pure")).toBeInTheDocument();

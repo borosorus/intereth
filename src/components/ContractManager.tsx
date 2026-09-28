@@ -27,6 +27,7 @@ import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
+import InfoHint from "./InfoHint";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
@@ -59,36 +60,7 @@ const formSectionSx = {
     border: "1px solid",
     borderColor: "divider",
     borderRadius: 2.5,
-    backgroundColor: "rgba(248, 250, 252, 0.58)",
-};
-
-const inputSurfaceSx = {
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "#fff",
-        transition: "border-color 160ms ease, box-shadow 160ms ease",
-        "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "rgba(69, 90, 100, 0.3)",
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-            borderColor: "primary.main",
-        },
-        "&.Mui-focused": {
-            boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
-        },
-    },
-};
-
-const selectSurfaceSx = {
-    backgroundColor: "#fff",
-    "& .MuiOutlinedInput-notchedOutline": {
-        borderColor: "rgba(69, 90, 100, 0.3)",
-    },
-    "&:hover .MuiOutlinedInput-notchedOutline": {
-        borderColor: "primary.main",
-    },
-    "&.Mui-focused": {
-        boxShadow: "0 0 0 3px rgba(255, 87, 34, 0.12)",
-    },
+    backgroundColor: "background.paper",
 };
 
 function renderCustomRpcProgress(state: CustomRpcState) {
@@ -436,13 +408,17 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         setAbi(formatAbi(example.abi));
         setAbiPreset("custom");
         setAutomaticAbi(false);
-        setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
-        setCustomRpc('');
-        setCustomRpcChainId('');
-        setCustomRpcState(CustomRpcState.disabled);
-        setUseBrowserWallet(false);
+        // An example fills the contract fields; it must not undo how the user
+        // chose to reach the chain. In wallet mode the switch and the wallet's
+        // own chain stay exactly as they are.
+        if (!useBrowserWallet) {
+            setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
+            setCustomRpc('');
+            setCustomRpcChainId('');
+            setCustomRpcState(CustomRpcState.disabled);
+        }
         requestAnimationFrame(() => {
-            addressInputRef.current?.scrollIntoView({behavior: "smooth", block: "center"});
+            addressInputRef.current?.scrollIntoView?.({behavior: "smooth", block: "center"});
             addressInputRef.current?.focus({preventScroll: true});
         });
     };
@@ -453,7 +429,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 <Stack spacing={1.25}>
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Network &amp; access</Typography>
-                        <Typography variant="caption" color="text.secondary">Choose the chain before entering a contract address.</Typography>
                     </Box>
                     <Grid container spacing={2} alignItems="center">
                         {!useBrowserWallet && (
@@ -466,7 +441,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         value={providerIndex}
                                         label="RPC Provider"
                                         onChange={(event) => setProviderIndex(event.target.value as number)}
-                                        sx={selectSurfaceSx}
+                                        renderValue={(value) => value === -1 ? "Custom" : (() => { const chain = chains[value as number]; return chain ? `${chain.label} · ${chain.id}` : ""; })()}
                                     >
                                         {chains.map((chain, index) => (
                                             <MenuItem key={chain.id} value={index}>{chain.label} (Chain {chain.id})</MenuItem>
@@ -497,7 +472,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     value={customRpc}
                                     onChange={(event) => setCustomRpc(event.target.value)}
                                     error={customRpc !== '' && customRpcState === CustomRpcState.failed}
-                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : 'A full HTTP RPC endpoint.'}
+                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : undefined}
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">
@@ -505,7 +480,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                             </InputAdornment>
                                         ),
                                     }}
-                                    sx={inputSurfaceSx}
                                 />
                             </Grid>
                         )}
@@ -537,7 +511,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 <Stack spacing={1.25}>
                     <Box>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract</Typography>
-                        <Typography variant="caption" color="text.secondary">Choose the contract you want to inspect.</Typography>
                     </Box>
                     <TextField
                         inputRef={addressInputRef}
@@ -545,17 +518,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         value={address}
                         onChange={(event) => setAddress(event.target.value.trim())}
                         error={address !== '' && !isAddressValid}
-                        helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : 'Target contract address.'}
+                        helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : undefined}
                         fullWidth
-                        sx={inputSurfaceSx}
                     />
                     <TextField
                         label="Contract label"
                         value={label}
                         onChange={(event) => setLabel(event.target.value)}
-                        helperText="Optional name used in workspace navigation."
                         fullWidth
-                        sx={inputSurfaceSx}
                     />
                 </Stack>
             </Box>
@@ -563,57 +533,19 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
                     <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
-                        <Box>
+                        <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: 0.5}}>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
-                            <Typography variant="caption" color="text.secondary">Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls.</Typography>
-                        </Box>
-                        <Stack direction={{xs: "column", sm: "row"}} spacing={1} alignItems={{xs: "stretch", sm: "center"}}>
-                            <FormControlLabel
-                                control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
-                                label="Fetch ABI automatically"
-                                sx={{mr: {sm: 0}}}
+                            <InfoHint
+                                label="About contract interfaces"
+                                content="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
                             />
-                            <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 180}, flex: "0 0 auto"}}>
-                                <InputLabel id="abi-preset-label">Preset</InputLabel>
-                                <Select
-                                    labelId="abi-preset-label"
-                                    value={abiPreset}
-                                    label="Preset"
-                                    onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
-                                    renderValue={(selection) => selection === "custom"
-                                        ? "Custom ABI"
-                                        : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
-                                    sx={selectSurfaceSx}
-                                >
-                                    <MenuItem value="custom">Custom ABI</MenuItem>
-                                    {ABI_PRESETS.map((preset) => (
-                                        <MenuItem key={preset.id} value={preset.id}>
-                                            <Stack spacing={0.15}>
-                                                <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
-                                                <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
-                                            </Stack>
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Stack>
+                        </Box>
+                        <FormControlLabel
+                            control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
+                            label="Fetch ABI automatically"
+                            sx={{mr: {sm: 0}, flex: "0 0 auto"}}
+                        />
                     </Box>
-                    <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 220}}}>
-                        <InputLabel id="interface-format-label">Interface format</InputLabel>
-                        <Select
-                            labelId="interface-format-label"
-                            value={activeInterfaceFormat}
-                            label="Interface format"
-                            onChange={(event) => {
-                                setInterfaceFormat(event.target.value as ContractInterfaceFormat);
-                                setAbiPreset("custom");
-                            }}
-                            sx={selectSurfaceSx}
-                        >
-                            <MenuItem value="json">JSON ABI</MenuItem>
-                            <MenuItem value="solidity">Solidity interface</MenuItem>
-                        </Select>
-                    </FormControl>
                     <TextField
                         label={activeInterfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
                         placeholder={activeInterfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
@@ -641,7 +573,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 : "Optional. Enter semicolon-separated Solidity function declarations or leave empty for raw calls."))}
                         fullWidth
                         sx={{
-                            ...inputSurfaceSx,
                             "& textarea": {
                                 overflowY: "auto",
                                 resize: "none",
@@ -655,6 +586,47 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             </Button>
                         </Box>
                     )}
+                    <Divider />
+                    <Box sx={{display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", rowGap: 1}}>
+                        <Typography variant="caption" color="text.secondary" sx={{flex: {sm: "0 0 auto"}}}>Interface options</Typography>
+                        <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 200}}}>
+                            <InputLabel id="interface-format-label">Interface format</InputLabel>
+                            <Select
+                                labelId="interface-format-label"
+                                value={activeInterfaceFormat}
+                                label="Interface format"
+                                onChange={(event) => {
+                                    setInterfaceFormat(event.target.value as ContractInterfaceFormat);
+                                    setAbiPreset("custom");
+                                }}
+                            >
+                                <MenuItem value="json">JSON ABI</MenuItem>
+                                <MenuItem value="solidity">Solidity interface</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 200}}}>
+                            <InputLabel id="abi-preset-label">Preset</InputLabel>
+                            <Select
+                                labelId="abi-preset-label"
+                                value={abiPreset}
+                                label="Preset"
+                                onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
+                                renderValue={(selection) => selection === "custom"
+                                    ? "Custom ABI"
+                                    : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
+                            >
+                                <MenuItem value="custom">Custom ABI</MenuItem>
+                                {ABI_PRESETS.map((preset) => (
+                                    <MenuItem key={preset.id} value={preset.id}>
+                                        <Stack spacing={0.15}>
+                                            <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
+                                        </Stack>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Box>
                 </Stack>
             </Box>
 
@@ -697,7 +669,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                             height: "100%",
                                             p: 2,
                                             borderRadius: 2.5,
-                                            background: "linear-gradient(145deg, rgba(255,255,255,0.96), rgba(238,242,248,0.72))",
                                         }}
                                     >
                                         <Stack spacing={1.5} sx={{height: "100%"}}>

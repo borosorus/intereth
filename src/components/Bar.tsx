@@ -1,46 +1,87 @@
-import { AppBar, Box, Stack, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Stack, ToggleButton, ToggleButtonGroup, Toolbar, Typography } from "@mui/material";
+import ExploreOutlinedIcon from "@mui/icons-material/ExploreOutlined";
+import PlaylistPlayIcon from "@mui/icons-material/PlaylistPlay";
 import ConnectionButton from "./ConnectionButton";
+import { useTransactionPlan } from "../transaction-plan/context";
+import { useTransactionPlanUi, WorkspaceView } from "../transaction-plan/uiContext";
 
 export default function Bar(){
+    const {state} = useTransactionPlan();
+    const {activeView, setActiveView} = useTransactionPlanUi();
+    const planCount = state.plan.calls.length + state.plan.watches.length;
+
     return (
       <Box>
         <AppBar
           position="sticky"
-          color="transparent"
+          color="default"
           elevation={0}
           sx={{
             borderBottom: '1px solid',
-            borderColor: 'secondary.light',
-            backdropFilter: 'blur(14px)',
-            backgroundColor: 'rgba(255, 245, 240, 0.92)',
+            borderColor: 'divider',
+            backgroundColor: 'background.paper',
           }}
         >
-            <Toolbar sx={{display: "flex", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1.25, sm: 1}, minHeight: {xs: 106, sm: 88}}}>
-              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: 1}}>
+            <Toolbar sx={{display: "flex", position: "relative", gap: {xs: 1.25, sm: 2}, px: {xs: 2, sm: 3, md: 4}, py: {xs: 1, sm: 0}, minHeight: {xs: 64, sm: 72}, flexWrap: "wrap", rowGap: {xs: 1, sm: 0}}}>
+              <Stack direction="row" spacing={{xs: 1, sm: 1.5}} alignItems="center" sx={{minWidth: 0, flex: "0 1 auto"}}>
                 <Box
                   component="img"
                   src={`${import.meta.env.BASE_URL}intereth-mark.svg`}
                   alt="Intereth logo"
-                  sx={{width: {xs: 36, sm: 44}, height: {xs: 36, sm: 44}, flex: '0 0 auto'}}
+                  sx={{width: {xs: 32, sm: 40}, height: {xs: 32, sm: 40}, flex: '0 0 auto'}}
                 />
-                <Box sx={{minWidth: 0}}>
+                <Box sx={{minWidth: 0, display: {xs: "none", md: "block"}}}>
                   <Typography
                     variant="h4"
                     component="div"
-                    sx={{fontSize: {xs: '1.35rem', sm: '2rem'}, lineHeight: 1.05, fontWeight: 800, letterSpacing: -0.7}}
+                    sx={{fontSize: '1.5rem', lineHeight: 1.05, fontWeight: 800, letterSpacing: -0.5}}
                   >
                     Intereth
                   </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{display: {xs: "none", sm: "block"}, mt: 0.35, fontSize: '0.875rem', lineHeight: 1.25}}
-                  >
-                    Inspect contracts, run calls, and switch providers without leaving the page.
-                  </Typography>
                 </Box>
               </Stack>
-              <Box sx={{flex: "0 0 auto", ml: "auto"}}><ConnectionButton/></Box>
+              <Box sx={{display: "flex", alignItems: "center", justifyContent: "center", order: {xs: 3, sm: 0}, flex: {xs: "1 0 100%", sm: 0}, position: {xs: "static", sm: "absolute"}, left: {sm: "50%"}, top: {sm: 0}, bottom: {sm: 0}, transform: {sm: "translateX(-50%)"}}}>
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={activeView}
+                  onChange={(_, view: WorkspaceView | null) => view && setActiveView(view)}
+                  aria-label="Workspace view"
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: "99px",
+                    bgcolor: "background.paper",
+                    p: 0.25,
+                    gap: 0.25,
+                    // On phones the switcher owns its whole row below the brand
+                    // row, so the two groups never interleave; equal segments
+                    // read as one segmented control rather than two stray buttons.
+                    width: {xs: "100%", sm: "auto"},
+                    "& .MuiToggleButton-root": {
+                      border: 0,
+                      borderRadius: "99px !important",
+                      gap: 0.75,
+                      fontWeight: 700,
+                      px: {xs: 1, sm: 1.75},
+                      flex: {xs: 1, sm: "0 1 auto"},
+                      color: "text.secondary",
+                      "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
+                    },
+                  }}
+                >
+                  <ToggleButton value="explore">
+                    <ExploreOutlinedIcon fontSize="small" />
+                    Explore
+                  </ToggleButton>
+                  <ToggleButton value="execution" aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
+                    <PlaylistPlayIcon fontSize="small" />
+                    Execution
+                    {planCount > 0 && <Box component="span" sx={{opacity: 0.75}}>({planCount})</Box>}
+                  </ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+              <Box sx={{display: "flex", justifyContent: "flex-end", flex: "0 0 auto", ml: "auto"}}><ConnectionButton/></Box>
             </Toolbar>
         </AppBar>
       </Box>

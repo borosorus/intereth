@@ -61,7 +61,7 @@ const mockedForceSend = vi.mocked(forceSendPreparedTransaction);
 
 describe("ApprovalRecoveryDialog", () => {
     const dispatch = vi.fn();
-    const requestReview = vi.fn();
+    const requestExecution = vi.fn();
     const onClose = vi.fn();
     const onOriginalResult = vi.fn();
 
@@ -73,7 +73,7 @@ describe("ApprovalRecoveryDialog", () => {
             sessionStatus: "empty",
             canEdit: true,
         });
-        mockedPlanUi.mockReturnValue({reviewRequest: 0, requestReview});
+        mockedPlanUi.mockReturnValue({activeView: "execution", setActiveView: vi.fn(), requestExecution});
         mockedWallet.mockReturnValue({
             status: "ready",
             provider: {send: vi.fn()} as unknown as ethers.BrowserProvider,
@@ -97,7 +97,7 @@ describe("ApprovalRecoveryDialog", () => {
         await screen.findByText(/both succeeded in simulation/);
     }
 
-    it("adds approval before the original call and opens plan review", async () => {
+    it("adds approval before the original call and opens the execution view", async () => {
         await renderValidated();
         fireEvent.click(screen.getByRole("button", {name: "Add approval and transaction to plan"}));
 
@@ -105,7 +105,7 @@ describe("ApprovalRecoveryDialog", () => {
             {type: "ADD_CALL", call: approvalCall},
             {type: "ADD_CALL", call: originalCall},
         ]);
-        expect(requestReview).toHaveBeenCalledTimes(1);
+        expect(requestExecution).toHaveBeenCalledTimes(1);
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 

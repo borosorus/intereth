@@ -1,4 +1,4 @@
-import { Alert, Box, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Stack } from "@mui/material";
+import { Alert, Box, Button, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Stack } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
@@ -13,10 +13,12 @@ import { normalizeReadData } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { prepareRawWatch } from "../simulation/watchExpressions";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
 export default function RawCall({contract, isStaticOnly, disabled = false, chainId}: {contract: ethers.BaseContract, isStaticOnly?: boolean, disabled?: boolean, chainId?: string}){
     const dataInputId = useId();
     const actions = useCallActions({chainId});
+    const planUi = useTransactionPlanUi();
     const {wallet, transactionPlan, watchPin, result, error, setError, queued} = actions;
 
     const [data, setData] = useState('');
@@ -46,7 +48,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     }), [contract, data, valueAmount, valueUnit]);
 
     return (
-    <Paper variant="outlined" sx={{mt: 2, p: {xs: 2, md: 3}, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.82)'}}>
+    <Paper variant="outlined" sx={{p: {xs: 2, md: 2.5}, borderRadius: 2.5}}>
         <Stack spacing={2}>
             <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap'}}>
                 <Box>
@@ -122,9 +124,9 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     onQueue={() => void actions.queueCall(prepare)}
                 />
             )}
-            {queued && <Alert severity="success">Added to transaction queue.</Alert>}
+            {queued && <Alert severity="success" action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>Added to execution.</Alert>}
             {watchPin.notice && (
-                <Alert severity="info" onClose={watchPin.clearNotice}>
+                <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>
                     {watchPin.notice} Raw watches are treated as read-only and evaluated after ABI watches.
                 </Alert>
             )}

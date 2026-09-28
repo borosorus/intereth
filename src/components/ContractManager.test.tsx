@@ -79,7 +79,11 @@ describe("ContractManager", () => {
         const networkHeading = screen.getByText("Network & access");
         const contractHeading = screen.getByText("Contract");
         expect(networkHeading.compareDocumentPosition(contractHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(screen.getByText("Test chain (Chain 1)")).toBeInTheDocument();
+        expect(screen.getByText("Test chain · 1")).toBeInTheDocument();
+
+        // The compact collapsed display must not hide the full chain identity.
+        fireEvent.mouseDown(screen.getByLabelText("RPC Provider"));
+        expect(screen.getByRole("option", {name: "Test chain (Chain 1)"})).toBeInTheDocument();
     });
 
     it("shows the browser wallet chain ID", () => {
@@ -89,6 +93,18 @@ describe("ContractManager", () => {
         fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
         expect(screen.getByText("Chain ID 1")).toBeInTheDocument();
         expect(screen.getByText("Test chain")).toBeInTheDocument();
+    });
+
+    it("keeps browser wallet access selected when an example fills the form", () => {
+        mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
+        render(<ContractManager addContract={vi.fn()} showExamples />);
+
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+
+        fireEvent.click(screen.getAllByRole("button", {name: "Use example"})[0]);
+        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+        expect(screen.getByLabelText("Contract address")).toHaveValue("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
     });
 
     it("fetches a verified ABI in automatic mode and promotes it when disabled", async () => {

@@ -109,7 +109,7 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
         displayMessage = "The wallet cannot accept this many calls in one batch.";
     } else if (code === "PLAN_CONTEXT_MISMATCH") {
         title = "Session changed";
-        displayMessage = "The connected account or network no longer matches this transaction plan.";
+        displayMessage = "The connected account or network no longer matches this execution plan.";
     } else if (code === "SIMULATION_NOT_CONFIGURED") {
         title = "Simulation unavailable";
         displayMessage = "No simulation RPC is configured for this network.";
@@ -126,11 +126,11 @@ export function normalizeError(error: unknown, fallbackTitle = "Call failed"): N
         title = "Invalid simulation response";
         displayMessage = message || "The simulation RPC returned data Intereth could not validate.";
     } else if (code === "SIMULATION_QUEUED_CALL_REVERTED") {
-        title = "Queued call reverted";
-        displayMessage = message || "A queued call reverted before the read could run.";
+        title = "Plan call reverted";
+        displayMessage = message || "A plan call reverted before the read could run.";
     } else if (code === "SIMULATION_READ_REVERTED") {
         title = "Simulated read reverted";
-        displayMessage = message || "The read reverted after applying the queued calls.";
+        displayMessage = message || "The read reverted after applying the plan calls.";
     } else if (code === "APPROVAL_RECOVERY_SIMULATION_FAILED") {
         title = "Approval did not resolve the transaction";
         displayMessage = message || "The proposed approval did not make the transaction succeed in simulation.";

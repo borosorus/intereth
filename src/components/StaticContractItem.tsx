@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
+import { AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -14,8 +14,10 @@ import { useSimulation } from "../simulation/context";
 import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
-import { FunctionMutabilityBadge } from "./ContractFunctionSection";
+import { FunctionAccordion, FunctionMutabilityBadge } from "./ContractFunctionSection";
+import { monoFont } from "../ui/theme";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract;
@@ -29,6 +31,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const actions = useCallActions({chainId});
+    const planUi = useTransactionPlanUi();
     const {watchPin, result, error, setError} = actions;
 
     const [args, setArgs] = useState<ParamValue[]>(() => frag.inputs.map((input) => createEmptyParamValue(input)));
@@ -37,7 +40,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const simulationAvailable = !isDisabled && actions.simulationAvailable;
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
+        <FunctionAccordion expanded={expanded} onChange={() => setExpanded(!expanded)}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
                     <Typography color={isDisabled ? 'text.secondary' : 'text.primary'} sx={{fontWeight: 700, overflowWrap: "anywhere", minWidth: 0, flex: 1}}>
@@ -91,14 +94,14 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 onPinWatch={() => void actions.pinWatch(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}))}
                                 canPinWatch={watchPin.canPin}
                             />
-                            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
+                            {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>{watchPin.notice}</Alert>}
                         </Stack>
                         <CallResult result={result} />
                     </>
                 )}
             </AccordionDetails>
             <ErrorDialog error={error} onClose={() => setError(null)}/>
-        </Accordion>
+        </FunctionAccordion>
     );
 }
 
@@ -135,47 +138,23 @@ export default function StaticContractItem({contractId = "static-contract", cont
     );
 
     return (
-        <Paper variant="outlined" sx={{borderRadius: 2.5, overflow: 'hidden'}}>
-            <Box sx={{p: 1.5, borderBottom: 1, borderColor: "divider"}}>
-                <Grid container spacing={1}>
-                    <Grid item xs={12} md={6}>
-                        <Stack spacing={0.25} sx={{m: 1}}>
-                            <Box sx={{display: "flex", alignItems: "center", gap: 0.5}}>
-                                <Typography sx={{fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
-                                {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
-                            </Box>
-                            <Typography variant="caption" color="text.secondary">Read-only contract</Typography>
-                        </Stack>
-                    </Grid>
-                    <Grid item xs={12} md={3} sx={{minWidth: 0}}>
-                        <Stack spacing={0.25} sx={{m: 1, minWidth: 0}}>
-                            <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700}}>
-                                {providerDetails?.label ?? "RPC provider"}
-                            </Typography>
-                            {providerDetails?.url ? (
-                                <Box sx={{minWidth: 0, fontSize: "0.75rem"}}>
-                                    <CopyButton value={providerDetails.url} label="Copy RPC URL" variant="url" />
-                                </Box>
-                            ) : (
-                                <Typography variant="caption" color="text.secondary">Unknown endpoint</Typography>
-                            )}
-                        </Stack>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Box sx={{m: 1}}>
-                            <Chip label={chainId ? `Chain ID ${chainId}` : "Detecting chain"} size="small" variant="outlined" />
-                        </Box>
-                    </Grid>
-                </Grid>
+        <Stack spacing={2}>
+            <Box sx={{display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0}}>
+                <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
+                    <Typography variant="subtitle1" sx={{fontFamily: monoFont, fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
+                    {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
+                </Box>
+                <Chip size="small" variant="outlined" label={chainId ? `Chain ${chainId}` : "Detecting chain"} />
+                <Chip size="small" variant="outlined" label={providerDetails?.label ?? "Read-only"} />
+                {providerDetails?.url && <CopyButton value={providerDetails.url} label="Copy RPC URL" variant="url" />}
             </Box>
-            <Stack spacing={2} sx={{p: {xs: 1.5, md: 2}}}>
             {simulation.active && chainId && simulation.chainId !== chainId && (
-                <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
+                <Alert severity="info">Speculative simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}
             <ContractFunctionBrowser
                     contractId={contractId}
                     readDescription={chainId && simulation.canSimulateChain(chainId)
-                        ? "Read canonical state or speculative queued state without sending a transaction."
+                        ? "Read canonical state or speculative plan state without sending a transaction."
                         : "Read canonical on-chain state without sending a transaction."}
                     functions={functions}
                     renderFunction={(fragment) => (
@@ -186,7 +165,7 @@ export default function StaticContractItem({contractId = "static-contract", cont
                     writeCollapsible
                 />
             <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>
-            </Stack>
             <ErrorDialog error={metadataError} onClose={() => setMetadataError(null)} />
-      </Paper>);
+        </Stack>
+    );
 }

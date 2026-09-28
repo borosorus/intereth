@@ -1,4 +1,4 @@
-import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Grid, Paper, Stack, Typography } from "@mui/material";
+import { AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ethers } from "ethers";
@@ -18,8 +18,10 @@ import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
-import { FunctionMutabilityBadge } from "./ContractFunctionSection";
+import { FunctionAccordion, FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
+import { useTransactionPlanUi } from "../transaction-plan/uiContext";
+import { monoFont } from "../ui/theme";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract;
@@ -34,6 +36,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const actions = useCallActions({chainId});
+    const planUi = useTransactionPlanUi();
     const {wallet, transactionPlan, watchPin, result, error, setError, queued, resetWriteState} = actions;
     const [valueAmount, setValueAmount] = useState('');
     const [valueUnit, setValueUnit] = useState<ValueUnit>("wei");
@@ -62,7 +65,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
     }), [args, contract, frag, valueAmount, valueUnit]);
 
     return (
-        <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)} sx={{borderRadius: 2, overflow: 'hidden'}}>
+        <FunctionAccordion expanded={expanded} onChange={() => setExpanded(!expanded)}>
             <AccordionSummary aria-controls={contentId} id={summaryId} expandIcon={<ExpandMoreIcon />}>
                 <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between" sx={{width: 1}}>
                     <Typography sx={{fontWeight: 700, overflowWrap: "anywhere", minWidth: 0, flex: 1}}>{frag.format("sighash")}</Typography>
@@ -121,8 +124,8 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 canPinWatch={watchPin.canPin}
                             />
                         )}
-                        {queued && <Alert severity="success">Added to transaction queue.</Alert>}
-                        {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice}>{watchPin.notice}</Alert>}
+                        {queued && <Alert severity="success" action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>Added to execution.</Alert>}
+                        {watchPin.notice && <Alert severity="info" onClose={watchPin.clearNotice} action={<Button size="small" onClick={planUi.requestExecution}>Review</Button>}>{watchPin.notice}</Alert>}
                     </Stack>
                 <CallResult result={result} />
             </AccordionDetails>
@@ -132,7 +135,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                 onClose={actions.clearApprovalRequest}
                 onOriginalResult={actions.setResult}
             />
-        </Accordion>
+        </FunctionAccordion>
     );
 }
 
@@ -167,37 +170,28 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
     }, [contract]);
 
     return (
-        <Paper variant="outlined" sx={{borderRadius: 2.5, overflow: 'hidden'}}>
-            <Box sx={{p: 1.5, borderBottom: 1, borderColor: "divider"}}>
-                <Grid container spacing={1}>
-                    <Grid item xs={12} md={6}>
-                        <Box sx={{m: 1, display: "flex", alignItems: "center", gap: 0.5}}>
-                            <Typography sx={{fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
-                            {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
-                        </Box>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1}} color="text.secondary">RPC: Browser Wallet</Typography>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Typography sx={{m: 1}} color="text.secondary">Chain ID: {contractChainId}</Typography>
-                    </Grid>
-                </Grid>
+        <Stack spacing={2}>
+            <Box sx={{display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0}}>
+                <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
+                    <Typography variant="subtitle1" sx={{fontFamily: monoFont, fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
+                    {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
+                </Box>
+                <Chip size="small" variant="outlined" label={`Chain ${contractChainId}`} />
+                <Chip size="small" variant="outlined" label="Browser Wallet" />
             </Box>
-            <Stack spacing={2} sx={{p: {xs: 1.5, md: 2}}}>
             {!walletReady && (
                 <Alert severity="info">
                     Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
-                    {simulation.canSimulateChain(contractChainId) ? " Queued-state simulated reads remain available." : ""}
+                    {simulation.canSimulateChain(contractChainId) ? " Speculative reads remain available." : ""}
                 </Alert>
             )}
             {simulation.active && simulation.chainId !== contractChainId && (
-                <Alert severity="info">Queued-state simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
+                <Alert severity="info">Speculative simulation belongs to chain {simulation.chainId}; this contract is on chain {contractChainId}.</Alert>
             )}
             <ContractFunctionBrowser
                     contractId={contractId}
                     readDescription={simulation.canSimulateChain(contractChainId)
-                        ? "Read canonical state or speculative queued state without modifying the contract."
+                        ? "Read canonical state or speculative plan state without modifying the contract."
                         : "Read canonical on-chain state without modifying the contract."}
                     functions={functions}
                     renderFunction={(fragment) => (
@@ -212,10 +206,10 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                     writeDescription="These calls can modify state and may require wallet confirmation."
                 />
             <RawCall contract={activeContract} disabled={!walletReady} chainId={contractChainId}/>
-            </Stack>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {
                 setMetadataError(null);
                 clearWalletError();
             }} />
-      </Paper>);
+        </Stack>
+    );
 }
