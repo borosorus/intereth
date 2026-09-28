@@ -18,6 +18,7 @@ import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { executionPresentation, StateBadge } from "../StateBadge";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SimulationInspector from "../simulation/SimulationInspector";
+import WatchPanel from "../simulation/WatchPanel";
 import InteractSimulationPreview from "../transaction-plan/InteractSimulationPreview";
 import TransactionExecutionOptions from "../transaction-plan/TransactionExecutionOptions";
 import { useAtomicBatchExecution } from "../transaction-plan/AtomicBatchExecution";
@@ -79,7 +80,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                         />
                     )) : watches.length > 0 ? (
                         <Typography variant="body2" color="text.secondary">
-                            This plan has pinned watches but no queued calls. Watch expressions are evaluated in the watch panel above the contract.
+                            This plan has pinned watches but no queued calls. Add a state-changing call from Explore to simulate their combined effect.
                         </Typography>
                     ) : (
                         <Stack spacing={1.25} sx={{alignItems: "flex-start"}}>
@@ -93,6 +94,15 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                     )}
                 </Stack>
             </Box>
+
+            {(calls.length > 0 || watches.length > 0) && (
+                <>
+                    <Divider />
+                    <Box sx={{py: 2.5}}>
+                        <WatchPanel emptyHint="Pin a read expression from Explore to track its on-chain and speculative values across this plan." />
+                    </Box>
+                </>
+            )}
 
             {calls.length > 0 && (
                 <>

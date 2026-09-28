@@ -4,7 +4,6 @@ import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
 import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
-import WatchPanel from './components/simulation/WatchPanel';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
 import WorkspaceEmptyGuidance from './components/WorkspaceEmptyGuidance';
@@ -40,7 +39,6 @@ export default function App(){
               >
                 <ContractManager addContract={workspace.addContract} showExamples={contracts.length === 0}/>
               </Paper>}
-              <WatchPanel />
               {selectedContract && (
                 <Box sx={{display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "250px minmax(0, 1fr)"}, gap: 2, alignItems: "start"}}>
                   <ContractNavigation

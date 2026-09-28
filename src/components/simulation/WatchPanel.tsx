@@ -90,36 +90,31 @@ function WatchCard({watch}: {watch: WatchExpression}) {
     );
 }
 
-export default function WatchPanel() {
+export default function WatchPanel({emptyHint}: {emptyHint?: string} = {}) {
     const transactionPlan = useTransactionPlan();
     const simulation = useSimulation();
     const watches = transactionPlan.state.plan.watches;
     const watchBaseBlock = Object.values(simulation.watchEvaluations).find((evaluation) => evaluation.baseBlockNumber)?.baseBlockNumber;
 
     return (
-        <Paper
-            elevation={0}
-            sx={{p: {xs: 2, md: 2.5}, borderRadius: 3, border: "1px solid", borderColor: "divider"}}
-        >
-            <Stack spacing={1.5}>
-                <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1}}>
-                    <Box sx={{minWidth: 0}}>
-                        <Typography variant="h6" sx={{fontWeight: 800}}>Watch expressions</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                            {simulation.snapshot || watchBaseBlock
-                                ? `Base block ${blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)} · ${simulation.queuedCallCount > 0 ? "speculative values recompute with the queue" : "canonical watches refresh together"}`
-                                : "Pin read-only calls to compare canonical and speculative values"}
-                        </Typography>
-                    </Box>
-                    <Button size="small" sx={{alignSelf: {xs: "flex-start", sm: "center"}}} startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
-                        Refresh
-                    </Button>
+        <Stack spacing={1.5}>
+            <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1}}>
+                <Box sx={{minWidth: 0}}>
+                    <Typography variant="subtitle1" sx={{fontWeight: 800}}>Watches</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                        {simulation.snapshot || watchBaseBlock
+                            ? `Base block ${blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)} · ${simulation.queuedCallCount > 0 ? "speculative values recompute with the plan" : "canonical watches refresh together"}`
+                            : "Pinned read expressions; canonical values refresh together"}
+                    </Typography>
                 </Box>
-                <SimulationEndpointStatus showReady={false} />
-                {watches.length === 0
-                    ? <Typography variant="body2" color="text.secondary">Open a read-only function and choose “Pin watch”.</Typography>
-                    : <Stack spacing={1}>{watches.map((watch) => <WatchCard key={watch.id} watch={watch} />)}</Stack>}
-            </Stack>
-        </Paper>
+                <Button size="small" sx={{alignSelf: {xs: "flex-start", sm: "center"}}} startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
+                    Refresh
+                </Button>
+            </Box>
+            <SimulationEndpointStatus showReady={false} />
+            {watches.length === 0
+                ? <Typography variant="body2" color="text.secondary">{emptyHint ?? "Open a read-only function and choose “Pin watch”."}</Typography>
+                : <Stack spacing={1}>{watches.map((watch) => <WatchCard key={watch.id} watch={watch} />)}</Stack>}
+        </Stack>
     );
 }
