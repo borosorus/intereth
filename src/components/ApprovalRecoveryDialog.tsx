@@ -71,8 +71,9 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
     const rpcUrl = context ? chainsById.get(context.chainId)?.rpcUrl.trim() ?? "" : "";
     const walletMatches = Boolean(
         context
-        && wallet.account?.toLowerCase() === context.account.toLowerCase()
-        && wallet.chainId === context.chainId,
+        && (wallet.executionAccount ?? wallet.account)?.toLowerCase() === context.account.toLowerCase()
+        && (wallet.executionChainId ?? wallet.chainId) === context.chainId
+        && (!wallet.isSafeMode || wallet.safeOwnerConnected || wallet.safeAppSdk),
     );
 
     useEffect(() => {
@@ -234,9 +235,9 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             {checking ? <CircularProgress size={20} /> : "Validate approval"}
                         </Button>
                         {validated && (
-                            <Alert severity="success">
-                                Approval and transaction both succeeded in simulation. Forced-send gas limit: {validated.gasLimit.toString()}.
-                            </Alert>
+                            wallet.isSafeMode
+                                ? <Alert severity="info">Safe execution sends the approval and target call as separate Safe transactions. Add both to the plan and complete them in order.</Alert>
+                                : <Alert severity="success">Approval and transaction both succeeded in simulation. Forced-send gas limit: {validated.gasLimit.toString()}.</Alert>
                         )}
                         {error && <Alert severity="error">{error.message}</Alert>}
                         {approvalResult && (
@@ -263,6 +264,10 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             <Alert severity="warning">
                                 The approval was submitted but remains unresolved. Do not submit it again; verify its hash before continuing.
                             </Alert>
+                        ) : validated && wallet.isSafeMode ? (
+                            <Button variant="contained" color="secondary" disabled={busy || !plan.canEdit || !walletMatches} onClick={addToPlan}>
+                                Add approval and transaction to Safe plan
+                            </Button>
                         ) : validated && (
                             <Stack spacing={{xs: 1.25, sm: 1}} sx={{"& .MuiButton-root": {minHeight: {xs: 44, sm: "auto"}}}}>
                                 <Button variant="contained" color="secondary" disabled={busy || !plan.canEdit || !walletMatches} onClick={addToPlan}>

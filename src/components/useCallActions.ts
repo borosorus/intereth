@@ -9,6 +9,7 @@ import { SimulatedRead, SimulatedReadResult } from "../simulation/types";
 import { useSimulatedRead } from "../simulation/useSimulatedRead";
 import { usePinWatch } from "../simulation/usePinWatch";
 import { useWalletSession } from "../wallet/WalletSessionContext";
+import { createSafeTransaction, executeSafeTransaction, reconcileSafeExecutionResult, waitForSafeOwnerAction } from "../wallet/safeTransactions";
 import { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
 import { ReadLoadingMode } from "./ReadActions";
 
@@ -47,7 +48,7 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
     // produced against; a new queue revision clears them but never touches
     // real transaction results or in-flight approval recovery.
     useEffect(() => {
-        setResult((current) => current?.kind !== "transaction" && current?.source.kind === "simulated" ? null : current);
+        setResult((current) => (current?.kind === "function" || current?.kind === "raw") && current.source.kind === "simulated" ? null : current);
     }, [simulatedRead.revision]);
 
     const sendNow = useCallback(async (prepare: PreparedCallFactory) => {
@@ -57,11 +58,63 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
             setQueued(false);
             setResult(null);
             setError(null);
-            if (!wallet.account || !wallet.chainId || !wallet.signer) {
+            const executionAccount = wallet.executionAccount ?? wallet.account;
+            const executionChainId = wallet.executionChainId ?? wallet.chainId;
+            if (!executionAccount || !executionChainId || (!wallet.isSafeMode && !wallet.signer) || (wallet.isSafeMode && !wallet.safeOwnerConnected && !wallet.safeAppSdk)) {
                 throw Object.assign(new Error("The connected wallet is not ready to send this transaction."), {code: "WALLET_DISCONNECTED"});
             }
-            attemptedCall = await prepare({account: wallet.account, chainId: wallet.chainId});
-            await sendPreparedTransaction(wallet.signer, executableOf(attemptedCall), setResult);
+            attemptedCall = await prepare({account: executionAccount, chainId: executionChainId});
+            const executable = executableOf(attemptedCall);
+            if (wallet.safeAccount?.source === "safe-app" && wallet.safeAppSdk) {
+                const proposal = await wallet.safeAppSdk.txs.send({txs: [{to: executable.to, value: executable.value, data: executable.data}]});
+                setResult({kind: "safe_proposal", status: "awaiting_approvals", safeTxHash: proposal.safeTxHash, threshold: wallet.safeAccount.threshold});
+            } else if ((wallet.safeAccount?.source === "manual"
+                || (wallet.safeAccount?.source === "connected-account" && wallet.safeAccount.owners.some((owner) => owner.toLowerCase() === wallet.account?.toLowerCase())))
+                && wallet.injectedProvider && wallet.account) {
+                const safeTransaction = await createSafeTransaction(wallet.injectedProvider, wallet.account, wallet.safeAccount.address, executable);
+                if (safeTransaction.threshold > 1) {
+                    const approved = await safeTransaction.protocolKit.getOwnersWhoApprovedTx(safeTransaction.safeTxHash);
+                    let approvalTransactionHash: string | undefined;
+                    if (!approved.some((owner) => owner.toLowerCase() === wallet.account!.toLowerCase())) {
+                        const approval = await safeTransaction.protocolKit.approveTransactionHash(safeTransaction.safeTxHash);
+                        const waited = await waitForSafeOwnerAction(approval, safeTransaction.provider);
+                        approvalTransactionHash = waited.hash;
+                    }
+                    const nextApproved = await safeTransaction.protocolKit.getOwnersWhoApprovedTx(safeTransaction.safeTxHash);
+                    if (nextApproved.length >= safeTransaction.threshold) {
+                        const receipt = await reconcileSafeExecutionResult(safeTransaction, await executeSafeTransaction(safeTransaction, (hash) => setResult({kind: "transaction", status: "submitted", hash})));
+                        setResult({
+                            kind: "transaction",
+                            status: receipt.success ? "confirmed" : "failed",
+                            hash: receipt.transactionHash,
+                            blockNumber: receipt.blockNumber,
+                            gasUsed: receipt.gasUsed,
+                        });
+                        return;
+                    }
+                    setResult({
+                        kind: "safe_proposal",
+                        status: "awaiting_approvals",
+                        safeTxHash: safeTransaction.safeTxHash,
+                        approvalTransactionHash,
+                        approvedOwners: nextApproved.length,
+                        threshold: safeTransaction.threshold,
+                    });
+                } else {
+                    const receipt = await reconcileSafeExecutionResult(safeTransaction, await executeSafeTransaction(safeTransaction, (hash) => setResult({kind: "transaction", status: "submitted", hash})));
+                    setResult({
+                        kind: "transaction",
+                        status: receipt.success ? "confirmed" : "failed",
+                        hash: receipt.transactionHash,
+                        blockNumber: receipt.blockNumber,
+                        gasUsed: receipt.gasUsed,
+                    });
+                }
+            } else if (wallet.signer) {
+                await sendPreparedTransaction(wallet.signer, executable, setResult);
+            } else {
+                throw Object.assign(new Error("Connect an owner wallet to submit this Safe transaction."), {code: "WALLET_DISCONNECTED"});
+            }
         } catch (caughtError) {
             const approvalRequirement = attemptedCall ? detectErc20ApprovalRequirement(caughtError) : null;
             if (attemptedCall && approvalRequirement) {
@@ -76,17 +129,19 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
         } finally {
             setIsResponseLoading(false);
         }
-    }, [wallet.account, wallet.chainId, wallet.signer]);
+    }, [wallet.account, wallet.executionAccount, wallet.executionChainId, wallet.injectedProvider, wallet.isSafeMode, wallet.safeAccount, wallet.safeAppSdk, wallet.safeOwnerConnected, wallet.signer]);
 
     const queueCall = useCallback(async (prepare: PreparedCallFactory) => {
         try {
             setIsQueueing(true);
             setQueued(false);
             setError(null);
-            if (!wallet.account || !wallet.chainId) {
+            const executionAccount = wallet.executionAccount ?? wallet.account;
+            const executionChainId = wallet.executionChainId ?? wallet.chainId;
+            if (!executionAccount || !executionChainId || (wallet.isSafeMode && !wallet.safeOwnerConnected && !wallet.safeAppSdk)) {
                 throw Object.assign(new Error("Connect a wallet before adding calls to the plan."), {code: "WALLET_DISCONNECTED"});
             }
-            const prepared = await prepare({account: wallet.account, chainId: wallet.chainId});
+            const prepared = await prepare({account: executionAccount, chainId: executionChainId});
             transactionPlan.dispatch({type: "ADD_CALL", call: prepared});
             setQueued(true);
         } catch (queueError) {
@@ -94,7 +149,7 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
         } finally {
             setIsQueueing(false);
         }
-    }, [transactionPlan, wallet.account, wallet.chainId]);
+    }, [transactionPlan, wallet.executionAccount, wallet.executionChainId, wallet.isSafeMode, wallet.safeAppSdk, wallet.safeOwnerConnected]);
 
     const runOnchainRead = useCallback(async (run: OnchainReadThunk, fallbackTitle?: string) => {
         setIsResponseLoading(true);

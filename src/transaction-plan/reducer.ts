@@ -235,7 +235,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                 ...state,
                 sequentialExecution: {
                     ...state.sequentialExecution,
-                    calls: [...state.sequentialExecution.calls, {callId: action.callId, status: "submitting"}],
+                    calls: [...state.sequentialExecution.calls, {callId: action.callId, status: "submitting", safeBatch: action.safeBatch}],
                 },
             };
         }
@@ -252,9 +252,78 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                         ...current,
                         status: "pending",
                         transactionHash: action.transactionHash,
+                        safeTxHash: action.safeTxHash ?? current.safeTxHash,
+                        safeNonce: action.safeNonce ?? current.safeNonce,
+                        safeCreatedBlock: action.safeCreatedBlock ?? current.safeCreatedBlock,
+                        safeBatch: action.safeBatch ?? current.safeBatch,
                         submittedAt: action.submittedAt,
                         updatedAt: action.submittedAt,
                     }),
+                    updatedAt: action.submittedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_SAFE_APPROVAL_RECORDED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "submitting") return state;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {
+                        ...current,
+                        status: "awaiting_approvals",
+                        safeTxHash: action.safeTxHash,
+                        safeNonce: action.safeNonce,
+                        safeCreatedBlock: action.safeCreatedBlock,
+                        safeBatch: action.safeBatch,
+                        approvalTransactionHash: action.approvalTransactionHash,
+                        approvedOwners: action.approvedOwners,
+                        threshold: action.threshold,
+                        updatedAt: action.updatedAt,
+                    }),
+                    updatedAt: action.updatedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_SAFE_APPROVALS_UPDATED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "awaiting_approvals") return state;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {...current, approvedOwners: action.approvedOwners, updatedAt: action.updatedAt}),
+                    updatedAt: action.updatedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_SAFE_EXECUTION_SUBMITTED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "awaiting_approvals") return state;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {
+                        ...current,
+                        status: "pending",
+                        transactionHash: action.transactionHash,
+                        submittedAt: action.submittedAt,
+                        updatedAt: action.submittedAt,
+                    }),
+                    updatedAt: action.submittedAt,
+                },
+            };
+        }
+        case "SEQUENTIAL_SAFE_REPLACEMENT_SUBMITTED": {
+            const current = currentSequentialRecord(state);
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || current.status !== "pending") return state;
+            return {
+                ...state,
+                sequentialExecution: {
+                    ...state.sequentialExecution,
+                    calls: replaceCurrentSequentialRecord(state, {...current, transactionHash: action.transactionHash, submittedAt: action.submittedAt, updatedAt: action.submittedAt}),
                     updatedAt: action.submittedAt,
                 },
             };
@@ -273,7 +342,9 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
                 updatedAt: action.updatedAt,
                 error: undefined,
             };
-            const calls = replaceCurrentSequentialRecord(state, confirmed);
+            const calls = current.safeBatch
+                ? state.plan.calls.map((call) => ({...confirmed, callId: call.id}))
+                : replaceCurrentSequentialRecord(state, confirmed);
             const completed = calls.length === state.plan.calls.length;
             return {
                 ...state,
@@ -287,7 +358,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
         }
         case "SEQUENTIAL_CALL_FAILED": {
             const current = currentSequentialRecord(state);
-            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || (current.status !== "pending" && current.status !== "submitting")) {
+            if (state.sequentialExecution.status !== "active" || !current || current.callId !== action.callId || (current.status !== "pending" && current.status !== "submitting" && current.status !== "awaiting_approvals")) {
                 return state;
             }
             return {
@@ -323,7 +394,7 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
         case "STOP_SEQUENTIAL_EXECUTION": {
             if (state.sequentialExecution.status !== "active") return state;
             const current = currentSequentialRecord(state);
-            if (current && (current.status === "submitting" || current.status === "pending")) return state;
+            if (current && (current.status === "submitting" || current.status === "awaiting_approvals" || current.status === "pending")) return state;
             return {
                 ...state,
                 sequentialExecution: {...state.sequentialExecution, status: "stopped", updatedAt: action.updatedAt},

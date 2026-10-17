@@ -53,11 +53,11 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                 {selected && (
                     <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="space-between" sx={{mt: 0.5}} aria-label="Selected contract actions">
                         <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, lineHeight: 1.5}}>
-                            Chain {chainId(selected)} · {selected.isStatic ? "Read-only" : "Wallet"} · {tinyAddress(selected.address)}
+                            Chain {chainId(selected)} · {selected.isStatic ? "Read-only RPC" : "Connected account"} · {tinyAddress(selected.address)}
                         </Typography>
                         <Box sx={{display: "flex", flex: "0 0 auto"}}>
                             <IconButton size="small" aria-label={`Rename ${selected.label}`} onClick={() => setRenaming(selected)}><EditOutlinedIcon fontSize="small" /></IconButton>
-                            <IconButton size="small" aria-label={`Delete ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" aria-label={`Remove ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
                         </Box>
                     </Stack>
                 )}
@@ -75,12 +75,12 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                                 <Typography variant="caption" color="text.secondary" display="block">{shortAddress(contract.address)}</Typography>
                                 <Stack direction="row" spacing={0.5} sx={{mt: 0.75}} flexWrap="wrap" useFlexGap>
                                     <Chip size="small" variant="outlined" label={`Chain ${chainId(contract)}`} />
-                                    <Chip size="small" color={contract.isStatic ? "primary" : "secondary"} variant="outlined" label={contract.isStatic ? "Read-only" : "Wallet"} />
+                                    <Chip size="small" color={contract.isStatic ? "primary" : "secondary"} variant="outlined" label={contract.isStatic ? "Read-only RPC" : "Connected account"} />
                                 </Stack>
                             </Box>
                             <Stack spacing={0.25}>
                                 <IconButton size="small" aria-label={`Rename ${contract.label}`} onClick={(event) => {event.stopPropagation(); setRenaming(contract);}}><EditOutlinedIcon fontSize="small" /></IconButton>
-                                <IconButton size="small" aria-label={`Delete ${contract.label}`} onClick={(event) => {event.stopPropagation(); onDelete(contract.id);}}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                                <IconButton size="small" aria-label={`Remove ${contract.label}`} onClick={(event) => {event.stopPropagation(); onDelete(contract.id);}}><DeleteOutlineIcon fontSize="small" /></IconButton>
                             </Stack>
                         </ListItemButton>
                     ))}

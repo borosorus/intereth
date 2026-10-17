@@ -90,7 +90,7 @@ describe("ContractManager", () => {
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
         render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
-        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
         expect(screen.getByText("Chain ID 1")).toBeInTheDocument();
         expect(screen.getByText("Test chain")).toBeInTheDocument();
     });
@@ -99,11 +99,11 @@ describe("ContractManager", () => {
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
         render(<ContractManager addContract={vi.fn()} showExamples />);
 
-        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
-        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
+        expect(screen.getByRole("checkbox", {name: "Use connected account"})).toBeChecked();
 
         fireEvent.click(screen.getAllByRole("button", {name: "Use example"})[0]);
-        expect(screen.getByRole("checkbox", {name: "Use browser wallet"})).toBeChecked();
+        expect(screen.getByRole("checkbox", {name: "Use connected account"})).toBeChecked();
         expect(screen.getByLabelText("Contract address")).toHaveValue("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
     });
 
@@ -114,7 +114,7 @@ describe("ContractManager", () => {
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
         render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
-        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
 
@@ -145,7 +145,7 @@ describe("ContractManager", () => {
         mockedWalletSession.mockReturnValue(walletSession({status: "ready", signer: {}, chainId: "1"}));
         render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
-        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
         act(() => vi.advanceTimersByTime(500));
@@ -175,7 +175,7 @@ describe("ContractManager", () => {
         render(<ContractManager addContract={vi.fn()} showExamples={false} />);
 
         const manualAbi = JSON.stringify(["function name() view returns (string)"]);
-        fireEvent.click(screen.getByRole("checkbox", {name: "Use browser wallet"}));
+        fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
         fireEvent.change(screen.getByLabelText("JSON ABI"), {target: {value: manualAbi}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));

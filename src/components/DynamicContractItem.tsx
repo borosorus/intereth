@@ -93,7 +93,7 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                 isSending={actions.isResponseLoading}
                                 isQueueing={actions.isQueueing}
                                 sendDisabled={disabled || actions.isResponseLoading || actions.isQueueing}
-                                queueDisabled={disabled || actions.isQueueing || actions.isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                                queueDisabled={disabled || actions.isQueueing || actions.isResponseLoading || !transactionPlan.canEdit || !(wallet.executionAccount ?? wallet.account) || !(wallet.executionChainId ?? wallet.chainId) || (Boolean(wallet.isSafeMode) && !wallet.safeOwnerConnected && !wallet.safeAppSdk)}
                                 onSend={() => void actions.sendNow(prepare)}
                                 onQueue={() => void actions.queueCall(prepare)}
                             />
@@ -116,9 +116,15 @@ export function DynamicFunctionItem({contract, frag, disabled = false, chainId}:
                                     );
                                 }}
                                 onOnChain={() => void actions.runOnchainRead(async (): Promise<CallResultData> => {
-                                    const callArgs = buildParamValues(frag.inputs, args);
-                                    const resp = await contract.getFunction(frag).staticCall(...callArgs);
-                                    return {kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}};
+                                    const encoded = encodeFunctionRead(frag, args);
+                                    const readProvider = contract.runner!.provider ?? contract.runner!;
+                                    if (typeof readProvider.call !== "function") throw new Error("The contract instance has no provider for on-chain reads.");
+                                    const returnData = await readProvider.call({
+                                        to: await contract.getAddress(),
+                                        data: encoded.data,
+                                        from: wallet.executionAccount ?? wallet.account ?? undefined,
+                                    });
+                                    return {kind: "function", outputs: frag.outputs, value: decodeFunctionRead(frag, returnData), source: {kind: "onchain"}};
                                 })}
                                 onPinWatch={() => void actions.pinWatch(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}))}
                                 canPinWatch={watchPin.canPin}
@@ -146,14 +152,17 @@ interface DynamicContractItemProps {
 }
 
 export default function DynamicContractItem({contractId = "wallet-contract", contract, walletChainId: contractChainId}: DynamicContractItemProps){
-    const {signer, chainId: activeWalletChainId, error: walletError, clearError: clearWalletError} = useWalletSession();
+    const wallet = useWalletSession();
+    const {signer, error: walletError, clearError: clearWalletError} = wallet;
+    const activeAccountChainId = wallet.executionChainId ?? wallet.chainId;
     const [address, setAddress] = useState('loading...');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
     const simulation = useSimulation();
-    const walletReady = Boolean(signer && activeWalletChainId === contractChainId);
+    const safeExecutionReady = Boolean(wallet.isSafeMode && (wallet.safeAppSdk || wallet.safeOwnerConnected));
+    const walletReady = Boolean(activeAccountChainId === contractChainId && ((signer && wallet.chainId === contractChainId) || safeExecutionReady));
     const activeContract = useMemo(
-        () => contract.connect(walletReady ? signer : null),
-        [contract, signer, walletReady],
+        () => signer && wallet.chainId === contractChainId ? contract.connect(signer) : contract,
+        [contract, contractChainId, signer, wallet.chainId],
     );
     const functions = useMemo(
         () => contract.interface.fragments.filter((fragment): fragment is ethers.FunctionFragment => fragment.type === "function"),
@@ -177,11 +186,13 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                     {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
                 </Box>
                 <Chip size="small" variant="outlined" label={`Chain ${contractChainId}`} />
-                <Chip size="small" variant="outlined" label="Browser Wallet" />
+                <Chip size="small" variant="outlined" label={wallet.isSafeMode ? "Safe account" : "Connected account"} />
             </Box>
             {!walletReady && (
                 <Alert severity="info">
-                    Connect a browser wallet on chain {contractChainId} to send transactions or run on-chain reads.
+                    {wallet.isSafeMode
+                        ? `Connect a Safe owner wallet on chain ${contractChainId}, or open Intereth in the Safe app, to interact with this instance.`
+                        : `Connect a wallet on chain ${contractChainId} to interact with this instance.`}
                     {simulation.canSimulateChain(contractChainId) ? " Speculative reads remain available." : ""}
                 </Alert>
             )}
@@ -203,7 +214,9 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
                             chainId={contractChainId}
                         />
                     )}
-                    writeDescription="These calls can modify state and may require wallet confirmation."
+                    writeDescription={wallet.isSafeMode
+                        ? "These calls may be sent through the active Safe and can require Safe owner approval."
+                        : "These calls can modify state and may require wallet confirmation."}
                 />
             <RawCall contract={activeContract} disabled={!walletReady} chainId={contractChainId}/>
             <ErrorDialog error={metadataError ?? walletError} onClose={() => {

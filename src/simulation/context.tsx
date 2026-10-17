@@ -113,6 +113,8 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const probeRequestIdRef = useRef(0);
     const metadataRequestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
+    const executionAccount = wallet.executionAccount ?? wallet.account;
+    const executionChainId = wallet.executionChainId ?? wallet.chainId;
     const calls = transactionPlan.state.plan.calls;
     const watches = transactionPlan.state.plan.watches;
     const rpcUrl = chainRpcUrl(context?.chainId);
@@ -122,8 +124,8 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         && browserCapability.provider === wallet.provider
         && browserCapability.account?.toLowerCase() === context.account.toLowerCase()
         && browserCapability.chainId === context.chainId
-        && wallet.account?.toLowerCase() === context.account.toLowerCase()
-        && wallet.chainId === context.chainId,
+        && executionAccount?.toLowerCase() === context.account.toLowerCase()
+        && executionChainId === context.chainId,
     );
     const endpointCandidates = useMemo<SimulationEndpointCandidate[]>(() => {
         const candidates: SimulationEndpointCandidate[] = [];
@@ -139,7 +141,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         }
         return candidates;
     }, [browserMatchesContext, rpcUrl, wallet.provider]);
-    const sessionAllowed = transactionPlan.sessionStatus === "ready" || transactionPlan.sessionStatus === "disconnected";
+    const sessionAllowed = transactionPlan.sessionStatus === "ready" || transactionPlan.sessionStatus === "disconnected" || transactionPlan.sessionStatus === "owner_mismatch";
     const planAvailable = Boolean(context && calls.length > 0 && isExecutionMutable(transactionPlan.state.execution) && sessionAllowed);
     const configured = endpointCandidates.length > 0;
     const active = planAvailable && configured;
@@ -156,20 +158,20 @@ export function SimulationProvider({children}: {children: ReactNode}) {
 
     useEffect(() => {
         const requestId = ++probeRequestIdRef.current;
-        if (!context?.account || wallet.status !== "ready" || !wallet.provider || !wallet.account || !wallet.chainId) {
+        if (!context?.account || wallet.status !== "ready" || !wallet.provider || !executionAccount || !executionChainId) {
             setBrowserCapability({
                 status: "idle",
                 provider: wallet.provider,
-                account: wallet.account,
-                chainId: wallet.chainId,
+                account: executionAccount,
+                chainId: executionChainId,
                 error: null,
             });
             return;
         }
 
         const provider = wallet.provider;
-        const account = wallet.account;
-        const chainId = wallet.chainId;
+        const account = executionAccount;
+        const chainId = executionChainId;
         setBrowserCapability({status: "checking", provider, account, chainId, error: null});
         const client = new SimulationClient(new BrowserProviderRpcTransport(provider));
         void client.assertSimulationSupport(chainId, account)
@@ -192,7 +194,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         return () => {
             if (requestId === probeRequestIdRef.current) probeRequestIdRef.current += 1;
         };
-    }, [context?.account, context?.chainId, retryCount, wallet.account, wallet.chainId, wallet.provider, wallet.status]);
+    }, [context?.account, context?.chainId, executionAccount, executionChainId, retryCount, wallet.provider, wallet.status]);
 
     useEffect(() => {
         const requestId = ++requestIdRef.current;
@@ -476,10 +478,10 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         if (!context) return "idle";
         if (endpointCandidates.length > 0) return "ready";
         const probingCurrentChain = browserCapability.provider === wallet.provider
-            && browserCapability.chainId === wallet.chainId
-            && wallet.chainId === context.chainId;
+            && browserCapability.chainId === executionChainId
+            && executionChainId === context.chainId;
         return probingCurrentChain && browserCapability.status === "checking" ? "checking" : "unavailable";
-    }, [browserCapability.chainId, browserCapability.provider, browserCapability.status, context, endpointCandidates.length, wallet.chainId, wallet.provider]);
+    }, [browserCapability.chainId, browserCapability.provider, browserCapability.status, context, endpointCandidates.length, executionChainId, wallet.provider]);
 
     const value = useMemo<SimulationContextValue>(() => ({
         ...state,

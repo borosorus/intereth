@@ -21,7 +21,12 @@ export function TransactionPlanProvider({children}: {children: ReactNode}) {
         undefined,
         () => loadTransactionPlan(),
     );
-    const walletIdentity = useMemo(() => ({account: wallet.account, chainId: wallet.chainId}), [wallet.account, wallet.chainId]);
+    const walletIdentity = useMemo(() => ({
+        account: wallet.executionAccount ?? wallet.account,
+        chainId: wallet.executionChainId ?? wallet.chainId,
+        isSafeMode: Boolean(wallet.isSafeMode),
+        ownerAuthorized: Boolean(wallet.safeOwnerConnected),
+    }), [wallet.account, wallet.chainId, wallet.executionAccount, wallet.executionChainId, wallet.isSafeMode, wallet.safeOwnerConnected]);
     const sessionStatus = selectPlanSessionStatus(state, walletIdentity);
     const canEdit = selectCanEditPlan(state, walletIdentity);
 

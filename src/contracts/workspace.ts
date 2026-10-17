@@ -44,11 +44,14 @@ export function useContractWorkspace() {
     planStateRef.current = transactionPlan.state;
 
     useLayoutEffect(() => {
-        if (!wallet.account || !wallet.chainId) {
+        const account = wallet.executionAccount ?? wallet.account;
+        const chainId = wallet.executionChainId ?? wallet.chainId;
+        const identityReady = Boolean(wallet.safeAppSdk || (wallet.status === "ready" && (!wallet.isSafeMode || wallet.safeOwnerConnected)));
+        if (!identityReady || !account || !chainId) {
             return;
         }
 
-        const nextIdentity = {account: wallet.account, chainId: wallet.chainId};
+        const nextIdentity = {account, chainId};
         const transition = reconcileWalletWorkspace(contractsRef.current, planStateRef.current, previousIdentity.current, nextIdentity);
 
         if (transition.removedCount > 0) {
@@ -62,7 +65,7 @@ export function useContractWorkspace() {
         }
 
         previousIdentity.current = nextIdentity;
-    }, [interactionAccount, wallet.account, wallet.chainId]);
+    }, [interactionAccount, wallet.executionAccount, wallet.executionChainId, wallet.isSafeMode, wallet.safeAppSdk, wallet.safeOwnerConnected, wallet.status, wallet.account, wallet.chainId]);
 
     useEffect(() => {
         if (contracts.length === 0) {
@@ -79,11 +82,9 @@ export function useContractWorkspace() {
 
     const removeContract = useCallback((id: string) => {
         const instance = contractsRef.current.find((contract) => contract.id === id);
-        if (instance?.isStatic) {
-            const provider = instance.contract.runner?.provider;
-            if (provider instanceof ethers.JsonRpcProvider) {
-                provider.destroy();
-            }
+        const provider = instance?.contract.runner?.provider;
+        if (provider instanceof ethers.JsonRpcProvider) {
+            provider.destroy();
         }
         setContracts((current) => current.filter((contract) => contract.id !== id));
     }, []);

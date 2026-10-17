@@ -82,17 +82,18 @@ export default function CallResult({result}: {result: CallResultData | null}) {
             <Stack spacing={1.25}>
                 <Box sx={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, flexWrap: "wrap"}}>
                     <Typography variant="subtitle2" sx={{fontWeight: 800}}>
-                        {result.kind === "transaction" ? "Transaction result" : result.kind === "raw" ? "Raw call result" : "Call result"}
+                        {result.kind === "transaction" ? "Transaction result" : result.kind === "safe_proposal" ? "Safe transaction" : result.kind === "raw" ? "Raw call result" : "Call result"}
                     </Typography>
+                    {result.kind === "safe_proposal" && <StateBadge kind="warning" label="Awaiting Safe execution" />}
                     {result.kind === "transaction" && <StateBadge
                         kind={result.status === "failed" ? "error" : result.status === "confirmed" ? "success" : result.status === "submitted" ? "wallet" : "warning"}
                         label={({submitted: "Submitted to wallet", pending: "Awaiting confirmation", confirmed: "Confirmed", failed: "Failed"} as const)[result.status]}
                     />}
-                    {result.kind !== "transaction" && (
+                    {(result.kind === "function" || result.kind === "raw") && (
                         <StateBadge kind={result.source.kind === "simulated" ? "speculative" : "onchain"} label={result.source.kind === "simulated" ? "Speculative" : "On-chain"} />
                     )}
                 </Box>
-                {result.kind !== "transaction" && result.source.kind === "simulated" && (
+                {(result.kind === "function" || result.kind === "raw") && result.source.kind === "simulated" && (
                     <Typography variant="caption" color="text.secondary">
                         Computed after {result.source.queuedCallCount} plan {result.source.queuedCallCount === 1 ? "call" : "calls"} using the latest state when run.
                     </Typography>
@@ -117,6 +118,23 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                         </Box>
                         {result.blockNumber !== undefined && <Typography variant="body2"><strong>Block:</strong> {result.blockNumber}</Typography>}
                         {result.gasUsed && <Typography variant="body2"><strong>Gas used:</strong> {result.gasUsed}</Typography>}
+                    </Stack>
+                )}
+                {result.kind === "safe_proposal" && (
+                    <Stack spacing={0.75}>
+                        <Typography variant="body2">
+                            This call was recorded as a Safe owner approval. {result.approvedOwners === undefined
+                                ? "Review and complete it in the Safe interface."
+                                : `${result.approvedOwners} of ${result.threshold} owner approvals are recorded on-chain.`}
+                        </Typography>
+                        <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
+                            <Box sx={{minWidth: 0}}>
+                                <Typography variant="caption" color="text.secondary">Safe transaction hash</Typography>
+                                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>{result.safeTxHash}</Typography>
+                            </Box>
+                            <CopyButton value={result.safeTxHash} label="Copy Safe transaction hash" />
+                        </Box>
+                        {result.approvalTransactionHash && <Typography variant="caption" color="text.secondary">Owner approval transaction: {result.approvalTransactionHash}</Typography>}
                     </Stack>
                 )}
             </Stack>

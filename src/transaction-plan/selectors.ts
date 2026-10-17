@@ -12,11 +12,14 @@ export type PlanSessionStatus =
     | "disconnected"
     | "account_mismatch"
     | "chain_mismatch"
+    | "owner_mismatch"
     | "ready";
 
 export interface ActiveWalletIdentity {
     account: string | null;
     chainId: string | null;
+    isSafeMode?: boolean;
+    ownerAuthorized?: boolean;
 }
 
 export function selectPlanSessionStatus(state: TransactionPlanState, wallet: ActiveWalletIdentity): PlanSessionStatus {
@@ -32,6 +35,9 @@ export function selectPlanSessionStatus(state: TransactionPlanState, wallet: Act
     }
     if (wallet.account.toLowerCase() !== context.account.toLowerCase()) {
         return "account_mismatch";
+    }
+    if (wallet.isSafeMode && !wallet.ownerAuthorized) {
+        return "owner_mismatch";
     }
     return "ready";
 }

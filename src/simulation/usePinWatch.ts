@@ -9,9 +9,11 @@ export function usePinWatch(chainId?: string) {
     const wallet = useWalletSession();
     const {state, dispatch, canEdit} = useTransactionPlan();
     const [notice, setNotice] = useState<string | null>(null);
-    const context = useMemo(() => state.plan.context ?? (wallet.account && wallet.chainId
-        ? {account: wallet.account, chainId: wallet.chainId}
-        : null), [state.plan.context, wallet.account, wallet.chainId]);
+    const executionAccount = wallet.executionAccount ?? wallet.account;
+    const executionChainId = wallet.executionChainId ?? wallet.chainId;
+    const context = useMemo(() => state.plan.context ?? (executionAccount && executionChainId
+        ? {account: executionAccount, chainId: executionChainId}
+        : null), [executionAccount, executionChainId, state.plan.context]);
     const canPin = canEdit
         && wallet.status === "ready"
         && Boolean(context && chainId && context.chainId === chainId);

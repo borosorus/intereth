@@ -27,6 +27,8 @@ export default function SessionNotice() {
     const [error, setError] = useState<NormalizedError | null>(null);
     const [confirmForget, setConfirmForget] = useState(false);
     const context = state.plan.context;
+    const executionAccount = wallet.executionAccount ?? wallet.account;
+    const executionChainId = wallet.executionChainId ?? wallet.chainId;
     if (!context || sessionStatus === "ready" || sessionStatus === "empty") {
         return null;
     }
@@ -71,7 +73,7 @@ export default function SessionNotice() {
                         {forgetButton}
                     </Stack>}
                 >
-                    This plan belongs to chain {context.chainId}; the wallet is on chain {wallet.chainId}.
+                    This plan belongs to chain {context.chainId}; the active account is on chain {executionChainId ?? "unknown"}.
                 </Alert>
                 {forgetDialog}
                 <ErrorDialog error={error} onClose={() => setError(null)} />
@@ -98,9 +100,23 @@ export default function SessionNotice() {
                         {forgetButton}
                     </Stack>}
                 >
-                    This plan belongs to {shortAddress(context.account)}, but {wallet.account ? shortAddress(wallet.account) : "another account"} is connected.
+                    This plan belongs to {shortAddress(context.account)}, but {executionAccount ? shortAddress(executionAccount) : "another account"} is active.
                 </Alert>
                 {forgetDialog}
+                <ErrorDialog error={error} onClose={() => setError(null)} />
+            </>
+        );
+    }
+
+    if (sessionStatus === "owner_mismatch") {
+        const ownerAction = wallet.account && wallet.chainId !== context.chainId
+            ? () => wallet.switchChain(context.chainId).catch((switchError) => setError(normalizeError(switchError, "Network switch failed")))
+            : () => wallet.connectWallet().catch((connectError) => setError(normalizeError(connectError, "Wallet connection failed")));
+        return (
+            <>
+                <Alert severity="warning" sx={sessionAlertSx} action={<Button color="inherit" size="small" onClick={ownerAction}>{wallet.account && wallet.chainId !== context.chainId ? "Switch network" : "Connect Safe owner"}</Button>}>
+                    Connect an owner of Safe {shortAddress(context.account)} on chain {context.chainId} to approve or execute this plan.
+                </Alert>
                 <ErrorDialog error={error} onClose={() => setError(null)} />
             </>
         );

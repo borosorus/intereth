@@ -58,7 +58,15 @@ Every batch is sent with `atomicRequired: true`. Intereth does not silently fall
 
 After submission, the plan is locked and its EIP-5792 batch identifier is stored locally. Pending batches are polled while the matching wallet account and network are active — including while Explore is shown and after a refresh; status can also be refreshed manually or opened in the wallet. Confirmed receipts are shown in the plan. Off-chain failures and complete reverts may be turned back into an editable retry draft only after explicit confirmation. Partial execution or malformed/non-atomic wallet responses remain frozen for manual review and are never resubmitted automatically.
 
-The execution plan contains public addresses, calldata, values, and wallet status data in browser local storage. It never stores private keys or wallet authorization signatures. Clearing site data removes the saved plan.
+## Safe accounts
+
+Intereth detects when it is opened inside a Safe, and it can also use an existing Safe from a connected owner wallet. Choose **Use Safe** and enter the Safe address; Intereth checks the connected network and verifies that the wallet is one of its owners. Verified addresses are saved in a local Safe address book, keyed by network, and remain there when the wallet or active Safe is disconnected. You can switch between saved Safes or remove an address from this browser at any time; removal does not affect the Safe on chain. A selected Safe is revalidated when an owner reconnects on the same network.
+
+For a plan with multiple calls, choose one Safe multi-call transaction to submit the entire ordered plan together, or execute each call as a separate Safe transaction. The multi-call uses Safe's MultiSendCallOnly and reverts all plan calls together if any call fails. A one-owner Safe can execute directly. A Safe with multiple owners records the connected owner's on-chain approval once for the selected transaction; connect another owner wallet to add an approval or execute after the threshold is met. Separate-call mode waits for each call to finish, so earlier calls remain completed if a later one fails. Inside the Safe app, Intereth sends the chosen one-call or multi-call transaction to Safe for its normal approval and execution flow.
+
+Safe support uses the Safe app connection and Safe Protocol Kit directly; it does not require a Safe Transaction Service API key. Plan tracking is stored in this browser, so on-chain approvals remain authoritative if local browser data is cleared.
+
+The execution plan contains public addresses, calldata, values, and wallet status data in browser local storage. The Safe address book also stores public Safe addresses and network IDs there. It never stores private keys or wallet authorization signatures. Clearing site data removes the saved plan and address book.
 
 Custom RPC endpoints are validated before use. Their full URLs are displayed in the interface, including any embedded API keys, so avoid exposing the page in screenshots or screen shares when using credentialed URLs.
 

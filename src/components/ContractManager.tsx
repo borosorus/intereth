@@ -102,21 +102,27 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     const [customRpcState, setCustomRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
     const [customRpcChainId, setCustomRpcChainId] = useState('');
     const [predefinedRpcState, setPredefinedRpcState] = useState<CustomRpcState>(CustomRpcState.disabled);
-    const [useBrowserWallet, setUseBrowserWallet] = useState(false);
+    const [useConnectedAccount, setUseConnectedAccount] = useState(false);
     const [managerError, setManagerError] = useState<NormalizedError | null>(null);
     const [isAddingInstance, setIsAddingInstance] = useState(false);
     const addressInputRef = useRef<HTMLInputElement>(null);
 
-    const {signer, chainId: walletChainId, status: walletStatus, connectWallet, error: walletError, clearError: clearWalletError} = useWalletSession();
+    const wallet = useWalletSession();
+    const {signer, chainId: walletChainId, status: walletStatus, connectWallet, error: walletError, clearError: clearWalletError} = wallet;
+    const executionAccount = wallet.executionAccount ?? wallet.account;
+    const executionChainId = wallet.executionChainId ?? wallet.chainId;
+    const safeAppRpcUrl = wallet.safeAppSdk && executionChainId ? chainsById.get(executionChainId)?.rpcUrl : undefined;
+    const connectedAccountReady = Boolean((signer && walletChainId === executionChainId && (!wallet.isSafeMode || wallet.safeOwnerConnected))
+        || (wallet.safeAppSdk && safeAppRpcUrl));
 
     useEffect(() => {
-        if (walletStatus === "disconnected" && useBrowserWallet) {
-            setUseBrowserWallet(false);
+        if (walletStatus === "disconnected" && !wallet.safeAppSdk && useConnectedAccount) {
+            setUseConnectedAccount(false);
         }
-    }, [useBrowserWallet, walletStatus]);
+    }, [useConnectedAccount, wallet.safeAppSdk, walletStatus]);
 
     useEffect(() => {
-        if (providerIndex === -1 || useBrowserWallet) {
+        if (providerIndex === -1 || useConnectedAccount) {
             setPredefinedRpcState(CustomRpcState.disabled);
             return;
         }
@@ -156,7 +162,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             provider = null;
             pendingProvider?.destroy();
         };
-    }, [providerIndex, useBrowserWallet]);
+    }, [providerIndex, useConnectedAccount]);
 
     useEffect(() => {
         if (providerIndex !== -1) {
@@ -228,8 +234,8 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             : null;
     }, [customRpcChainId, customRpcState, predefinedRpcState, providerIndex, selectedRpcUrl]);
 
-    const resolvedChainId = useBrowserWallet
-        ? (signer ? walletChainId : null)
+    const resolvedChainId = useConnectedAccount
+        ? (connectedAccountReady ? executionChainId : null)
         : selectedProviderDetails?.chainId ?? null;
     const resolvedChainLabel = resolvedChainId
         ? chainsById.get(resolvedChainId)?.label ?? "Unknown network"
@@ -288,26 +294,31 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     }, [activeAbi, activeInterfaceFormat]);
 
     const isAddressValid = ethers.isAddress(address);
-    const canAddInstance = (!automaticAbi || abiLookupState.status === "success") && !abiError && (useBrowserWallet
-        ? Boolean(signer && walletChainId && isAddressValid)
+    const canAddInstance = (!automaticAbi || abiLookupState.status === "success") && !abiError && (useConnectedAccount
+        ? Boolean(connectedAccountReady && executionChainId && isAddressValid)
         : Boolean(isAddressValid && selectedProviderDetails));
 
-    const tryChangeUseBrowserWallet = async () => {
+    const tryChangeUseConnectedAccount = async () => {
         try {
             setManagerError(null);
-            if (useBrowserWallet) {
-                setUseBrowserWallet(false);
+            if (useConnectedAccount) {
+                setUseConnectedAccount(false);
+                return;
+            }
+
+            if (wallet.safeAppSdk) {
+                setUseConnectedAccount(true);
                 return;
             }
 
             if (signer) {
-                setUseBrowserWallet(true);
+                setUseConnectedAccount(true);
                 return;
             }
 
             const nextSigner = await connectWallet();
             if (nextSigner) {
-                setUseBrowserWallet(true);
+                setUseConnectedAccount(true);
             }
         } catch (error) {
             setManagerError(normalizeError(error, "Wallet connection failed"));
@@ -327,14 +338,20 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         try {
             setIsAddingInstance(true);
             setManagerError(null);
-            if (useBrowserWallet && signer && walletChainId) {
+            if (useConnectedAccount && resolvedChainId && executionAccount) {
+                const runner = signer && walletChainId === resolvedChainId
+                    ? signer
+                    : safeAppRpcUrl
+                        ? new ethers.JsonRpcProvider(safeAppRpcUrl)
+                        : null;
+                if (!runner) return;
                 addContract({
                     id: crypto.randomUUID(),
                     label: contractLabel(),
                     address: ethers.getAddress(address),
-                    contract: new ethers.BaseContract(address, getInterface(), signer),
+                    contract: new ethers.BaseContract(address, getInterface(), runner),
                     isStatic: false,
-                    walletChainId,
+                    walletChainId: resolvedChainId,
                 });
                 return;
             }
@@ -411,7 +428,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         // An example fills the contract fields; it must not undo how the user
         // chose to reach the chain. In wallet mode the switch and the wallet's
         // own chain stay exactly as they are.
-        if (!useBrowserWallet) {
+        if (!useConnectedAccount) {
             setProviderIndex(ethereumIndex >= 0 ? ethereumIndex : 0);
             setCustomRpc('');
             setCustomRpcChainId('');
@@ -431,7 +448,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Network &amp; access</Typography>
                     </Box>
                     <Grid container spacing={2} alignItems="center">
-                        {!useBrowserWallet && (
+                        {!useConnectedAccount && (
                             <Grid item xs={12} md={7}>
                                 <FormControl fullWidth error={predefinedRpcState === CustomRpcState.failed}>
                                     <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
@@ -457,13 +474,13 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 </FormControl>
                             </Grid>
                         )}
-                        <Grid item xs={12} md={useBrowserWallet ? 12 : 5}>
+                        <Grid item xs={12} md={useConnectedAccount ? 12 : 5}>
                             <FormControlLabel
-                                control={<Switch checked={useBrowserWallet} onChange={() => tryChangeUseBrowserWallet()}/>}
-                                label="Use browser wallet"
+                                control={<Switch checked={useConnectedAccount} onChange={() => tryChangeUseConnectedAccount()}/>}
+                                label={wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
                             />
                         </Grid>
-                        {providerIndex === -1 && !useBrowserWallet && (
+                        {providerIndex === -1 && !useConnectedAccount && (
                             <Grid item xs={12}>
                                 <TextField
                                     fullWidth
@@ -483,7 +500,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 />
                             </Grid>
                         )}
-                        {!useBrowserWallet && selectedProviderDetails && (
+                        {!useConnectedAccount && selectedProviderDetails && (
                             <Grid item xs={12}>
                                 <Box sx={{px: 0.5}}>
                                     <Typography variant="caption" color="text.secondary" sx={{display: "block", mb: 0.35, fontWeight: 700}}>
@@ -493,13 +510,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                 </Box>
                             </Grid>
                         )}
-                        {useBrowserWallet && signer && walletChainId && (
+                        {useConnectedAccount && connectedAccountReady && executionChainId && (
                             <Grid item xs={12}>
                                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{px: 0.5}}>
                                     <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700}}>
                                         {resolvedChainLabel}
                                     </Typography>
-                                    <Chip label={`Chain ID ${walletChainId}`} size="small" variant="outlined" />
+                                    <Chip label={`Chain ID ${executionChainId}`} size="small" variant="outlined" />
+                                    {executionAccount && <Chip label={`${wallet.isSafeMode ? "Safe" : "Account"} ${executionAccount.slice(0, 6)}…${executionAccount.slice(-4)}`} size="small" variant="outlined" />}
                                 </Stack>
                             </Grid>
                         )}
@@ -632,8 +650,10 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
             <Box sx={{display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'space-between', flexWrap: 'wrap'}}>
                 <Typography variant="body2" color="text.secondary">
-                    {useBrowserWallet
-                        ? (signer ? 'Connected to browser wallet.' : 'Connect a browser wallet to enable interactive calls.')
+                    {useConnectedAccount
+                        ? (connectedAccountReady
+                            ? wallet.isSafeMode ? 'Using the active Safe account; calls route through its Safe connection.' : 'Using the connected account for this contract instance.'
+                            : wallet.isSafeMode ? 'Connect a Safe owner wallet or open this page in the Safe app.' : 'Connect a wallet to enable interactive calls.')
                         : (selectedProviderDetails ? `Ready on ${selectedProviderDetails.label}.` : 'Waiting for a valid RPC connection.')}
                 </Typography>
                 <Button

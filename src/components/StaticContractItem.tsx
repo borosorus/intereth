@@ -18,6 +18,7 @@ import { FunctionAccordion, FunctionMutabilityBadge } from "./ContractFunctionSe
 import { monoFont } from "../ui/theme";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
+import { useWalletSession } from "../wallet/WalletSessionContext";
 
 interface StaticFunctionItemProps {
     contract: ethers.BaseContract;
@@ -31,6 +32,7 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
     const contentId = `${accordionId}-content`;
     const [expanded, setExpanded] = useState(false);
     const actions = useCallActions({chainId});
+    const wallet = useWalletSession();
     const planUi = useTransactionPlanUi();
     const {watchPin, result, error, setError} = actions;
 
@@ -56,7 +58,11 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                     {frag.format("full")}
                 </Typography>
                 {isDisabled ? (
-                    <Typography color="text.secondary">Connect a browser wallet to make state-modifying calls.</Typography>
+                    <Typography color="text.secondary">
+                        {wallet.isSafeMode
+                            ? "Read-only contract instances cannot send Safe transactions. Add this contract using the active Safe account to prepare calls."
+                            : "Read-only contract instances cannot send transactions. Add this contract using your connected account to call these functions."}
+                    </Typography>
                 )
                 : (
                     <>
@@ -88,8 +94,14 @@ export function StaticFunctionItem({contract, frag, chainId}: StaticFunctionItem
                                 )}
                                 onOnChain={() => void actions.runOnchainRead(async (): Promise<CallResultData> => {
                                     const encoded = encodeFunctionRead(frag, args);
-                                    const resp = await contract.getFunction(frag)(...encoded.args);
-                                    return {kind: "function", outputs: frag.outputs, value: resp, source: {kind: "onchain"}};
+                                    const readProvider = contract.runner!.provider ?? contract.runner!;
+                                    if (typeof readProvider.call !== "function") throw new Error("The contract instance has no provider for on-chain reads.");
+                                    const returnData = await readProvider.call({
+                                        to: await contract.getAddress(),
+                                        data: encoded.data,
+                                        from: wallet.executionAccount ?? wallet.account ?? undefined,
+                                    });
+                                    return {kind: "function", outputs: frag.outputs, value: decodeFunctionRead(frag, returnData), source: {kind: "onchain"}};
                                 })}
                                 onPinWatch={() => void actions.pinWatch(async (context) => prepareAbiWatch({fragment: frag, argumentValues: args, target: await contract.getAddress(), context}))}
                                 canPinWatch={watchPin.canPin}
@@ -112,6 +124,7 @@ interface StaticContractItemProps {
 }
 
 export default function StaticContractItem({contractId = "static-contract", contract, providerDetails}: StaticContractItemProps){
+    const wallet = useWalletSession();
     const [address, setAddress] = useState('loading...');
     const [detectedChainId, setDetectedChainId] = useState<string>('');
     const [metadataError, setMetadataError] = useState<NormalizedError | null>(null);
@@ -161,7 +174,9 @@ export default function StaticContractItem({contractId = "static-contract", cont
                         <StaticFunctionItem key={fragment.format("minimal")} frag={fragment} contract={contract} chainId={chainId} />
                     )}
                     writeTitle="Write functions · wallet required"
-                    writeDescription="Add this contract using Browser Wallet to call these functions."
+                    writeDescription={wallet.isSafeMode
+                        ? "Add this contract using the active Safe account to prepare calls that can be proposed to Safe owners."
+                        : "Add this contract using your connected account to call these functions."}
                     writeCollapsible
                 />
             <RawCall contract={contract} isStaticOnly={true} chainId={chainId}/>

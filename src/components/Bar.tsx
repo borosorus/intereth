@@ -40,7 +40,7 @@ export default function Bar(){
                   </Typography>
                 </Box>
               </Stack>
-              <Box sx={{display: "flex", alignItems: "center", justifyContent: "center", order: {xs: 3, sm: 0}, flex: {xs: "1 0 100%", sm: 0}, position: {xs: "static", sm: "absolute"}, left: {sm: "50%"}, top: {sm: 0}, bottom: {sm: 0}, transform: {sm: "translateX(-50%)"}}}>
+              <Box sx={{display: "flex", alignItems: "center", justifyContent: "center", order: {xs: 3, lg: 0}, flex: {xs: "1 0 100%", lg: 0}, position: {xs: "static", lg: "absolute"}, left: {lg: "50%"}, top: {lg: 0}, bottom: {lg: 0}, transform: {lg: "translateX(-50%)"}}}>
                 <ToggleButtonGroup
                   exclusive
                   size="small"
@@ -54,17 +54,16 @@ export default function Bar(){
                     bgcolor: "background.paper",
                     p: 0.25,
                     gap: 0.25,
-                    // On phones the switcher owns its whole row below the brand
-                    // row, so the two groups never interleave; equal segments
-                    // read as one segmented control rather than two stray buttons.
-                    width: {xs: "100%", sm: "auto"},
+                    // Below desktop width the switcher uses its own row so it
+                    // cannot collide with the wallet controls near breakpoints.
+                    width: {xs: "100%", lg: "auto"},
                     "& .MuiToggleButton-root": {
                       border: 0,
                       borderRadius: "99px !important",
                       gap: 0.75,
                       fontWeight: 700,
                       px: {xs: 1, sm: 1.75},
-                      flex: {xs: 1, sm: "0 1 auto"},
+                      flex: {xs: 1, lg: "0 1 auto"},
                       color: "text.secondary",
                       "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
                     },

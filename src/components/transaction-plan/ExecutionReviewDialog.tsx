@@ -23,7 +23,7 @@ import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { simulationPresentation, StateBadge } from "../StateBadge";
 
-export type ExecutionMechanism = "atomic-batch" | "smart-account" | "sequential";
+export type ExecutionMechanism = "atomic-batch" | "smart-account" | "sequential" | "safe-batch";
 
 function quantity(value: string) {
     try {
@@ -45,6 +45,7 @@ function snapshotAge(capturedAt: number, now: number) {
 
 function mechanismLabel(mechanism: ExecutionMechanism) {
     if (mechanism === "smart-account") return "EIP-5792 with smart-account enablement";
+    if (mechanism === "safe-batch") return "One Safe multi-call transaction";
     if (mechanism === "sequential") return "Individual transactions in plan order";
     return "EIP-5792 atomic batch";
 }
@@ -61,6 +62,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
     const [riskAccepted, setRiskAccepted] = useState(false);
     const [delegationAccepted, setDelegationAccepted] = useState(false);
     const [sequentialAccepted, setSequentialAccepted] = useState(false);
+    const [safeBatchAccepted, setSafeBatchAccepted] = useState(false);
     const [now, setNow] = useState(Date.now());
 
     useEffect(() => {
@@ -68,6 +70,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
         setRiskAccepted(false);
         setDelegationAccepted(false);
         setSequentialAccepted(false);
+        setSafeBatchAccepted(false);
         setNow(Date.now());
         const interval = window.setInterval(() => setNow(Date.now()), 30_000);
         return () => window.clearInterval(interval);
@@ -86,11 +89,13 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
     const requiresDelegationAcceptance = mechanism === "smart-account";
     const requiresSequentialAcceptance = mechanism === "sequential";
     const sessionMatches = sessionStatus === "ready"
-        && Boolean(context && wallet.account?.toLowerCase() === context.account.toLowerCase() && wallet.chainId === context.chainId);
+        && Boolean(context && (wallet.executionAccount ?? wallet.account)?.toLowerCase() === context.account.toLowerCase() && (wallet.executionChainId ?? wallet.chainId) === context.chainId)
+        && (!wallet.isSafeMode || wallet.safeOwnerConnected || Boolean(wallet.safeAppSdk));
     const canConfirm = sessionMatches
         && knownReverts.length === 0
         && (!requiresRiskAcceptance || riskAccepted)
         && (!requiresDelegationAcceptance || delegationAccepted)
+        && (mechanism !== "safe-batch" || safeBatchAccepted)
         && (!requiresSequentialAcceptance || sequentialAccepted);
     const totalNative = summarizeNativeValue(calls.reduce((total, call) => total + BigInt(call.value), BigInt(0)).toString());
     const accountChanges = fresh && snapshot
@@ -120,8 +125,19 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
 
                     {mechanism === "sequential" && (
                         <Alert severity="warning">
-                            These calls are not atomic. Each call requires a separate wallet confirmation, and confirmed transactions remain on-chain if a later call fails or is rejected.
+                            {wallet.isSafeMode
+                                ? "These calls are not atomic. Each call is a separate Safe transaction. Multi-owner calls need on-chain owner approvals, and confirmed calls remain on-chain if a later call fails."
+                                : "These calls are not atomic. Each call requires a separate wallet confirmation, and confirmed transactions remain on-chain if a later call fails or is rejected."}
                         </Alert>
+                    )}
+                    {mechanism === "safe-batch" && (
+                        <>
+                            <Alert severity="warning">All queued calls are sent together as one ordered Safe transaction. Safe owners approve the whole plan once. If any inner call fails, the Safe multi-call reverts the batch.</Alert>
+                            <FormControlLabel
+                                control={<Checkbox checked={safeBatchAccepted} onChange={(event) => setSafeBatchAccepted(event.target.checked)} />}
+                                label="I understand this submits every queued call in one Safe transaction."
+                            />
+                        </>
                     )}
 
                     <Box>
@@ -209,7 +225,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
                 <Button variant="contained" color="secondary" disabled={!canConfirm} onClick={onConfirm}>
-                    {mechanism === "smart-account" ? "Enable and submit" : mechanism === "sequential" ? "Start sequential execution" : "Submit atomic batch"}
+                    {mechanism === "safe-batch" ? "Send Safe multi-call" : mechanism === "smart-account" ? "Enable and submit" : mechanism === "sequential" ? "Start sequential execution" : "Submit atomic batch"}
                 </Button>
             </DialogActions>
         </ResponsiveDialog>

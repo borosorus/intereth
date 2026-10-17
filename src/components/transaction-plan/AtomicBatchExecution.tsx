@@ -77,7 +77,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
     }, []);
 
     const checkCapability = useCallback(async () => {
-        if (!executor || !context || sessionStatus !== "ready" || state.execution.status !== "idle") {
+        if (!executor || wallet.isSafeMode || !context || sessionStatus !== "ready" || state.execution.status !== "idle") {
             return;
         }
         const request = ++capabilityRequest.current;
@@ -86,7 +86,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
         if (capabilityRequest.current === request) {
             setCapability(result);
         }
-    }, [context, executor, sessionStatus, state.execution.status]);
+    }, [context, executor, sessionStatus, state.execution.status, wallet.isSafeMode]);
 
     useEffect(() => {
         if (reviewOpen && capability.status === "unchecked") {
@@ -96,6 +96,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
 
     const submit = useCallback(async () => {
         if (!executor
+            || wallet.isSafeMode
             || !context
             || sessionStatus !== "ready"
             || (capability.status !== "supported" && capability.status !== "ready")) {
@@ -116,7 +117,7 @@ export function useAtomicBatchExecution(reviewOpen: boolean): AtomicBatchControl
             dispatch({type: "BATCH_SUBMISSION_FAILED", error: storedError(normalized)});
             setError(normalized);
         }
-    }, [capability.status, context, dispatch, executor, sessionStatus, state.plan.calls, wallet.account, wallet.chainId]);
+    }, [capability.status, context, dispatch, executor, sessionStatus, state.plan.calls, wallet.account, wallet.chainId, wallet.isSafeMode]);
 
     const refresh = useCallback(async () => {
         const batchId = state.execution.batchId;

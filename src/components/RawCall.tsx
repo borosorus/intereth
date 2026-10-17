@@ -31,10 +31,10 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     // runner capability check rather than a wallet check, so it stays here.
     const guardRunner = useCallback((needsSend: boolean) => {
         const runner = contract.runner;
-        if (typeof runner?.call === "function" && (!needsSend || typeof runner?.sendTransaction === "function")) return true;
+        if (typeof runner?.call === "function" && (!needsSend || typeof runner?.sendTransaction === "function" || wallet.safeAppSdk || wallet.safeOwnerConnected)) return true;
         setError(normalizeError(new Error("The connected provider cannot perform this action."), "Runner unavailable"));
         return false;
-    }, [contract, setError]);
+    }, [contract, setError, wallet.safeAppSdk, wallet.safeOwnerConnected]);
 
     // Authoring ends here: raw calldata plus value becomes the same prepared
     // call for send and queue.
@@ -102,11 +102,19 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     }}
                     onOnChain={() => {
                         if (!guardRunner(false)) return;
-                        void actions.runOnchainRead(async (): Promise<CallResultData> => ({
-                            kind: "raw",
-                            data: await contract.runner!.call!({to: await contract.getAddress(), data: normalizeReadData(data)}),
-                            source: {kind: "onchain"},
-                        }), "Raw call failed");
+                        void actions.runOnchainRead(async (): Promise<CallResultData> => {
+                            const readProvider = contract.runner!.provider ?? contract.runner!;
+                            if (typeof readProvider.call !== "function") throw new Error("The contract instance has no provider for on-chain reads.");
+                            return {
+                                kind: "raw",
+                                data: await readProvider.call({
+                                to: await contract.getAddress(),
+                                data: normalizeReadData(data),
+                                from: wallet.executionAccount ?? wallet.account ?? undefined,
+                                }),
+                                source: {kind: "onchain"},
+                            };
+                        }, "Raw call failed");
                     }}
                     onPinWatch={() => void actions.pinWatch(async (context) => prepareRawWatch({target: await contract.getAddress(), context, data}))}
                     canPinWatch={watchPin.canPin}
@@ -116,7 +124,7 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     isSending={actions.isResponseLoading}
                     isQueueing={actions.isQueueing}
                     sendDisabled={disabled || actions.isResponseLoading || actions.isQueueing}
-                    queueDisabled={disabled || actions.isQueueing || actions.isResponseLoading || !transactionPlan.canEdit || !wallet.account || !wallet.chainId}
+                    queueDisabled={disabled || actions.isQueueing || actions.isResponseLoading || !transactionPlan.canEdit || !(wallet.executionAccount ?? wallet.account) || !(wallet.executionChainId ?? wallet.chainId) || (Boolean(wallet.isSafeMode) && !wallet.safeOwnerConnected && !wallet.safeAppSdk)}
                     onSend={() => {
                         if (!guardRunner(true)) return;
                         void actions.sendNow(prepare);

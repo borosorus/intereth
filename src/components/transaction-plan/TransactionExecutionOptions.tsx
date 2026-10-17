@@ -3,9 +3,11 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import InfoHint from "../InfoHint";
 import AtomicBatchExecution, { AtomicBatchController } from "./AtomicBatchExecution";
 import SequentialExecution from "./SequentialExecution";
+import { useWalletSession } from "../../wallet/WalletSessionContext";
 
 export default function TransactionExecutionOptions({controller}: {controller: AtomicBatchController}) {
     const {state} = useTransactionPlan();
+    const wallet = useWalletSession();
     const capability = controller.capability;
     const sequentialTracked = state.sequentialExecution.status !== "idle";
     const atomicUnavailable = controller.execution.status === "idle"
@@ -13,7 +15,17 @@ export default function TransactionExecutionOptions({controller}: {controller: A
 
     return (
         <Stack spacing={1.5}>
-            {sequentialTracked ? (
+            {wallet.isSafeMode ? (
+                <>
+                    <Divider />
+                    <Box>
+                        <Typography variant="subtitle1" sx={{fontWeight: 800}}>Safe execution</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Send the whole plan in one Safe multi-call transaction, or execute calls separately in order. Multi-owner Safe approvals apply to the selected option.
+                        </Typography>
+                    </Box>
+                </>
+            ) : sequentialTracked ? (
                 <>
                     <Divider />
                     <Box sx={{display: "flex", alignItems: "center", gap: 0.5}}>

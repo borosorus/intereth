@@ -168,14 +168,29 @@ function isExecution(value: unknown): value is BatchExecutionState {
 function isSequentialCall(value: unknown): value is SequentialCallExecution {
     if (!isRecord(value)
         || typeof value.callId !== "string"
-        || !["submitting", "pending", "confirmed", "failed"].includes(String(value.status))) return false;
+        || !["submitting", "awaiting_approvals", "pending", "confirmed", "failed"].includes(String(value.status))) return false;
     if (value.transactionHash !== undefined && (typeof value.transactionHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value.transactionHash))) return false;
+    if (value.safeTxHash !== undefined && (typeof value.safeTxHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value.safeTxHash))) return false;
+    if (value.safeNonce !== undefined && !isDecimal(value.safeNonce)) return false;
+    if (value.safeCreatedBlock !== undefined && !isDecimal(value.safeCreatedBlock)) return false;
+    if (value.safeBatch !== undefined && typeof value.safeBatch !== "boolean") return false;
+    if (value.approvalTransactionHash !== undefined && (typeof value.approvalTransactionHash !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(value.approvalTransactionHash))) return false;
+    if (value.approvedOwners !== undefined && (!Number.isInteger(value.approvedOwners) || Number(value.approvedOwners) < 0)) return false;
+    if (value.threshold !== undefined && (!Number.isInteger(value.threshold) || Number(value.threshold) < 1)) return false;
     if (value.blockNumber !== undefined && !isDecimal(value.blockNumber)) return false;
     if (value.gasUsed !== undefined && !isDecimal(value.gasUsed)) return false;
     if (value.submittedAt !== undefined && !isTimestamp(value.submittedAt)) return false;
     if (value.updatedAt !== undefined && !isTimestamp(value.updatedAt)) return false;
     if (value.error !== undefined && !isStoredError(value.error)) return false;
     if (value.status === "pending") return typeof value.transactionHash === "string" && isTimestamp(value.submittedAt);
+    if (value.status === "awaiting_approvals") {
+        return typeof value.safeTxHash === "string"
+            && isDecimal(value.safeNonce)
+            && Number.isInteger(value.approvedOwners)
+            && Number.isInteger(value.threshold)
+            && Number(value.threshold) >= 1
+            && isTimestamp(value.updatedAt);
+    }
     if (value.status === "confirmed") {
         return typeof value.transactionHash === "string" && isDecimal(value.blockNumber) && isDecimal(value.gasUsed) && isTimestamp(value.updatedAt);
     }

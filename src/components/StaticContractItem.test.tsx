@@ -144,6 +144,6 @@ describe("StaticFunctionItem simulated reads", () => {
 
         fireEvent.click(writeGroup);
         expect(screen.getByRole("button", {name: /update\(\) Write/})).toBeInTheDocument();
-        expect(screen.getByText(/Connect a browser wallet to make state-modifying calls/)).toBeInTheDocument();
+        expect(screen.getByText(/Connect a wallet to make state-modifying calls/)).toBeInTheDocument();
     });
 });

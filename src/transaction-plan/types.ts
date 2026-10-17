@@ -98,7 +98,7 @@ export interface BatchExecutionState {
     error?: BatchExecutionError;
 }
 
-export type SequentialCallExecutionStatus = "submitting" | "pending" | "confirmed" | "failed";
+export type SequentialCallExecutionStatus = "submitting" | "awaiting_approvals" | "pending" | "confirmed" | "failed";
 
 export interface SequentialCallExecution {
     callId: string;
@@ -109,6 +109,13 @@ export interface SequentialCallExecution {
     submittedAt?: number;
     updatedAt?: number;
     error?: BatchExecutionError;
+    safeTxHash?: string;
+    safeNonce?: string;
+    safeCreatedBlock?: string;
+    approvalTransactionHash?: string;
+    approvedOwners?: number;
+    threshold?: number;
+    safeBatch?: boolean;
 }
 
 export interface SequentialExecutionState {
@@ -144,8 +151,12 @@ export type TransactionPlanAction =
     | {type: "BATCH_STATUS_UPDATED"; execution: BatchExecutionState; updatedAt: number}
     | {type: "RESET_FAILED_BATCH"}
     | {type: "START_SEQUENTIAL_EXECUTION"; startedAt: number}
-    | {type: "START_SEQUENTIAL_CALL"; callId: string}
-    | {type: "SEQUENTIAL_CALL_SUBMITTED"; callId: string; transactionHash: string; submittedAt: number}
+    | {type: "START_SEQUENTIAL_CALL"; callId: string; safeBatch?: boolean}
+    | {type: "SEQUENTIAL_CALL_SUBMITTED"; callId: string; transactionHash: string; safeTxHash?: string; safeNonce?: string; safeCreatedBlock?: string; safeBatch?: boolean; submittedAt: number}
+    | {type: "SEQUENTIAL_SAFE_APPROVAL_RECORDED"; callId: string; safeTxHash: string; safeNonce: string; safeCreatedBlock?: string; approvalTransactionHash?: string; approvedOwners: number; threshold: number; safeBatch?: boolean; updatedAt: number}
+    | {type: "SEQUENTIAL_SAFE_APPROVALS_UPDATED"; callId: string; approvedOwners: number; updatedAt: number}
+    | {type: "SEQUENTIAL_SAFE_EXECUTION_SUBMITTED"; callId: string; transactionHash: string; submittedAt: number}
+    | {type: "SEQUENTIAL_SAFE_REPLACEMENT_SUBMITTED"; callId: string; transactionHash: string; submittedAt: number}
     | {type: "SEQUENTIAL_CALL_CONFIRMED"; callId: string; transactionHash: string; blockNumber: string; gasUsed: string; updatedAt: number}
     | {type: "SEQUENTIAL_CALL_FAILED"; callId: string; error: BatchExecutionError; updatedAt: number; transactionHash?: string; blockNumber?: string; gasUsed?: string}
     | {type: "RETRY_SEQUENTIAL_CALL"; callId: string}

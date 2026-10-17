@@ -75,12 +75,37 @@ export const theme = createTheme({
         root: {
           borderRadius: 10,
           fontWeight: 600,
+          "&.MuiButton-outlined:not(.Mui-disabled)": {
+            borderWidth: 1.5,
+            borderColor: "#98a2b3",
+            backgroundColor: "#ffffff",
+          },
+          "&.MuiButton-outlined:not(.Mui-disabled):hover": {
+            borderWidth: 1.5,
+            borderColor: "#667085",
+            backgroundColor: "#f8fafc",
+          },
+          "&.MuiButton-outlinedSecondary:not(.Mui-disabled)": {
+            borderColor: "#6366f1",
+          },
+          "&.MuiButton-outlinedSecondary:not(.Mui-disabled):hover": {
+            borderColor: "#4338ca",
+            backgroundColor: "rgba(79, 70, 229, 0.08)",
+          },
+          "&.MuiButton-outlined.Mui-disabled": {
+            borderColor: "#d0d5dd",
+            backgroundColor: "#f2f4f7",
+          },
         },
       },
     },
     MuiButtonBase: {
       styleOverrides: {
         root: {
+          "&.Mui-focusVisible": {
+            outline: "3px solid rgba(79, 70, 229, 0.5)",
+            outlineOffset: 2,
+          },
           // Touch devices need the platform minimum (~44px) regardless of the
           // compact sizing that reads fine with a mouse; desktop is unaffected.
           "@media (pointer: coarse)": {

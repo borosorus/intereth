@@ -20,6 +20,14 @@ export type CallResultData =
         hash: string;
         blockNumber?: number;
         gasUsed?: string;
+    }
+    | {
+        kind: "safe_proposal";
+        status: "awaiting_approvals" | "submitted";
+        safeTxHash: string;
+        approvalTransactionHash?: string;
+        approvedOwners?: number;
+        threshold: number;
     };
 
 type ErrorLike = {

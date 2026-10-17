@@ -45,6 +45,7 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
     else if (state.sequentialExecution.status === "active") status = {kind: "wallet", label: "Sending one by one"};
     else if (sessionStatus === "chain_mismatch") status = {kind: "warning", label: "Wrong network"};
     else if (sessionStatus === "account_mismatch") status = {kind: "warning", label: "Wrong account"};
+    else if (sessionStatus === "owner_mismatch") status = {kind: "warning", label: "Safe owner required"};
     else if (sessionStatus === "disconnected") status = {kind: "warning", label: "Wallet disconnected"};
 
     return (
