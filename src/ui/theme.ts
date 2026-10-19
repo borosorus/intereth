@@ -96,6 +96,70 @@ export const theme = createTheme({
             borderColor: "#d0d5dd",
             backgroundColor: "#f2f4f7",
           },
+          "&.MuiButton-text": {
+            backgroundColor: "rgba(51, 65, 85, 0.07)",
+          },
+          "&.MuiButton-text:hover": {
+            backgroundColor: "rgba(51, 65, 85, 0.13)",
+          },
+          "&.MuiButton-textSecondary:not(.Mui-disabled)": {
+            color: "#4338ca",
+            backgroundColor: "rgba(79, 70, 229, 0.09)",
+          },
+          "&.MuiButton-textSecondary:not(.Mui-disabled):hover": {
+            backgroundColor: "rgba(79, 70, 229, 0.16)",
+          },
+          "&.MuiButton-textError:not(.Mui-disabled)": {
+            color: "#b91c1c",
+            backgroundColor: "rgba(220, 38, 38, 0.08)",
+          },
+          "&.MuiButton-textError:not(.Mui-disabled):hover": {
+            backgroundColor: "rgba(220, 38, 38, 0.14)",
+          },
+          "&.MuiButton-text.Mui-disabled": {
+            backgroundColor: "rgba(16, 24, 40, 0.045)",
+          },
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "rgba(51, 65, 85, 0.07)",
+          border: "1px solid rgba(51, 65, 85, 0.12)",
+          "&:hover": {backgroundColor: "rgba(51, 65, 85, 0.13)"},
+          "&.MuiIconButton-colorSecondary": {
+            color: "#4338ca",
+            backgroundColor: "rgba(79, 70, 229, 0.09)",
+            borderColor: "rgba(79, 70, 229, 0.18)",
+          },
+          "&.MuiIconButton-colorSecondary:hover": {backgroundColor: "rgba(79, 70, 229, 0.16)"},
+          "&.MuiIconButton-colorError": {
+            color: "#b91c1c",
+            backgroundColor: "rgba(220, 38, 38, 0.08)",
+            borderColor: "rgba(220, 38, 38, 0.18)",
+          },
+          "&.MuiIconButton-colorError:hover": {backgroundColor: "rgba(220, 38, 38, 0.14)"},
+          "&.Mui-disabled": {
+            color: "#98a2b3",
+            backgroundColor: "rgba(16, 24, 40, 0.045)",
+            borderColor: "rgba(16, 24, 40, 0.08)",
+          },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#ffffff",
+          borderColor: "#cbd5e1",
+          "&:hover": {backgroundColor: "#f1f5f9"},
+          "&.Mui-selected": {
+            color: "#ffffff",
+            backgroundColor: "#4f46e5",
+            "&:hover": {backgroundColor: "#4338ca"},
+          },
+          "&.Mui-disabled": {backgroundColor: "#f2f4f7"},
         },
       },
     },

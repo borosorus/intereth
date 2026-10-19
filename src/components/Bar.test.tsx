@@ -7,6 +7,7 @@ import Bar from "./Bar";
 
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 vi.mock("../transaction-plan/uiContext", () => ({useTransactionPlanUi: vi.fn()}));
+vi.mock("./ConnectionButton", () => ({default: () => <button type="button">Connect wallet</button>}));
 vi.mock("@web3-onboard/react", () => ({
     useConnectWallet: () => [{wallet: null, connecting: false}, vi.fn()],
 }));
@@ -64,5 +65,17 @@ describe("Bar workspace navigation", () => {
         mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: true});
         render(<Bar />);
         expect(screen.getByRole("button", {name: "Execution"})).toBeInTheDocument();
+    });
+
+    it("shows workspace guidance from the selector options on hover", async () => {
+        mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: true});
+        render(<Bar />);
+
+        expect(screen.queryByRole("button", {name: "Workspace help"})).not.toBeInTheDocument();
+        fireEvent.mouseOver(screen.getByText("Explore"));
+        expect(await screen.findByRole("tooltip")).toHaveTextContent(/Explore contract functions, read state/);
+        fireEvent.mouseLeave(screen.getByText("Explore"));
+        fireEvent.mouseOver(screen.getByText("Execution"));
+        expect(await screen.findByText(/Review ordered calls and pinned reads/)).toBeInTheDocument();
     });
 });

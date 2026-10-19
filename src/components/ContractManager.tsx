@@ -27,10 +27,11 @@ import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
-import InfoHint from "./InfoHint";
+import WorkspaceSectionHeader, { workspaceSurfaceSx } from "./WorkspaceSectionHeader";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
+import RpcUrlChip from "./RpcUrlChip";
 import { ContractInterfaceFormat, parseContractInterface } from "../contractInterface";
 
 enum CustomRpcState {
@@ -56,12 +57,69 @@ const JSON_ABI_PLACEHOLDER = '[{"type":"function","name":"balanceOf","inputs":[{
 const SOLIDITY_INTERFACE_PLACEHOLDER = "function balanceOf(address account) external view returns (uint256);\nfunction withdraw(address recipient, uint256 amount) external returns (uint256 received);";
 
 const formSectionSx = {
+    ...workspaceSurfaceSx,
     p: {xs: 1.5, sm: 2},
-    border: "1px solid",
-    borderColor: "divider",
-    borderRadius: 2.5,
-    backgroundColor: "background.paper",
+    borderColor: "#cbd5e1",
+    boxShadow: "0 4px 16px rgba(15, 23, 42, 0.07)",
 };
+
+function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: string; onSelect: (example: ContractExample) => void}) {
+    return (
+        <Paper
+            component="aside"
+            variant="outlined"
+            aria-label="Example contracts"
+            sx={{...workspaceSurfaceSx, p: {xs: 2, sm: 2.5}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", boxShadow: "none"}}
+        >
+            <Stack spacing={2}>
+                <Box>
+                    <Typography variant="subtitle1" color="text.secondary" sx={{fontWeight: 700}}>Examples</Typography>
+                </Box>
+                <Stack spacing={1.5}>
+                    {CONTRACT_EXAMPLES.map((example) => {
+                        const selected = selectedAddress.toLowerCase() === example.address.toLowerCase();
+                        return (
+                            <Paper
+                                key={example.id}
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 2.5,
+                                    borderColor: selected ? "secondary.light" : "divider",
+                                    bgcolor: selected ? "rgba(79, 70, 229, 0.035)" : "background.paper",
+                                    boxShadow: "none",
+                                }}
+                            >
+                                <Stack spacing={1.5}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap" useFlexGap>
+                                        <Typography variant="subtitle1" sx={{fontWeight: 800}}>{example.label}</Typography>
+                                        <Chip label="Ethereum" size="small" color="primary" variant="outlined" />
+                                    </Stack>
+                                    <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5, minWidth: 0, p: 0.75, pl: 1.25, borderRadius: 1.5, border: "1px solid", borderColor: "divider", bgcolor: "background.default"}}>
+                                        <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.75rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
+                                            {example.address.slice(0, 6)}…{example.address.slice(-4)}
+                                        </Typography>
+                                        <CopyButton value={example.address} label={`Copy ${example.label} address`} size="small" />
+                                    </Box>
+                                    <Button
+                                        variant="outlined"
+                                        color="secondary"
+                                        size="small"
+                                        fullWidth
+                                        onClick={() => onSelect(example)}
+                                        sx={{fontWeight: 700}}
+                                    >
+                                        {selected ? "Selected example" : "Use example"}
+                                    </Button>
+                                </Stack>
+                            </Paper>
+                        );
+                    })}
+                </Stack>
+            </Stack>
+        </Paper>
+    );
+}
 
 function renderCustomRpcProgress(state: CustomRpcState) {
     switch (state) {
@@ -80,7 +138,7 @@ function ProviderSummary({details}: {details: ProviderDetails}) {
     return (
         <Stack direction={{xs: "column", sm: "row"}} spacing={0.75} alignItems={{xs: "flex-start", sm: "center"}}>
             <Box sx={{minWidth: 0, maxWidth: "100%", fontSize: "0.875rem"}}>
-                <CopyButton value={details.url} label="Copy RPC URL" variant="url" />
+                <RpcUrlChip url={details.url} />
             </Box>
             <Chip label={`Chain ID ${details.chainId}`} size="small" variant="outlined" sx={{flex: "0 0 auto"}} />
         </Stack>
@@ -441,12 +499,12 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     };
 
     return (
-        <Stack spacing={2.5}>
+        <Box sx={showExamples ? {display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "340px minmax(0, 1fr)"}, gap: 2, alignItems: "start"} : {minWidth: 0}}>
+        {showExamples && <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />}
+        <Stack spacing={2.5} sx={{minWidth: 0}}>
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
-                    <Box>
-                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Network &amp; access</Typography>
-                    </Box>
+                    <WorkspaceSectionHeader title="Network & access" />
                     <Grid container spacing={2} alignItems="center">
                         {!useConnectedAccount && (
                             <Grid item xs={12} md={7}>
@@ -527,9 +585,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
-                    <Box>
-                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract</Typography>
-                    </Box>
+                    <WorkspaceSectionHeader title="Contract" />
                     <TextField
                         inputRef={addressInputRef}
                         label="Contract address"
@@ -550,20 +606,16 @@ export default function ContractManager({addContract, showExamples}: ContractMan
 
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
-                    <Box sx={{display: "flex", alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1.25, flexDirection: {xs: "column", sm: "row"}}}>
-                        <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: 0.5}}>
-                            <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contract interface</Typography>
-                            <InfoHint
-                                label="About contract interfaces"
-                                content="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
-                            />
-                        </Box>
-                        <FormControlLabel
+                    <WorkspaceSectionHeader
+                        title="Contract interface"
+                        hintLabel="About contract interfaces"
+                        hintContent="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
+                        action={<FormControlLabel
                             control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
                             label="Fetch ABI automatically"
                             sx={{mr: {sm: 0}, flex: "0 0 auto"}}
-                        />
-                    </Box>
+                        />}
+                    />
                     <TextField
                         label={activeInterfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
                         placeholder={activeInterfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
@@ -667,67 +719,11 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 </Button>
             </Box>
 
-            {showExamples && (
-                <>
-                    <Divider />
-                    <Box>
-                        <Typography variant="overline" color="secondary.main" sx={{fontWeight: 800, letterSpacing: "0.12em"}}>
-                            Explore Ethereum
-                        </Typography>
-                        <Typography variant="h6" sx={{fontWeight: 800, mb: 0.5}}>
-                            Start with an example contract
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{mb: 2}}>
-                            Choose an example to fill the form, review its ABI, then add it when you are ready.
-                        </Typography>
-                        <Grid container spacing={1.5}>
-                            {CONTRACT_EXAMPLES.map((example) => (
-                                <Grid item xs={12} md={4} key={example.id}>
-                                    <Paper
-                                        variant="outlined"
-                                        sx={{
-                                            height: "100%",
-                                            p: 2,
-                                            borderRadius: 2.5,
-                                        }}
-                                    >
-                                        <Stack spacing={1.5} sx={{height: "100%"}}>
-                                            <Box>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-                                                    <Typography variant="subtitle1" sx={{fontWeight: 800}}>{example.label}</Typography>
-                                                    <Chip label="Ethereum" size="small" color="primary" variant="outlined" />
-                                                </Stack>
-                                                <Typography variant="body2" color="text.secondary" sx={{mt: 0.75}}>
-                                                    {example.description}
-                                                </Typography>
-                                            </Box>
-                                            <Typography
-                                                variant="caption"
-                                                color="text.secondary"
-                                                sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", wordBreak: "break-all"}}
-                                            >
-                                                {example.address}
-                                            </Typography>
-                                            <Button
-                                                variant="outlined"
-                                                color="secondary"
-                                                onClick={() => selectExample(example)}
-                                                sx={{mt: "auto", textTransform: "none", fontWeight: 700}}
-                                            >
-                                                Use example
-                                            </Button>
-                                        </Stack>
-                                    </Paper>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </Box>
-                </>
-            )}
             <ErrorDialog error={managerError ?? walletError} onClose={() => {
                 setManagerError(null);
                 clearWalletError();
             }} />
         </Stack>
+        </Box>
     );
 }

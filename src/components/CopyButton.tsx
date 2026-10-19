@@ -64,7 +64,22 @@ export default function CopyButton({value, label, variant = "icon", size = "smal
                 </Button>
             ) : (
                 <Tooltip title={copied ? "Copied" : label}>
-                    <IconButton size={size} onClick={copy} aria-label={label} disabled={disabled}>
+                    <IconButton
+                        size={size}
+                        onClick={copy}
+                        aria-label={label}
+                        disabled={disabled}
+                        sx={{
+                            width: 30,
+                            height: 30,
+                            p: 0.5,
+                            bgcolor: "transparent",
+                            border: 0,
+                            boxShadow: "none",
+                            color: "text.secondary",
+                            "&:hover": {bgcolor: "transparent", color: "secondary.main"},
+                        }}
+                    >
                         {icon}
                     </IconButton>
                 </Tooltip>

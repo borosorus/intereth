@@ -34,6 +34,7 @@ import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../cal
 import { CallImpact, prioritizeBalanceChanges } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
+import { workspaceSurfaceSx } from "../WorkspaceSectionHeader";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -274,7 +275,7 @@ export default function PlanCallItem({call, index, total, impact, metadataByAddr
     const [editing, setEditing] = useState(false);
 
     return (
-        <Paper variant="outlined" sx={{p: 2, borderRadius: 2}}>
+        <Paper variant="outlined" sx={{...workspaceSurfaceSx, p: 2}}>
             {editing ? (
                 <PlanCallEditor
                     call={call}

@@ -37,6 +37,7 @@ describe("contract function presentation", () => {
 
         const toggle = screen.getByRole("button", {name: /^Write functions · wallet required/});
         expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByText("Add this contract using Browser Wallet to call these functions.")).toBeInTheDocument();
         expect(screen.queryByText("update")).not.toBeInTheDocument();
         fireEvent.click(toggle);
         expect(toggle).toHaveAttribute("aria-expanded", "true");

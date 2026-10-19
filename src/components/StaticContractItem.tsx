@@ -8,6 +8,7 @@ import RawCall from "./RawCall";
 import { ProviderDetails } from "../presets";
 import CallResult from "./CallResult";
 import CopyButton from "./CopyButton";
+import RpcUrlChip from "./RpcUrlChip";
 import { useCallActions } from "./useCallActions";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useSimulation } from "../simulation/context";
@@ -159,7 +160,7 @@ export default function StaticContractItem({contractId = "static-contract", cont
                 </Box>
                 <Chip size="small" variant="outlined" label={chainId ? `Chain ${chainId}` : "Detecting chain"} />
                 <Chip size="small" variant="outlined" label={providerDetails?.label ?? "Read-only"} />
-                {providerDetails?.url && <CopyButton value={providerDetails.url} label="Copy RPC URL" variant="url" />}
+                {providerDetails?.url && <RpcUrlChip url={providerDetails.url} />}
             </Box>
             {simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Speculative simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>

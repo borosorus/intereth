@@ -107,6 +107,19 @@ describe("ContractManager", () => {
         expect(screen.getByLabelText("Contract address")).toHaveValue("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
     });
 
+    it("shows examples beside the empty-workspace form", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        const addContract = vi.fn();
+        render(<ContractManager addContract={addContract} showExamples />);
+
+        expect(screen.getByRole("complementary", {name: "Example contracts"})).toBeInTheDocument();
+        expect(screen.getAllByRole("button", {name: "Use example"}).length).toBeGreaterThan(0);
+        expect(screen.getByText(/^0xC02a…/)).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Copy Wrapped Ether address"})).toBeInTheDocument();
+        expect(screen.getByText("Network & access")).toBeInTheDocument();
+        expect(addContract).not.toHaveBeenCalled();
+    });
+
     it("fetches a verified ABI in automatic mode and promotes it when disabled", async () => {
         vi.useFakeTimers();
         const fetched = [{type: "function", name: "owner", inputs: [], outputs: [{type: "address"}], stateMutability: "view"}];

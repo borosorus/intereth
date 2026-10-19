@@ -16,7 +16,7 @@ import { shortAddress } from "../../calls/displayValues";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { executionPresentation, StateBadge } from "../StateBadge";
-import InfoHint from "../InfoHint";
+import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SimulationInspector from "../simulation/SimulationInspector";
 import WatchPanel from "../simulation/WatchPanel";
@@ -25,18 +25,6 @@ import TransactionExecutionOptions from "../transaction-plan/TransactionExecutio
 import { useAtomicBatchExecution } from "../transaction-plan/AtomicBatchExecution";
 import PlanCallItem from "./PlanCallItem";
 import SessionNotice from "./SessionNotice";
-
-function SectionHeader({title, description, hintLabel, hintContent}: {title: string; description?: string; hintLabel?: string; hintContent?: string}) {
-    return (
-        <Box sx={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
-            <Box sx={{display: "flex", alignItems: "center", gap: 0.5}}>
-                <Typography variant="subtitle1" sx={{fontWeight: 800}}>{title}</Typography>
-                {hintContent && <InfoHint label={hintLabel ?? `About ${title}`} content={hintContent} />}
-            </Box>
-            {description && <Typography variant="caption" color="text.secondary">{description}</Typography>}
-        </Box>
-    );
-}
 
 export default function ExecutionWorkspace({active = true}: {active?: boolean}) {
     const {state, dispatch} = useTransactionPlan();
@@ -50,26 +38,24 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
 
     return (
         <Stack spacing={0} sx={{minWidth: 0}}>
-            <Stack spacing={0.5} sx={{pb: 2}}>
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
-                    <Typography variant="h5" sx={{fontWeight: 800, letterSpacing: -0.3}}>Execution</Typography>
-                    {state.execution.status !== "idle" && (
-                        <StateBadge {...executionPresentation(state.execution.status)} variant="filled" />
-                    )}
-                </Box>
-                <Typography variant="body2" color="text.secondary">
-                    {context
+            <Box sx={{pb: 2}}>
+                <WorkspaceSectionHeader
+                    title={<Typography component="span" variant="h5" sx={{fontWeight: 800, letterSpacing: -0.3}}>Execution</Typography>}
+                    description={context
                         ? `Plan executes as ${shortAddress(context.account)} on chain ${context.chainId}.`
                         : "Calls you add from Explore run here, under one account and chain."}
-                </Typography>
-            </Stack>
+                    action={state.execution.status !== "idle" ? (
+                        <StateBadge {...executionPresentation(state.execution.status)} variant="filled" />
+                    ) : undefined}
+                />
+            </Box>
             <Divider />
 
             <SessionNotice />
 
             <Box sx={{py: 2.5}}>
                 <Stack spacing={1.5}>
-                    <SectionHeader
+                    <WorkspaceSectionHeader
                         title="Plan"
                         description={calls.length > 0 ? `${calls.length} ${calls.length === 1 ? "call" : "calls"}, executed top to bottom` : undefined}
                     />
@@ -116,10 +102,9 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                     <Divider />
                     <Box sx={{py: 2.5}}>
                         <Stack spacing={1.5}>
-                            <SectionHeader
+                            <WorkspaceSectionHeader
                                 title="Run plan"
-                                hintLabel="About running a plan"
-                                hintContent="Choose how the plan reaches the network: as an atomic wallet batch when supported, or as individual transactions one at a time."
+                                description="Choose how the plan reaches the network: as an atomic wallet batch when supported, or as individual transactions one at a time."
                             />
                             <TransactionExecutionOptions controller={batchController} />
                         </Stack>

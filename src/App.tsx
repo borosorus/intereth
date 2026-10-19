@@ -1,9 +1,8 @@
 import ContractManager from './components/ContractManager';
-import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack } from '@mui/material';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
-import InfoHint from './components/InfoHint';
 import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
 import ExecutionTray from './components/ExecutionTray';
 import ContractNavigation from './components/ContractNavigation';
@@ -11,6 +10,7 @@ import ResponsiveDialog from './components/ResponsiveDialog';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
+import { workspaceSurfaceSx } from './components/WorkspaceSectionHeader';
 
 export default function App(){
     const workspace = useContractWorkspace();
@@ -35,59 +35,38 @@ export default function App(){
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Box sx={{display: activeView === "explore" ? "block" : "none"}}>
             <Stack spacing={3}>
-              {contracts.length === 0 && (
-                <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap", px: 0.5}}>
-                  <Typography variant="body1" color="text.secondary" sx={{minWidth: 0}}>
-                    Open a contract to explore its functions. Run a read, send one transaction now, or add calls to Execution to review them together.
-                  </Typography>
-                  <Stack direction="row" spacing={0.5}>
-                    <InfoHint
-                        label="About Explore"
-                        content="Explore is where you work with a contract: search functions, run canonical or speculative reads, edit raw calldata, send one transaction immediately, or add calls to your execution plan."
-                    />
-                    <InfoHint
-                        label="About Execution"
-                        content="Execution is the review destination: the ordered plan, pinned watches, a speculative simulation of its effects, and the choice of running everything as one atomic batch or one transaction at a time."
-                    />
-                  </Stack>
-                </Box>
-              )}
-              {contracts.length === 0 && <Paper
-                variant="outlined"
-                sx={{
-                  p: {xs: 2, md: 3},
-                  borderRadius: 2.5,
-                }}
-              >
-                <ContractManager addContract={workspace.addContract} showExamples={contracts.length === 0}/>
-              </Paper>}
+              {contracts.length === 0 && <ContractManager addContract={workspace.addContract} showExamples />}
               {selectedContract && (
-                <Box sx={{display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "250px minmax(0, 1fr)"}, gap: 2, alignItems: "start"}}>
-                  <ContractNavigation
-                    contracts={contracts}
-                    selectedId={selectedContract.id}
-                    onSelect={workspace.selectContract}
-                    onRename={workspace.renameContract}
-                    onDelete={workspace.removeContract}
-                    onAdd={() => setAddContractOpen(true)}
-                  />
-                  <Stack spacing={2} sx={{minWidth: 0}}>
-                    {selectedContract.isStatic ?
-                        <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails}/> :
-                        <DynamicContractItem
-                          key={`${selectedContract.id}:${workspace.interactionAccount ?? "disconnected"}`}
-                          contractId={selectedContract.id}
-                          contract={selectedContract.contract}
-                          walletChainId={selectedContract.walletChainId}
-                        />}
-                  </Stack>
-                </Box>
+                <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(99, 102, 241, 0.045), #fff 34%)"}}>
+                  <Box sx={{display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "250px minmax(0, 1fr)"}, gap: 2, alignItems: "start"}}>
+                    <ContractNavigation
+                      contracts={contracts}
+                      selectedId={selectedContract.id}
+                      onSelect={workspace.selectContract}
+                      onRename={workspace.renameContract}
+                      onDelete={workspace.removeContract}
+                      onAdd={() => setAddContractOpen(true)}
+                    />
+                    <Stack spacing={2} sx={{minWidth: 0}}>
+                      {selectedContract.isStatic ?
+                          <StaticContractItem key={selectedContract.id} contractId={selectedContract.id} contract={selectedContract.contract} providerDetails={selectedContract.providerDetails}/> :
+                          <DynamicContractItem
+                            key={`${selectedContract.id}:${workspace.interactionAccount ?? "disconnected"}`}
+                            contractId={selectedContract.id}
+                            contract={selectedContract.contract}
+                            walletChainId={selectedContract.walletChainId}
+                          />}
+                    </Stack>
+                  </Box>
+                </Paper>
               )}
               <ExecutionTray onHeightChange={setTrayHeight} />
             </Stack>
           </Box>
           <Box sx={{display: activeView === "execution" ? "block" : "none"}}>
-            <ExecutionWorkspace active={activeView === "execution"} />
+            <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(2, 132, 199, 0.04), #fff 40%)"}}>
+              <ExecutionWorkspace active={activeView === "execution"} />
+            </Paper>
           </Box>
         </Container>
         <ResponsiveDialog open={addContractOpen} onClose={() => setAddContractOpen(false)} maxWidth="md">

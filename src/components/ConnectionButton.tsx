@@ -96,7 +96,7 @@ export default function ConnectionButton() {
                     >
                         {wallet.account.slice(0, 6)}…{wallet.account.slice(-4)}
                     </Button>
-                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: 999, borderBottomRightRadius: 999, "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", borderRadius: "0 999px 999px 0", px: 0.8, minHeight: 38, "@media (pointer: coarse)": {minHeight: 44}}}}>
+                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: 999, borderBottomRightRadius: 999, "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", bgcolor: "transparent", border: 0, borderRadius: "0 999px 999px 0", px: 0.8, minHeight: 38, "&:hover": {bgcolor: "rgba(255,255,255,0.14)"}, "@media (pointer: coarse)": {minHeight: 44}}}}>
                         <CopyButton value={wallet.account} label="Copy connected account address" size="small" />
                     </Box>
                 </Stack>

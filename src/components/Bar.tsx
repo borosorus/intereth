@@ -1,4 +1,4 @@
-import { AppBar, Box, Stack, ToggleButton, ToggleButtonGroup, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Stack, ToggleButton, ToggleButtonGroup, Toolbar, Tooltip, Typography } from "@mui/material";
 import ExploreOutlinedIcon from "@mui/icons-material/ExploreOutlined";
 import PlaylistPlayIcon from "@mui/icons-material/PlaylistPlay";
 import ConnectionButton from "./ConnectionButton";
@@ -41,44 +41,58 @@ export default function Bar(){
                 </Box>
               </Stack>
               <Box sx={{display: "flex", alignItems: "center", justifyContent: "center", order: {xs: 3, lg: 0}, flex: {xs: "1 0 100%", lg: 0}, position: {xs: "static", lg: "absolute"}, left: {lg: "50%"}, top: {lg: 0}, bottom: {lg: 0}, transform: {lg: "translateX(-50%)"}}}>
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={activeView}
-                  onChange={(_, view: WorkspaceView | null) => view && setActiveView(view)}
-                  aria-label="Workspace view"
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: "99px",
-                    bgcolor: "background.paper",
-                    p: 0.25,
-                    gap: 0.25,
-                    // Below desktop width the switcher uses its own row so it
-                    // cannot collide with the wallet controls near breakpoints.
-                    width: {xs: "100%", lg: "auto"},
-                    "& .MuiToggleButton-root": {
-                      border: 0,
-                      borderRadius: "99px !important",
-                      gap: 0.75,
-                      fontWeight: 700,
-                      px: {xs: 1, sm: 1.75},
-                      flex: {xs: 1, lg: "0 1 auto"},
-                      color: "text.secondary",
-                      "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
-                    },
-                  }}
+                <Stack
+                    direction="row"
+                    spacing={0.5}
+                    alignItems="center"
+                    sx={{width: {xs: "100%", lg: "auto"}, minWidth: 0}}
                 >
-                  <ToggleButton value="explore">
-                    <ExploreOutlinedIcon fontSize="small" />
-                    Explore
-                  </ToggleButton>
-                  <ToggleButton value="execution" aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
-                    <PlaylistPlayIcon fontSize="small" />
-                    Execution
-                    {planCount > 0 && <Box component="span" sx={{opacity: 0.75}}>({planCount})</Box>}
-                  </ToggleButton>
-                </ToggleButtonGroup>
+                    <ToggleButtonGroup
+                      exclusive
+                      size="small"
+                      value={activeView}
+                      onChange={(_, view: WorkspaceView | null) => view && setActiveView(view)}
+                      aria-label="Workspace view"
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2.5,
+                        bgcolor: "#f1f5f9",
+                        p: 0.25,
+                        gap: 0.25,
+                        width: {xs: "100%", lg: "auto"},
+                        flex: {xs: 1, lg: "0 0 auto"},
+                        "& .MuiToggleButton-root": {
+                          border: 0,
+                          borderRadius: "8px !important",
+                          gap: 0.75,
+                          fontWeight: 700,
+                          px: {xs: 2, sm: 3.5},
+                          flex: {xs: 1, lg: "0 1 auto"},
+                          color: "text.secondary",
+                          "&.Mui-selected": {bgcolor: "secondary.main", color: "#fff", "&:hover": {bgcolor: "secondary.dark"}},
+                        },
+                      }}
+                    >
+                      <ToggleButton value="explore" aria-label="Explore">
+                        <Tooltip describeChild placement="bottom" title="Explore contract functions, read state, prepare transactions, or add calls to your plan.">
+                          <Box component="span" sx={{display: "inline-flex", alignItems: "center", gap: 0.75}}>
+                            <ExploreOutlinedIcon fontSize="small" />
+                            Explore
+                          </Box>
+                        </Tooltip>
+                      </ToggleButton>
+                      <ToggleButton value="execution" aria-label={planCount > 0 ? `Execution (${planCount} in plan)` : "Execution"}>
+                        <Tooltip describeChild placement="bottom" title="Review ordered calls and pinned reads, inspect projected state, and choose how to submit the plan.">
+                          <Box component="span" sx={{display: "inline-flex", alignItems: "center", gap: 0.75}}>
+                            <PlaylistPlayIcon fontSize="small" />
+                            Execution
+                            {planCount > 0 && <Box component="span" sx={{opacity: 0.75}}>({planCount})</Box>}
+                          </Box>
+                        </Tooltip>
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                </Stack>
               </Box>
               <Box sx={{display: "flex", justifyContent: "flex-end", flex: "0 0 auto", ml: "auto"}}><ConnectionButton/></Box>
             </Toolbar>
