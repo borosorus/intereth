@@ -69,50 +69,36 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
             component="aside"
             variant="outlined"
             aria-label="Example contracts"
-            sx={{...workspaceSurfaceSx, p: {xs: 2, sm: 2.5}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", boxShadow: "none"}}
+            sx={{...workspaceSurfaceSx, p: {xs: 1.5, sm: 2}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", borderColor: "rgba(148, 163, 184, 0.3)", boxShadow: "none"}}
         >
-            <Stack spacing={2}>
-                <Box>
-                    <Typography variant="subtitle1" color="text.secondary" sx={{fontWeight: 700}}>Examples</Typography>
-                </Box>
-                <Stack spacing={1.5}>
+            <Stack spacing={0.5}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{fontWeight: 700, px: 0.5, pb: 0.5}}>Examples</Typography>
+                <Stack divider={<Divider flexItem />}>
                     {CONTRACT_EXAMPLES.map((example) => {
                         const selected = selectedAddress.toLowerCase() === example.address.toLowerCase();
                         return (
-                            <Paper
-                                key={example.id}
-                                variant="outlined"
-                                sx={{
-                                    p: 2,
-                                    borderRadius: 2.5,
-                                    borderColor: selected ? "secondary.light" : "divider",
-                                    bgcolor: selected ? "rgba(79, 70, 229, 0.035)" : "background.paper",
-                                    boxShadow: "none",
-                                }}
-                            >
-                                <Stack spacing={1.5}>
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap" useFlexGap>
-                                        <Typography variant="subtitle1" sx={{fontWeight: 800}}>{example.label}</Typography>
-                                        <Chip label="Ethereum" size="small" color="primary" variant="outlined" />
+                            <Box key={example.id} sx={{py: 1.5, px: 0.5, bgcolor: selected ? "rgba(79, 70, 229, 0.035)" : "transparent"}}>
+                                <Stack spacing={0.75}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" gap={0.75}>
+                                        <Typography variant="body2" sx={{fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{example.label}</Typography>
+                                        <Button
+                                            variant="outlined"
+                                            color={selected ? "secondary" : "primary"}
+                                            size="small"
+                                            onClick={() => onSelect(example)}
+                                            sx={{fontWeight: 600, flex: "0 0 auto", px: 1}}
+                                        >
+                                            {selected ? "Selected" : "Use example"}
+                                        </Button>
                                     </Stack>
-                                    <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5, minWidth: 0, p: 0.75, pl: 1.25, borderRadius: 1.5, border: "1px solid", borderColor: "divider", bgcolor: "background.default"}}>
-                                        <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.75rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
+                                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{minWidth: 0}}>
+                                        <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.72rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
                                             {example.address.slice(0, 6)}…{example.address.slice(-4)}
                                         </Typography>
                                         <CopyButton value={example.address} label={`Copy ${example.label} address`} size="small" />
-                                    </Box>
-                                    <Button
-                                        variant="outlined"
-                                        color="secondary"
-                                        size="small"
-                                        fullWidth
-                                        onClick={() => onSelect(example)}
-                                        sx={{fontWeight: 700}}
-                                    >
-                                        {selected ? "Selected example" : "Use example"}
-                                    </Button>
+                                    </Stack>
                                 </Stack>
-                            </Paper>
+                            </Box>
                         );
                     })}
                 </Stack>
@@ -499,8 +485,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     };
 
     return (
-        <Box sx={showExamples ? {display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "340px minmax(0, 1fr)"}, gap: 2, alignItems: "start"} : {minWidth: 0}}>
-        {showExamples && <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />}
+        <Box sx={showExamples ? {display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 320px"}, gap: 2, alignItems: "start"} : {minWidth: 0}}>
         <Stack spacing={2.5} sx={{minWidth: 0}}>
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
@@ -724,6 +709,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 clearWalletError();
             }} />
         </Stack>
+        {showExamples && <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />}
         </Box>
     );
 }
