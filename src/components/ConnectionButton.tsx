@@ -87,18 +87,18 @@ export default function ConnectionButton() {
     return (
         <Stack direction="row" spacing={0.75} alignItems="center">
             {wallet.account ? (
-                <Stack direction="row" spacing={0} alignItems="stretch" sx={{borderRadius: 999, bgcolor: "primary.main"}}>
+                <Stack direction="row" spacing={0} alignItems="stretch" sx={{borderRadius: "8px", bgcolor: "primary.main"}}>
                     <Button
                         variant="contained"
                         color="primary"
                         size="medium"
                         startIcon={<AccountBalanceWalletOutlinedIcon />}
                         onClick={() => void connect()}
-                        sx={{borderRadius: "999px 0 0 999px", textTransform: "none", fontWeight: 700, minHeight: 38, px: {xs: 1.1, sm: 1.5}, "& .MuiButton-startIcon": {mr: {xs: 0.5, sm: 0.75}}, "@media (pointer: coarse)": {minHeight: 44}}}
+                        sx={{borderRadius: "8px 0 0 8px", textTransform: "none", fontWeight: 700, minHeight: 38, px: {xs: 1.1, sm: 1.5}, "& .MuiButton-startIcon": {mr: {xs: 0.5, sm: 0.75}}, "@media (pointer: coarse)": {minHeight: 44}}}
                     >
                         {wallet.account.slice(0, 6)}…{wallet.account.slice(-4)}
                     </Button>
-                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: 999, borderBottomRightRadius: 999, "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", bgcolor: "transparent", border: 0, borderRadius: "0 999px 999px 0", px: 0.8, minHeight: 38, "&:hover": {bgcolor: "rgba(255,255,255,0.14)"}, "@media (pointer: coarse)": {minHeight: 44}}}}>
+                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: "8px", borderBottomRightRadius: "8px", "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", bgcolor: "transparent", border: 0, borderRadius: "0 8px 8px 0", px: 0.8, minHeight: 38, "&:hover": {bgcolor: "rgba(255,255,255,0.14)"}, "@media (pointer: coarse)": {minHeight: 44}}}}>
                         <CopyButton value={wallet.account} label="Copy connected account address" size="small" />
                     </Box>
                 </Stack>
@@ -109,7 +109,7 @@ export default function ConnectionButton() {
                     size="medium"
                     startIcon={wallet.status === "loading" ? <CircularProgress size={18} color="inherit" /> : <AccountBalanceWalletOutlinedIcon />}
                     onClick={() => void connect()}
-                    sx={{borderRadius: 999, textTransform: "none", fontWeight: 700, minHeight: 40, px: {xs: 1.1, sm: 1.75}, fontSize: "0.9rem", boxShadow: "0 2px 6px rgba(30, 41, 59, 0.16)", "& .MuiButton-startIcon": {mr: {xs: 0.5, sm: 0.75}}, "@media (pointer: coarse)": {minHeight: 44}}}
+                    sx={{borderRadius: "8px", textTransform: "none", fontWeight: 700, minHeight: 40, px: {xs: 1.1, sm: 1.75}, fontSize: "0.9rem", boxShadow: "0 2px 6px rgba(30, 41, 59, 0.16)", "& .MuiButton-startIcon": {mr: {xs: 0.5, sm: 0.75}}, "@media (pointer: coarse)": {minHeight: 44}}}
                 >
                     <Box sx={{display: {xs: "none", md: "inline"}}}>{wallet.status === "loading" ? "Connecting…" : safe?.source === "manual" ? "Connect owner wallet" : "Connect wallet"}</Box>
                     <Box sx={{display: {xs: "inline", md: "none"}}}>{wallet.status === "loading" ? "Connecting…" : "Connect"}</Box>
@@ -124,7 +124,7 @@ export default function ConnectionButton() {
                     aria-label={safeLabel ? `Manage Safe ${safeLabel}` : wallet.account ? "Manage Safe accounts" : "Saved Safes"}
                     onClick={() => setOpen(true)}
                     sx={{
-                        borderRadius: 999,
+                        borderRadius: "8px",
                         textTransform: "none",
                         fontWeight: 700,
                         minHeight: 38,
