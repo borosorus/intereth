@@ -7,9 +7,9 @@ import {
     FormControl,
     FormControlLabel,
     FormHelperText,
-    Grid,
     InputAdornment,
     InputLabel,
+    ListSubheader,
     MenuItem,
     Paper,
     Select,
@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ContractInstance } from "../contracts/workspace";
@@ -69,7 +70,7 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
             component="aside"
             variant="outlined"
             aria-label="Example contracts"
-            sx={{...workspaceSurfaceSx, p: {xs: 1.5, sm: 2}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", borderColor: "rgba(148, 163, 184, 0.3)", boxShadow: "none"}}
+            sx={{...workspaceSurfaceSx, p: {xs: 1, sm: 1.5}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", borderColor: "rgba(148, 163, 184, 0.3)", boxShadow: "none"}}
         >
             <Stack spacing={0.5}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{fontWeight: 700, px: 0.5, pb: 0.5}}>Examples</Typography>
@@ -77,10 +78,19 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
                     {CONTRACT_EXAMPLES.map((example) => {
                         const selected = selectedAddress.toLowerCase() === example.address.toLowerCase();
                         return (
-                            <Box key={example.id} sx={{py: 1.5, px: 0.5, bgcolor: selected ? "rgba(79, 70, 229, 0.035)" : "transparent"}}>
-                                <Stack spacing={0.75}>
+                            <Box key={example.id} sx={{py: 1.5, px: 1.5, borderRadius: 1, bgcolor: selected ? "rgba(79, 70, 229, 0.035)" : "white"}}>
+                                <Stack direction="column" spacing={0.8}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center" gap={0.75}>
                                         <Typography variant="body2" sx={{fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{example.label}</Typography>
+                                        <Chip label={`Chain ID 1`} size="small" variant="outlined" />
+                                    </Stack>
+                                    <Stack direction="row" justifyContent="space-between">
+                                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{minWidth: 0}}>
+                                            <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.72rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
+                                                {example.address.slice(0, 6)}…{example.address.slice(-4)}
+                                            </Typography>
+                                            <CopyButton value={example.address} label={`Copy ${example.label} address`} size="small" />
+                                        </Stack>
                                         <Button
                                             variant="outlined"
                                             color={selected ? "secondary" : "primary"}
@@ -90,12 +100,6 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
                                         >
                                             {selected ? "Selected" : "Use example"}
                                         </Button>
-                                    </Stack>
-                                    <Stack direction="row" spacing={0.5} alignItems="center" sx={{minWidth: 0}}>
-                                        <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, flex: 1, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.72rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
-                                            {example.address.slice(0, 6)}…{example.address.slice(-4)}
-                                        </Typography>
-                                        <CopyButton value={example.address} label={`Copy ${example.label} address`} size="small" />
                                     </Stack>
                                 </Stack>
                             </Box>
@@ -485,46 +489,117 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     };
 
     return (
-        <Box sx={showExamples ? {display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 320px"}, gap: 2, alignItems: "start"} : {minWidth: 0}}>
+        <Box sx={showExamples
+            ? {display: "grid", width: "100%", minWidth: 0, gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) 320px"}, gap: 2, alignItems: "start"}
+            : {width: "100%", minWidth: 0}}>
         <Stack spacing={2.5} sx={{minWidth: 0}}>
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
                     <WorkspaceSectionHeader title="Network & access" />
-                    <Grid container spacing={2} alignItems="center">
-                        {!useConnectedAccount && (
-                            <Grid item xs={12} md={7}>
-                                <FormControl fullWidth error={predefinedRpcState === CustomRpcState.failed}>
-                                    <InputLabel id="rpc-provider-label">RPC Provider</InputLabel>
-                                    <Select
-                                        labelId="rpc-provider-label"
-                                        id="rpc-provider-select"
-                                        value={providerIndex}
-                                        label="RPC Provider"
-                                        onChange={(event) => setProviderIndex(event.target.value as number)}
-                                        renderValue={(value) => value === -1 ? "Custom" : (() => { const chain = chains[value as number]; return chain ? `${chain.label} · ${chain.id}` : ""; })()}
+                    <Stack spacing={2} sx={{minWidth: 0}}>
+                        <Box sx={{minWidth: 0}}>
+                            <FormControl fullWidth sx={{minWidth: 0}} error={!useConnectedAccount && predefinedRpcState === CustomRpcState.failed}>
+                                <InputLabel id="rpc-provider-label">Connection</InputLabel>
+                                <Select
+                                    labelId="rpc-provider-label"
+                                    id="rpc-provider-select"
+                                    value={useConnectedAccount ? "connected" : providerIndex}
+                                    label="Connection"
+                                    MenuProps={{
+                                        anchorOrigin: {vertical: "bottom", horizontal: "left"},
+                                        transformOrigin: {vertical: "top", horizontal: "left"},
+                                        PaperProps: {
+                                            sx: {
+                                                maxWidth: "calc(100vw - 32px)",
+                                                maxHeight: "min(440px, calc(100vh - 32px))",
+                                                boxSizing: "border-box",
+                                                "& .MuiList-root": {py: 0.75},
+                                            },
+                                        },
+                                    }}
+                                    onChange={(event) => {
+                                        if (event.target.value === "connected") {
+                                            void tryChangeUseConnectedAccount();
+                                            return;
+                                        }
+                                        if (useConnectedAccount) {
+                                            setUseConnectedAccount(false);
+                                        }
+                                        setProviderIndex(event.target.value as number);
+                                    }}
+                                    renderValue={(value) => {
+                                        let selectedLabel: string;
+                                        if (value === "connected") {
+                                            selectedLabel = wallet.isSafeMode ? "Active Safe" : "Connected account";
+                                        } else if (value === -1) {
+                                            selectedLabel = "Custom RPC";
+                                        } else {
+                                            const chain = chains[value as number];
+                                            selectedLabel = chain ? `${chain.label} · Chain ${chain.id}` : "";
+                                        }
+                                        return (
+                                            <Box component="span" sx={{display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                                {selectedLabel}
+                                            </Box>
+                                        );
+                                    }}
+                                >
+                                    <MenuItem
+                                        value="connected"
+                                        sx={{
+                                            mx: 0.75,
+                                            my: 0.5,
+                                            width: "auto",
+                                            px: 1.25,
+                                            borderRadius: 1.25,
+                                            border: "1px solid",
+                                            borderColor: "rgba(79, 70, 229, 0.18)",
+                                            whiteSpace: "normal",
+                                            "&:hover": {bgcolor: "rgba(79, 70, 229, 0.07)"},
+                                            "&.Mui-selected": {bgcolor: "rgba(79, 70, 229, 0.09)"},
+                                            "&.Mui-selected:hover": {bgcolor: "rgba(79, 70, 229, 0.13)"},
+                                        }}
                                     >
-                                        {chains.map((chain, index) => (
-                                            <MenuItem key={chain.id} value={index}>{chain.label} (Chain {chain.id})</MenuItem>
-                                        ))}
-                                        <MenuItem value={-1}>Custom</MenuItem>
-                                    </Select>
-                                    {predefinedRpcState === CustomRpcState.connecting && (
-                                        <FormHelperText>Checking RPC endpoint...</FormHelperText>
-                                    )}
-                                    {predefinedRpcState === CustomRpcState.failed && (
-                                        <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
-                                    )}
-                                </FormControl>
-                            </Grid>
-                        )}
-                        <Grid item xs={12} md={useConnectedAccount ? 12 : 5}>
-                            <FormControlLabel
-                                control={<Switch checked={useConnectedAccount} onChange={() => tryChangeUseConnectedAccount()}/>}
-                                label={wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
-                            />
-                        </Grid>
+                                        <Box sx={{width: 34, height: 34, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 1, bgcolor: "rgba(79, 70, 229, 0.12)", color: "primary.main"}}>
+                                            <AccountBalanceWalletOutlinedIcon fontSize="small" />
+                                        </Box>
+                                        <Box sx={{minWidth: 0, ml: 1.25}}>
+                                            <Typography variant="body2" sx={{fontWeight: 700, lineHeight: 1.35}}>
+                                                {wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{display: "block", lineHeight: 1.35}}>
+                                                {wallet.isSafeMode ? "Read and execute as this Safe" : "Read and execute through your wallet"}
+                                            </Typography>
+                                        </Box>
+                                    </MenuItem>
+                                    <Divider sx={{my: 0.75}} />
+                                    <ListSubheader disableSticky sx={{lineHeight: "32px", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase"}}>
+                                        Network providers
+                                    </ListSubheader>
+                                    {chains.map((chain, index) => (
+                                        <MenuItem key={chain.id} value={index} sx={{gap: 1, minWidth: 0}}>
+                                            <Typography variant="body2" sx={{flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                                {chain.label}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{flex: "0 0 auto"}}>
+                                                Chain {chain.id}
+                                            </Typography>
+                                        </MenuItem>
+                                    ))}
+                                    <MenuItem value={-1}>
+                                        Custom RPC
+                                    </MenuItem>
+                                </Select>
+                                {!useConnectedAccount && predefinedRpcState === CustomRpcState.connecting && (
+                                    <FormHelperText>Checking RPC endpoint...</FormHelperText>
+                                )}
+                                {!useConnectedAccount && predefinedRpcState === CustomRpcState.failed && (
+                                    <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
+                                )}
+                            </FormControl>
+                        </Box>
                         {providerIndex === -1 && !useConnectedAccount && (
-                            <Grid item xs={12}>
+                            <Box sx={{minWidth: 0}}>
                                 <TextField
                                     fullWidth
                                     id="custom-rpc"
@@ -541,30 +616,28 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         ),
                                     }}
                                 />
-                            </Grid>
+                            </Box>
                         )}
                         {!useConnectedAccount && selectedProviderDetails && (
-                            <Grid item xs={12}>
-                                <Box sx={{px: 0.5}}>
-                                    <Typography variant="caption" color="text.secondary" sx={{display: "block", mb: 0.35, fontWeight: 700}}>
-                                        {selectedProviderDetails.label}
-                                    </Typography>
-                                    <ProviderSummary details={selectedProviderDetails} />
-                                </Box>
-                            </Grid>
+                            <Box sx={{minWidth: 0, px: 0.5}}>
+                                <Typography variant="caption" color="text.secondary" sx={{display: "block", mb: 0.35, fontWeight: 700}}>
+                                    {selectedProviderDetails.label}
+                                </Typography>
+                                <ProviderSummary details={selectedProviderDetails} />
+                            </Box>
                         )}
                         {useConnectedAccount && connectedAccountReady && executionChainId && (
-                            <Grid item xs={12}>
-                                <Stack direction="row" spacing={0.75} alignItems="center" sx={{px: 0.5}}>
-                                    <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700}}>
+                            <Box sx={{minWidth: 0, px: 0.5}}>
+                                <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" rowGap={0.75} sx={{minWidth: 0}}>
+                                    <Typography variant="caption" color="text.secondary" sx={{fontWeight: 700, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                         {resolvedChainLabel}
                                     </Typography>
                                     <Chip label={`Chain ID ${executionChainId}`} size="small" variant="outlined" />
                                     {executionAccount && <Chip label={`${wallet.isSafeMode ? "Safe" : "Account"} ${executionAccount.slice(0, 6)}…${executionAccount.slice(-4)}`} size="small" variant="outlined" />}
                                 </Stack>
-                            </Grid>
+                            </Box>
                         )}
-                    </Grid>
+                    </Stack>
                 </Stack>
             </Box>
 
