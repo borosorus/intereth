@@ -639,11 +639,67 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         hintLabel="About contract interfaces"
                         hintContent="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
                         action={<FormControlLabel
-                            control={<Switch checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
+                            labelPlacement="start"
+                            control={<Switch size="small" color="secondary" checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
                             label="Fetch ABI automatically"
-                            sx={{mr: {sm: 0}, flex: "0 0 auto"}}
+                            sx={{
+                                m: 0,
+                                px: 1.25,
+                                py: 0.4,
+                                width: {xs: "100%", sm: "auto"},
+                                justifyContent: "space-between",
+                                gap: 1,
+                                border: "1px solid",
+                                borderColor: automaticAbi ? "rgba(79, 70, 229, 0.36)" : "divider",
+                                borderRadius: 2,
+                                bgcolor: automaticAbi ? "rgba(79, 70, 229, 0.07)" : "background.paper",
+                                transition: "background-color 150ms ease, border-color 150ms ease",
+                                "& .MuiFormControlLabel-label": {fontSize: "0.875rem", fontWeight: 600, color: "text.primary", whiteSpace: "nowrap"},
+                            }}
                         />}
                     />
+                    <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                        <Box sx={{width: {xs: "100%", sm: 220}}}>
+                            <SelectInput<ContractInterfaceFormat>
+                                label="Interface format"
+                                disabled={automaticAbi}
+                                size="small"
+                                value={activeInterfaceFormat}
+                                sx={{width: "100%"}}
+                                onChange={(event) => {
+                                    setInterfaceFormat(event.target.value as ContractInterfaceFormat);
+                                    setAbiPreset("custom");
+                                }}
+                            >
+                                <MenuItem value="json">JSON ABI</MenuItem>
+                                <MenuItem value="solidity">Solidity interface</MenuItem>
+                            </SelectInput>
+                        </Box>
+                        <Box sx={{width: {xs: "100%", sm: 220}}}>
+                            <SelectInput<AbiPresetSelection>
+                                label="ABI preset"
+                                disabled={automaticAbi}
+                                size="small"
+                                value={abiPreset}
+                                sx={{width: "100%"}}
+                                onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
+                                renderValue={(selection) => selection === "custom"
+                                    ? "Custom ABI"
+                                    : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
+                            >
+                                <MenuItem value="custom">Custom ABI</MenuItem>
+                                {ABI_PRESETS.map((preset) => (
+                                    <MenuItem key={preset.id} value={preset.id}>
+                                        <Stack spacing={0.15}>
+                                            <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
+                                        </Stack>
+                                    </MenuItem>
+                                ))}
+                            </SelectInput>
+                        </Box>
+                    </Stack>
+                    <Divider />
                     <TextInput
                         label={activeInterfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
                         optional
@@ -686,48 +742,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             </Button>
                         </Box>
                     )}
-                    <Divider />
-                    <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
-                        <Box sx={{width: {xs: "100%", sm: 220}}}>
-                            <SelectInput<ContractInterfaceFormat>
-                                label="Interface format"
-                                disabled={automaticAbi}
-                                size="small"
-                                value={activeInterfaceFormat}
-                                sx={{width: "100%"}}
-                                onChange={(event) => {
-                                    setInterfaceFormat(event.target.value as ContractInterfaceFormat);
-                                    setAbiPreset("custom");
-                                }}
-                            >
-                                <MenuItem value="json">JSON ABI</MenuItem>
-                                <MenuItem value="solidity">Solidity interface</MenuItem>
-                            </SelectInput>
-                        </Box>
-                        <Box sx={{width: {xs: "100%", sm: 220}}}>
-                            <SelectInput<AbiPresetSelection>
-                                label="ABI preset"
-                                disabled={automaticAbi}
-                                size="small"
-                                value={abiPreset}
-                                sx={{width: "100%"}}
-                                onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
-                                renderValue={(selection) => selection === "custom"
-                                    ? "Custom ABI"
-                                    : ABI_PRESETS.find((preset) => preset.id === selection)?.label ?? "ABI preset"}
-                            >
-                                <MenuItem value="custom">Custom ABI</MenuItem>
-                                {ABI_PRESETS.map((preset) => (
-                                    <MenuItem key={preset.id} value={preset.id}>
-                                        <Stack spacing={0.15}>
-                                            <Typography variant="body2" sx={{fontWeight: 700}}>{preset.label}</Typography>
-                                            <Typography variant="caption" color="text.secondary">{preset.description}</Typography>
-                                        </Stack>
-                                    </MenuItem>
-                                ))}
-                            </SelectInput>
-                        </Box>
-                    </Stack>
                 </Stack>
             </Box>
 
