@@ -6,7 +6,6 @@ import {
     Divider,
     FormControlLabel,
     InputAdornment,
-    ListSubheader,
     MenuItem,
     Paper,
     Stack,
@@ -23,13 +22,14 @@ import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
-import WorkspaceSectionHeader, { workspaceSurfaceSx } from "./WorkspaceSectionHeader";
+import WorkspaceSectionHeader from "./WorkspaceSectionHeader";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
 import RpcUrlChip from "./RpcUrlChip";
 import { ContractInterfaceFormat, parseContractInterface } from "../contractInterface";
-import { SelectInput, TextInput } from "./inputs/FormFields";
+import { DropdownGroupLabel, DropdownOptionContent, SelectInput, TextInput } from "./inputs/FormFields";
+import { monoFont, workspaceSurfaceSx } from "../ui/styles";
 
 enum CustomRpcState {
     disabled,
@@ -82,7 +82,7 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
                                     </Stack>
                                     <Stack direction="row" justifyContent="space-between">
                                         <Stack direction="row" spacing={0.5} alignItems="center" sx={{minWidth: 0}}>
-                                            <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "0.72rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
+                                            <Typography variant="caption" color="text.secondary" sx={{minWidth: 0, fontFamily: monoFont, fontSize: "0.72rem", lineHeight: 1.5, whiteSpace: "nowrap"}}>
                                                 {example.address.slice(0, 6)}…{example.address.slice(-4)}
                                             </Typography>
                                             <CopyButton value={example.address} label={`Copy ${example.label} address`} size="small" />
@@ -504,18 +504,6 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                             : undefined}
                                     id="rpc-provider-select"
                                     value={useConnectedAccount ? "connected" : providerIndex}
-                                    MenuProps={{
-                                        anchorOrigin: {vertical: "bottom", horizontal: "left"},
-                                        transformOrigin: {vertical: "top", horizontal: "left"},
-                                        PaperProps: {
-                                            sx: {
-                                                maxWidth: "calc(100vw - 32px)",
-                                                maxHeight: "min(440px, calc(100vh - 32px))",
-                                                boxSizing: "border-box",
-                                                "& .MuiList-root": {py: 0.75},
-                                            },
-                                        },
-                                    }}
                                     onChange={(event) => {
                                         if (event.target.value === "connected") {
                                             void tryChangeUseConnectedAccount();
@@ -543,50 +531,29 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         );
                                     }}
                                 >
+                                    <DropdownGroupLabel>Access method</DropdownGroupLabel>
                                     <MenuItem
                                         value="connected"
                                         sx={{
-                                            mx: 0.75,
-                                            my: 0.5,
-                                            width: "auto",
-                                            px: 1.25,
-                                            borderRadius: 1.25,
-                                            border: "1px solid",
-                                            borderColor: "rgba(79, 70, 229, 0.18)",
-                                            whiteSpace: "normal",
                                             "&:hover": {bgcolor: "rgba(79, 70, 229, 0.07)"},
-                                            "&.Mui-selected": {bgcolor: "rgba(79, 70, 229, 0.09)"},
-                                            "&.Mui-selected:hover": {bgcolor: "rgba(79, 70, 229, 0.13)"},
                                         }}
                                     >
-                                        <Box sx={{width: 34, height: 34, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 1, bgcolor: "rgba(79, 70, 229, 0.12)", color: "primary.main"}}>
-                                            <AccountBalanceWalletOutlinedIcon fontSize="small" />
-                                        </Box>
-                                        <Box sx={{minWidth: 0, ml: 1.25}}>
-                                            <Typography variant="body2" sx={{fontWeight: 700, lineHeight: 1.35}}>
-                                                {wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{display: "block", lineHeight: 1.35}}>
-                                                {wallet.isSafeMode ? "Read and execute as this Safe" : "Read and execute through your wallet"}
-                                            </Typography>
-                                        </Box>
+                                        <DropdownOptionContent
+                                            primary={wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
+                                            secondary={wallet.isSafeMode ? "Read and execute as this Safe" : "Read and execute through your wallet"}
+                                            metadata={useConnectedAccount ? <CheckCircleOutlineIcon fontSize="small" color="primary" /> : undefined}
+                                            icon={<Box sx={{width: 34, height: 34, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 1, bgcolor: "rgba(79, 70, 229, 0.12)", color: "primary.main"}}><AccountBalanceWalletOutlinedIcon fontSize="small" /></Box>}
+                                        />
                                     </MenuItem>
                                     <Divider sx={{my: 0.75}} />
-                                    <ListSubheader disableSticky sx={{lineHeight: "32px", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase"}}>
-                                        Network providers
-                                    </ListSubheader>
+                                    <DropdownGroupLabel>Network providers</DropdownGroupLabel>
                                     {chains.map((chain, index) => (
-                                        <MenuItem key={chain.id} value={index} sx={{gap: 1, minWidth: 0}}>
-                                            <Typography variant="body2" sx={{flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                                                {chain.label}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{flex: "0 0 auto"}}>
-                                                Chain {chain.id}
-                                            </Typography>
+                                        <MenuItem key={chain.id} value={index}>
+                                            <DropdownOptionContent primary={chain.label} metadata={<Typography variant="caption" color="text.secondary">Chain {chain.id}</Typography>} />
                                         </MenuItem>
                                     ))}
                                     <MenuItem value={-1}>
-                                        Custom RPC
+                                        <DropdownOptionContent primary="Custom RPC" secondary="Use your own endpoint" />
                                     </MenuItem>
                                 </SelectInput>
                         </Box>

@@ -1,4 +1,4 @@
-import { AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { AccordionDetails, AccordionSummary, Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -7,8 +7,6 @@ import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import { ProviderDetails } from "../presets";
 import CallResult from "./CallResult";
-import CopyButton from "./CopyButton";
-import RpcUrlChip from "./RpcUrlChip";
 import { useCallActions } from "./useCallActions";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useSimulation } from "../simulation/context";
@@ -16,7 +14,7 @@ import { decodeFunctionRead, encodeFunctionRead } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionAccordion, FunctionMutabilityBadge } from "./ContractFunctionSection";
-import { monoFont } from "../ui/theme";
+import ContractInstanceSummary from "./ContractInstanceSummary";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 import { useWalletSession } from "../wallet/WalletSessionContext";
@@ -153,15 +151,12 @@ export default function StaticContractItem({contractId = "static-contract", cont
 
     return (
         <Stack spacing={2}>
-            <Box sx={{display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0}}>
-                <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
-                    <Typography variant="subtitle1" sx={{fontFamily: monoFont, fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
-                    {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
-                </Box>
-                <Chip size="small" variant="outlined" label={chainId ? `Chain ${chainId}` : "Detecting chain"} />
-                <Chip size="small" variant="outlined" label={providerDetails?.label ?? "Read-only"} />
-                {providerDetails?.url && <RpcUrlChip url={providerDetails.url} />}
-            </Box>
+            <ContractInstanceSummary
+                address={address}
+                chainLabel={chainId ? `Chain ${chainId}` : "Detecting chain"}
+                accessLabel={providerDetails?.label ?? "Read-only"}
+                rpcUrl={providerDetails?.url}
+            />
             {simulation.active && chainId && simulation.chainId !== chainId && (
                 <Alert severity="info">Speculative simulation belongs to chain {simulation.chainId}; this contract is on chain {chainId}.</Alert>
             )}

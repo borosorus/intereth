@@ -22,6 +22,7 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { simulationPresentation, StateBadge } from "../StateBadge";
+import { monoFont } from "../../ui/styles";
 
 export type ExecutionMechanism = "atomic-batch" | "smart-account" | "sequential" | "safe-batch";
 
@@ -188,7 +189,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
                                         return (
                                             <Box key={`${change.asset}:${change.tokenAddress ?? "native"}`} sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, justifyContent: "space-between", gap: {xs: 0.25, sm: 1}}}>
                                                 <Typography variant="body2">{change.asset === "native" ? "Native asset" : tokenLabel(change.tokenAddress ?? "", metadata)}</Typography>
-                                                <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
+                                                <Typography variant="body2" sx={{fontFamily: monoFont, fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
                                             </Box>
                                         );
                                     })}

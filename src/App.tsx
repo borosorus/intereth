@@ -10,7 +10,7 @@ import ResponsiveDialog from './components/ResponsiveDialog';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
-import { workspaceSurfaceSx } from './components/WorkspaceSectionHeader';
+import { workspaceSurfaceSx } from './ui/styles';
 
 export default function App(){
     const workspace = useContractWorkspace();

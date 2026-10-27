@@ -11,6 +11,7 @@ import { NormalizedError, normalizeError } from "../callUtils";
 import ErrorDialog from "./ErrorDialog";
 import ResponsiveDialog from "./ResponsiveDialog";
 import { TextInput } from "./inputs/FormFields";
+import { monoFont } from "../ui/styles";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -156,7 +157,7 @@ export default function ConnectionButton() {
                         {safe && (
                             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{border: "1px solid", borderColor: "divider", borderRadius: 2, px: 1.5, py: 0.75}}>
                                 <Typography variant="body2" sx={{minWidth: 0, overflowWrap: "anywhere"}}>
-                                    Active Safe: <Box component="span" sx={{fontFamily: "monospace"}}>{safe.address}</Box>
+                                    Active Safe: <Box component="span" sx={{fontFamily: monoFont}}>{safe.address}</Box>
                                 </Typography>
                                 <CopyButton value={safe.address} label="Copy active Safe address" size="small" />
                             </Stack>
@@ -177,7 +178,7 @@ export default function ConnectionButton() {
                                             <Stack direction={{xs: "column", sm: "row"}} spacing={{xs: 1, sm: 2}} alignItems={{xs: "stretch", sm: "center"}}>
                                                 <ListItemText
                                                     sx={{minWidth: 0, my: 0}}
-                                                    primary={<Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{entry.address}</Typography>}
+                                                    primary={<Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{entry.address}</Typography>}
                                                     secondary={`Chain ${entry.chainId}${active ? " · currently active" : trackedSafe ? " · Safe for tracked execution" : selected ? safeExecutionInProgress ? " · selected; switch back to the tracked Safe" : " · selected, switch network to use" : ""}`}
                                                 />
                                                 <Stack direction="row" spacing={0.5} alignItems="center">

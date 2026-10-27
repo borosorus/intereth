@@ -5,6 +5,7 @@ import { ethers } from "ethers";
 import TransactionValueInput from "./TransactionValueInput";
 import { createEmptyParamValue, createNumericValue, isNumericValue, NumericValue, ParamValue, toWeiValue } from "../calls/parameters";
 import { TextInput } from "./inputs/FormFields";
+import { monoFont } from "../ui/styles";
 
 export {buildParamValue, createEmptyParamValue} from "../calls/parameters";
 export type {ParamValue} from "../calls/parameters";
@@ -152,7 +153,7 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
                             variant="body2"
                             color={preview.error ? "error.main" : "text.primary"}
                             sx={{
-                                fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                fontFamily: monoFont,
                                 fontWeight: 600,
                                 overflowWrap: "anywhere",
                             }}

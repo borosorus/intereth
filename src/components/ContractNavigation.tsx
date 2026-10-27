@@ -1,11 +1,11 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { ContractInstance } from "../contracts/workspace";
 import ResponsiveDialog from "./ResponsiveDialog";
-import { TextInput } from "./inputs/FormFields";
+import { DropdownOptionContent, SelectControl, TextInput } from "./inputs/FormFields";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -44,11 +44,23 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
         <>
             <Box sx={{display: {xs: "block", md: "none"}, minWidth: 0}}>
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                    <Select sx={{minWidth: 0, flex: 1}} size="small" value={selected.id} onChange={(event) => onSelect(event.target.value)} aria-label="Selected contract" renderValue={() => selected?.label ?? ""}>
+                    <Box sx={{flex: 1, minWidth: 0}}>
+                    <SelectControl
+                        label="Selected contract"
+                        visuallyHiddenLabel
+                        size="small"
+                        value={selected.id}
+                        onChange={(event) => onSelect(event.target.value as string)}
+                        renderValue={() => selected?.label ?? ""}
+                        sx={{minWidth: 0}}
+                    >
                         {contracts.map((contract) => (
-                            <MenuItem key={contract.id} value={contract.id}>{contract.label} · {shortAddress(contract.address)}</MenuItem>
+                            <MenuItem key={contract.id} value={contract.id}>
+                                <DropdownOptionContent primary={contract.label} secondary={shortAddress(contract.address)} />
+                            </MenuItem>
                         ))}
-                    </Select>
+                    </SelectControl>
+                    </Box>
                     <IconButton color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>
                 </Stack>
                 {selected && (

@@ -27,6 +27,8 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { QueuedCall } from "../../transaction-plan/types";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
+import ActionButtonRow from "../ActionButtonRow";
+import { actionButtonSx, monoFont, workspaceSurfaceSx } from "../../ui/styles";
 import { TextInput } from "../inputs/FormFields";
 import TransactionValueInput from "../TransactionValueInput";
 import CopyButton from "../CopyButton";
@@ -34,7 +36,6 @@ import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../cal
 import { CallImpact, prioritizeBalanceChanges } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
-import { workspaceSurfaceSx } from "../WorkspaceSectionHeader";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -82,7 +83,7 @@ function CallSummary({call, index}: {call: QueuedCall; index: number}) {
                             <Box key={`${argument.name}-${argumentIndex}`} sx={{display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 1, pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
                                 <Typography variant="caption" color="text.secondary">{argument.name}</Typography>
                                 <Box sx={{minWidth: 0, textAlign: "right"}}>
-                                    <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>{summary.primary}</Typography>
+                                    <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{summary.primary}</Typography>
                                     {showSecondary && <Typography variant="caption" color="text.secondary">{summary.secondary}</Typography>}
                                 </Box>
                             </Box>
@@ -97,15 +98,15 @@ function CallSummary({call, index}: {call: QueuedCall; index: number}) {
                 </AccordionSummary>
                 <AccordionDetails sx={{px: 0, pt: 0}}>
                     <Stack spacing={1}>
-                        <Box><Typography variant="caption" color="text.secondary">Destination</Typography><Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{call.to}</Typography></Box>
-                        <Box><Typography variant="caption" color="text.secondary">Value</Typography><Typography variant="body2" sx={{fontFamily: "monospace"}}>{nativeValue.secondary}</Typography></Box>
+                        <Box><Typography variant="caption" color="text.secondary">Destination</Typography><Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{call.to}</Typography></Box>
+                        <Box><Typography variant="caption" color="text.secondary">Value</Typography><Typography variant="body2" sx={{fontFamily: monoFont}}>{nativeValue.secondary}</Typography></Box>
                         {call.display.arguments?.map((argument, argumentIndex) => (
                             <Box key={`raw-${argument.name}-${argumentIndex}`}>
                                 <Typography variant="caption" color="text.secondary">{argument.name} · {argument.type}</Typography>
-                                <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{argument.value}</Typography>
+                                <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{argument.value}</Typography>
                             </Box>
                         ))}
-                        <Box><Typography variant="caption" color="text.secondary">Calldata</Typography><Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{call.data}</Typography></Box>
+                        <Box><Typography variant="caption" color="text.secondary">Calldata</Typography><Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{call.data}</Typography></Box>
                     </Stack>
                 </AccordionDetails>
             </Accordion>
@@ -157,7 +158,7 @@ function CallImpactSummary({impact, call, metadataByAddress}: {
                                 {change.account.toLowerCase() === call.from.toLowerCase() ? "Plan sender" : change.account.toLowerCase() === call.to.toLowerCase() ? "Call target" : shortAddress(change.account)}
                                 {" · "}{change.asset === "native" ? "Native asset" : tokenLabel(change.tokenAddress ?? "", metadata)}
                             </Typography>
-                            <Typography variant="caption" sx={{fontFamily: "monospace", fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
+                            <Typography variant="caption" sx={{fontFamily: monoFont, fontWeight: 700, overflowWrap: "anywhere"}}>{formatBalanceChangeAmount(change, metadata)}</Typography>
                         </Box>
                     );
                 })}
@@ -257,10 +258,10 @@ function PlanCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (ca
                     />
                 </>
             )}
-            <Stack direction={{xs: "column", sm: "row"}} spacing={1}>
-                <Button variant="contained" color="secondary" fullWidth onClick={save}>Save changes</Button>
-                <Button variant="outlined" fullWidth onClick={onCancel}>Cancel</Button>
-            </Stack>
+            <ActionButtonRow>
+                <Button variant="contained" color="secondary" fullWidth onClick={save} sx={actionButtonSx}>Save changes</Button>
+                <Button variant="outlined" fullWidth onClick={onCancel} sx={actionButtonSx}>Cancel</Button>
+            </ActionButtonRow>
             <ErrorDialog error={error} onClose={() => setError(null)} />
         </Stack>
     );

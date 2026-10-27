@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { CallResultData, formatAbiValue, valuesForOutputs } from "../callUtils";
 import CopyButton from "./CopyButton";
 import { StateBadge } from "./StateBadge";
+import { monoFont } from "../ui/styles";
 
 function ValueTree({param, value}: {param: ethers.ParamType; value: unknown}) {
     if (param.baseType === "array") {
@@ -41,7 +42,7 @@ function ValueTree({param, value}: {param: ethers.ParamType; value: unknown}) {
     return (
         <Typography
             variant="body2"
-            sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace", overflowWrap: "anywhere"}}
+            sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}
         >
             {value == null ? "null" : String(value)}
         </Typography>
@@ -101,7 +102,7 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                 {result.kind === "function" && <FunctionResult result={result} />}
                 {result.kind === "raw" && (
                     <Box sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
-                        <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>
+                        <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                             {result.data || "0x"}
                         </Typography>
                         <CopyButton value={result.data || "0x"} label="Copy return data" />
@@ -112,7 +113,7 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
                             <Box sx={{minWidth: 0}}>
                                 <Typography variant="caption" color="text.secondary">Transaction hash</Typography>
-                                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>{result.hash}</Typography>
+                                <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{result.hash}</Typography>
                             </Box>
                             <CopyButton value={result.hash} label="Copy transaction hash" />
                         </Box>
@@ -130,7 +131,7 @@ export default function CallResult({result}: {result: CallResultData | null}) {
                         <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
                             <Box sx={{minWidth: 0}}>
                                 <Typography variant="caption" color="text.secondary">Safe transaction hash</Typography>
-                                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>{result.safeTxHash}</Typography>
+                                <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{result.safeTxHash}</Typography>
                             </Box>
                             <CopyButton value={result.safeTxHash} label="Copy Safe transaction hash" />
                         </Box>

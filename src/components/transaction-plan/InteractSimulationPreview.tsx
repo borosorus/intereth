@@ -13,6 +13,7 @@ import {
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+import { accordionSurfaceSx, monoFont } from "../../ui/styles";
 import { BalanceChange, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { formatBalanceChangeAmount, formatEventArgument, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
@@ -98,7 +99,7 @@ function BalanceChangeRow({change, chainId, metadataByAddress}: {
             <Typography variant="caption" color="text.secondary">
                 {change.asset === "native" ? "Native asset" : `${tokenLabel(tokenAddress, metadata)} · ${shortAddress(tokenAddress)}`}
             </Typography>
-            <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", textAlign: {xs: "left", sm: "right"}, overflowWrap: "anywhere"}}>
+            <Typography variant="body2" sx={{fontFamily: monoFont, textAlign: {xs: "left", sm: "right"}, overflowWrap: "anywhere"}}>
                 {formatBalanceChangeAmount(change, metadata)}
             </Typography>
         </Box>
@@ -122,7 +123,7 @@ export default function InteractSimulationPreview() {
         <Accordion
             disableGutters
             elevation={0}
-            sx={{border: "1px solid", borderColor: "divider", borderRadius: "8px !important", "&:before": {display: "none"}}}
+            sx={accordionSurfaceSx}
         >
             <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="interact-preview-content" id="interact-preview-header">
                 <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, width: 1, pr: 1}}>

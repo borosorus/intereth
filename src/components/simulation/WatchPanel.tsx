@@ -8,6 +8,7 @@ import { WatchExpression } from "../../transaction-plan/types";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
 import InfoHint from "../InfoHint";
 import { StateBadge, watchPresentation } from "../StateBadge";
+import { monoFont } from "../../ui/styles";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -24,7 +25,7 @@ function blockLabel(value: string) {
 function ResultValue({result, emptyLabel}: {result?: WatchResultValue; emptyLabel: string}) {
     if (!result) return <Typography variant="caption" color="text.secondary">{emptyLabel}</Typography>;
     if (!result.values) {
-        return <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{result.returnData}</Typography>;
+        return <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{result.returnData}</Typography>;
     }
     return (
         <Stack spacing={0.25}>

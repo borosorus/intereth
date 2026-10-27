@@ -1,7 +1,5 @@
 import { createTheme } from "@mui/material/styles";
-
-// Monospace stack for technical data (addresses, calldata, raw values).
-export const monoFont = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+import { dropdownMenuItemSx, dropdownMenuPaperSx } from "./styles";
 
 // Semantic color roles (see AGENTS.md §9):
 //   neutral   navigation, surfaces, structure      -> grey/neutral, `primary` for selection/structure
@@ -18,9 +16,12 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: "Roboto, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    h6: { fontWeight: 700, letterSpacing: -0.2 },
-    subtitle1: { fontWeight: 600 },
-    subtitle2: { fontWeight: 700 },
+    h5: {fontWeight: 700, letterSpacing: -0.3, lineHeight: 1.25},
+    h6: {fontWeight: 700, letterSpacing: -0.2, lineHeight: 1.3},
+    subtitle1: {fontWeight: 700, lineHeight: 1.35},
+    subtitle2: {fontWeight: 700, lineHeight: 1.35},
+    body2: {lineHeight: 1.5},
+    caption: {lineHeight: 1.4},
     button: { textTransform: "none", letterSpacing: 0 },
   },
   palette: {
@@ -202,6 +203,7 @@ export const theme = createTheme({
           "&.Mui-error.Mui-focused": {boxShadow: "0 0 0 3px rgba(220, 38, 38, 0.12)"},
           "&.Mui-disabled": {backgroundColor: "#f1f5f9"},
           "& .MuiOutlinedInput-input": {padding: "12px 14px", fontSize: "0.9375rem"},
+          "& .MuiSelect-select": {minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: "36px !important"},
           "&.MuiInputBase-sizeSmall:not(.MuiInputBase-multiline)": {minHeight: 40},
           "&.MuiInputBase-sizeSmall .MuiOutlinedInput-input": {padding: "9px 12px", fontSize: "0.875rem"},
           "&.MuiInputBase-multiline": {padding: "10px 12px"},
@@ -212,6 +214,20 @@ export const theme = createTheme({
     MuiInputLabel: {
       styleOverrides: {
         root: {fontWeight: 600, color: "#475569"},
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          ...dropdownMenuPaperSx,
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          ...dropdownMenuItemSx,
+        },
       },
     },
     MuiFormHelperText: {

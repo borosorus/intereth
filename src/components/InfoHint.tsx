@@ -8,7 +8,30 @@ import { ReactNode } from "react";
 export default function InfoHint({label, content}: {label: string; content: ReactNode}) {
     return (
         <Tooltip title={content} placement="top" enterTouchDelay={0} leaveTouchDelay={4000} sx={{maxWidth: 340}}>
-            <IconButton size="small" aria-label={label} sx={{p: 0.5, minWidth: 40, minHeight: 40, color: "text.secondary", flex: "0 0 auto"}}>
+            <IconButton
+                size="small"
+                aria-label={label}
+                sx={{
+                    width: 24,
+                    height: 24,
+                    minWidth: 24,
+                    minHeight: 24,
+                    p: 0,
+                    color: "text.secondary",
+                    flex: "0 0 auto",
+                    backgroundColor: "transparent",
+                    border: 0,
+                    boxShadow: "none",
+                    "&:hover": {backgroundColor: "transparent", color: "text.primary", border: 0, boxShadow: "none"},
+                    "@media (pointer: coarse)": {
+                        width: 44,
+                        height: 44,
+                        minWidth: 44,
+                        minHeight: 44,
+                        justifyContent: "flex-start",
+                    },
+                }}
+            >
                 <InfoOutlinedIcon sx={{fontSize: 17}} />
             </IconButton>
         </Tooltip>

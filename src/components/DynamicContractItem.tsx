@@ -1,16 +1,15 @@
-import { AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { AccordionDetails, AccordionSummary, Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ethers } from "ethers";
 import ErrorDialog from "./ErrorDialog";
 import RawCall from "./RawCall";
 import CallResult from "./CallResult";
-import CopyButton from "./CopyButton";
 import CallActionButtons from "./CallActionButtons";
 import { CallWalletContext, useCallActions } from "./useCallActions";
 import { CallResultData, NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
-import { buildParamValues, createEmptyParamValue, ParamValue, ValueUnit } from "../calls/parameters";
+import { createEmptyParamValue, ParamValue, ValueUnit } from "../calls/parameters";
 import { decoderAbiForInterface, prepareAbiCall } from "../calls/prepareCall";
 import FunctionCallEditor from "./FunctionCallEditor";
 import { useSimulation } from "../simulation/context";
@@ -21,7 +20,7 @@ import { prepareAbiWatch } from "../simulation/watchExpressions";
 import { FunctionAccordion, FunctionMutabilityBadge } from "./ContractFunctionSection";
 import ContractFunctionBrowser from "./ContractFunctionBrowser";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
-import { monoFont } from "../ui/theme";
+import ContractInstanceSummary from "./ContractInstanceSummary";
 
 interface DynamicFunctionItemProps {
     contract: ethers.BaseContract;
@@ -180,14 +179,11 @@ export default function DynamicContractItem({contractId = "wallet-contract", con
 
     return (
         <Stack spacing={2}>
-            <Box sx={{display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap", minWidth: 0}}>
-                <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
-                    <Typography variant="subtitle1" sx={{fontFamily: monoFont, fontWeight: 700, wordBreak: "break-all"}}>{address}</Typography>
-                    {ethers.isAddress(address) && <CopyButton value={address} label="Copy contract address" />}
-                </Box>
-                <Chip size="small" variant="outlined" label={`Chain ${contractChainId}`} />
-                <Chip size="small" variant="outlined" label={wallet.isSafeMode ? "Safe account" : "Connected account"} />
-            </Box>
+            <ContractInstanceSummary
+                address={address}
+                chainLabel={`Chain ${contractChainId}`}
+                accessLabel={wallet.isSafeMode ? "Safe account" : "Connected account"}
+            />
             {!walletReady && (
                 <Alert severity="info">
                     {wallet.isSafeMode

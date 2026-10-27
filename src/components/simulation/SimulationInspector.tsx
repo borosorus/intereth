@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
+import { accordionSurfaceSx, monoFont } from "../../ui/styles";
 import InfoHint from "../InfoHint";
 import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
@@ -70,7 +71,7 @@ function ValueRows({values, empty, format}: {values: DecodedValue[]; empty: stri
             {values.map((value, index) => (
                 <Box key={`${value.name}:${index}`} sx={{pl: 1, borderLeft: "2px solid", borderColor: "divider"}}>
                     <Typography variant="caption" color="text.secondary">{value.name} · {value.type}</Typography>
-                    <Typography variant="body2" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>{format ? format(value) : value.value}</Typography>
+                    <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>{format ? format(value) : value.value}</Typography>
                 </Box>
             ))}
         </Stack>
@@ -109,7 +110,7 @@ function CallInspector({call, label, target, chainId, metadataByAddress}: {
     metadataByAddress: Record<string, TokenMetadata>;
 }) {
     return (
-        <Accordion disableGutters elevation={0} sx={{border: "1px solid", borderColor: "divider", borderRadius: "8px !important", "&:before": {display: "none"}}}>
+        <Accordion disableGutters elevation={0} sx={accordionSurfaceSx}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, width: 1, pr: 1, flexWrap: "wrap"}}>
                     <Box sx={{minWidth: 0}}>
@@ -224,7 +225,7 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
                             >
                                 <Box sx={{minWidth: 0}}>
                                     <Chip size="small" variant="outlined" color={role.color} label={role.label} sx={{mb: 0.5, fontWeight: 700}} />
-                                    <Typography variant="caption" color="text.secondary" display="block" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                                         {change.account}
                                     </Typography>
                                     <Typography variant="body2" sx={{fontWeight: 700, mt: 0.5}}>
@@ -237,11 +238,11 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
                                     )}
                                 </Box>
                                 <Box sx={{flex: "0 0 auto", textAlign: {xs: "left", sm: "right"}, maxWidth: "100%"}}>
-                                    <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: "monospace", fontWeight: 800}}>
+                                    <Typography variant="body2" color={delta > BigInt(0) ? "success.main" : "error.main"} sx={{fontFamily: monoFont, fontWeight: 800}}>
                                         {formatted}
                                     </Typography>
                                     {showSeparateRawAmount && (
-                                        <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
+                                        <Typography variant="caption" color="text.secondary" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                                             {signedRawAmount(delta, change.asset)}
                                         </Typography>
                                     )}

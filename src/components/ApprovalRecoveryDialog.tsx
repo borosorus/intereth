@@ -26,6 +26,7 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 import CallResult from "./CallResult";
 import ResponsiveDialog from "./ResponsiveDialog";
 import { TextInput } from "./inputs/FormFields";
+import { monoFont } from "../ui/styles";
 
 export interface ApprovalRecoveryRequest {
     requirement: Erc20ApprovalRequirement;
@@ -33,7 +34,7 @@ export interface ApprovalRecoveryRequest {
 }
 
 const technicalValueSx = {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+    fontFamily: monoFont,
     overflowWrap: "anywhere",
 };
 

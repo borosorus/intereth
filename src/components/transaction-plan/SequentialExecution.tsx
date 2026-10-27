@@ -11,6 +11,7 @@ import { createSafeTransaction, executeSafeTransaction, findSafeExecutionReceipt
 import CopyButton from "../CopyButton";
 import ErrorDialog from "../ErrorDialog";
 import ExecutionReviewDialog, { ExecutionMechanism } from "./ExecutionReviewDialog";
+import { monoFont } from "../../ui/styles";
 
 function storedError(error: NormalizedError): BatchExecutionError {
     return {code: error.code, message: error.message};
@@ -517,7 +518,7 @@ export default function SequentialExecution() {
                                     </Box>
                                     {record?.transactionHash && (
                                         <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
-                                            <Typography variant="caption" color="text.secondary" sx={{fontFamily: "monospace", overflowWrap: "anywhere"}}>
+                                            <Typography variant="caption" color="text.secondary" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                                                 {record.transactionHash}
                                             </Typography>
                                             <CopyButton value={record.transactionHash} label={`Copy transaction hash for call ${index + 1}`} />

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, Typography, FormControlLabel, Switch, Stack } from "@mui/material";
+import { Alert, Box, Button, Paper, FormControlLabel, Switch, Stack } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
@@ -13,6 +13,7 @@ import { normalizeReadData } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { TextInput } from "./inputs/FormFields";
+import WorkspaceSectionHeader from "./WorkspaceSectionHeader";
 import { prepareRawWatch } from "../simulation/watchExpressions";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
@@ -51,23 +52,21 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
     return (
     <Paper variant="outlined" sx={{p: {xs: 2, md: 2.5}, borderRadius: 2.5}}>
         <Stack spacing={2}>
-            <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap'}}>
-                <Box>
-                    <Typography variant="subtitle1" sx={{fontWeight: 700}}>Raw call</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        Provide calldata directly when you already have the encoded payload.
-                    </Typography>
-                </Box>
-                {!isStaticOnly && (
-                    <FormControlLabel
-                        control={<Switch checked={staticCall} onChange={() => {
-                            setStatic(!staticCall);
-                            actions.setResult(null);
-                            setError(null);
-                        }} />}
-                        label="Static call"
-                    />
-                )}
+            <Box>
+                <WorkspaceSectionHeader
+                    title="Raw call"
+                    description="Provide calldata directly when you already have the encoded payload."
+                    action={!isStaticOnly ? (
+                        <FormControlLabel
+                            control={<Switch checked={staticCall} onChange={() => {
+                                setStatic(!staticCall);
+                                actions.setResult(null);
+                                setError(null);
+                            }} />}
+                            label="Static call"
+                        />
+                    ) : undefined}
+                />
             </Box>
             <Stack spacing={1.5}>
                 <TextInput

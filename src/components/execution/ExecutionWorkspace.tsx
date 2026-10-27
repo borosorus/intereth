@@ -40,7 +40,8 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
         <Stack spacing={0} sx={{minWidth: 0}}>
             <Box sx={{pb: 2}}>
                 <WorkspaceSectionHeader
-                    title={<Typography component="span" variant="h5" sx={{fontWeight: 800, letterSpacing: -0.3}}>Execution</Typography>}
+                    title="Execution"
+                    titleVariant="h5"
                     description={context
                         ? `Plan executes as ${shortAddress(context.account)} on chain ${context.chainId}.`
                         : "Calls you add from Explore run here, under one account and chain."}

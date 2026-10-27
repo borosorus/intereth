@@ -1,4 +1,6 @@
-import { Button, CircularProgress, Stack } from "@mui/material";
+import { Button, CircularProgress } from "@mui/material";
+import ActionButtonRow from "./ActionButtonRow";
+import { actionButtonSx } from "../ui/styles";
 
 interface CallActionButtonsProps {
     isSending: boolean;
@@ -20,17 +22,15 @@ export default function CallActionButtons({
     onSend,
     onQueue,
 }: CallActionButtonsProps) {
-    const styling = {py: 1.2, borderRadius: 2, textTransform: "none" as const, fontWeight: 700};
-
     return (
-        <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+        <ActionButtonRow>
             <Button
                 variant="contained"
                 color="secondary"
                 fullWidth
                 disabled={sendDisabled}
                 onClick={onSend}
-                sx={styling}
+                sx={actionButtonSx}
             >
                 {isSending ? <CircularProgress size={20} color="inherit" /> : "Send now"}
             </Button>
@@ -40,10 +40,10 @@ export default function CallActionButtons({
                 fullWidth
                 disabled={queueDisabled}
                 onClick={onQueue}
-                sx={styling}
+                sx={actionButtonSx}
             >
                 {isQueueing ? <CircularProgress size={20} color="inherit" /> : "Add to execution"}
             </Button>
-        </Stack>
+        </ActionButtonRow>
     );
 }

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { NormalizedError } from "../callUtils";
 import CopyButton from "./CopyButton";
 import ResponsiveDialog from "./ResponsiveDialog";
+import { monoFont } from "../ui/styles";
 
 interface ErrorDialogProps {
     error: NormalizedError | null;
@@ -35,7 +36,7 @@ export default function ErrorDialog({error, onClose}: ErrorDialogProps) {
                                     <Typography
                                         variant="caption"
                                         component="pre"
-                                        sx={{m: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace"}}
+                                        sx={{m: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontFamily: monoFont}}
                                     >
                                         {error.details}
                                     </Typography>

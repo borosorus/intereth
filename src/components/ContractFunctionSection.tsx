@@ -4,6 +4,7 @@ import { Accordion, Box, ButtonBase, Chip, Collapse, Stack } from "@mui/material
 import { ethers } from "ethers";
 import { ReactNode, useState } from "react";
 import WorkspaceSectionHeader from "./WorkspaceSectionHeader";
+import { accordionSurfaceSx } from "../ui/styles";
 
 export function isReadFunction(fragment: ethers.FunctionFragment) {
     return fragment.stateMutability === "view" || fragment.stateMutability === "pure";
@@ -12,11 +13,8 @@ export function isReadFunction(fragment: ethers.FunctionFragment) {
 // Shared chrome for per-function accordions in Explore: bordered, rounded,
 // no default MUI separator, so function lists work without an enclosing card.
 export const FunctionAccordion = styled(Accordion)({
-    borderRadius: "10px !important",
     overflow: "hidden",
-    border: "1px solid",
-    borderColor: "rgba(0, 0, 0, 0.12)",
-    "&:before": {display: "none"},
+    ...accordionSurfaceSx,
 });
 
 export function FunctionMutabilityBadge({fragment}: {fragment: ethers.FunctionFragment}) {

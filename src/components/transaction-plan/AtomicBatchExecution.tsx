@@ -21,6 +21,7 @@ import {
     Eip5792BatchExecutor,
 } from "../../transaction-plan/batchExecutor";
 import { useTransactionPlan } from "../../transaction-plan/context";
+import { monoFont } from "../../ui/styles";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { BatchExecutionError, BatchExecutionState } from "../../transaction-plan/types";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
@@ -244,7 +245,7 @@ function ReceiptList({execution}: {execution: BatchExecutionState}) {
                         <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start"}}>
                             <Box sx={{minWidth: 0}}>
                                 <Typography variant="caption" color="text.secondary">Transaction {index + 1}</Typography>
-                                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>
+                                <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                                     {receipt.transactionHash}
                                 </Typography>
                             </Box>
@@ -292,7 +293,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
                         <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start"}}>
                             <Box sx={{minWidth: 0}}>
                                 <Typography variant="caption" color="text.secondary">Batch ID</Typography>
-                                <Typography variant="body2" sx={{fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", overflowWrap: "anywhere"}}>
+                                <Typography variant="body2" sx={{fontFamily: monoFont, overflowWrap: "anywhere"}}>
                                     {execution.batchId}
                                 </Typography>
                             </Box>
