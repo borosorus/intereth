@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemText, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
@@ -10,6 +10,7 @@ import CopyButton from "./CopyButton";
 import { NormalizedError, normalizeError } from "../callUtils";
 import ErrorDialog from "./ErrorDialog";
 import ResponsiveDialog from "./ResponsiveDialog";
+import { TextInput } from "./inputs/FormFields";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -48,7 +49,7 @@ export default function ConnectionButton() {
         }
     };
 
-    const useSafe = async (safeAddress: string) => {
+    const selectSafe = async (safeAddress: string) => {
         try {
             setBusy(true);
             setBusyAddress(safeAddress);
@@ -188,7 +189,7 @@ export default function ConnectionButton() {
                                                             variant="contained"
                                                             color="secondary"
                                                             disabled={busy || !wallet.account || Boolean(wallet.safeAppSdk) || (safeExecutionInProgress && !trackedSafe)}
-                                                            onClick={() => sameNetwork ? void useSafe(entry.address) : void switchToChain(entry.chainId)}
+                                                            onClick={() => sameNetwork ? void selectSafe(entry.address) : void switchToChain(entry.chainId)}
                                                             sx={{minHeight: 32, px: 1.25, fontWeight: 700, boxShadow: "none", "@media (pointer: coarse)": {minHeight: 44}}}
                                                         >
                                                             {busyAddress === entry.address ? <CircularProgress size={16} color="inherit" /> : sameNetwork ? "Use" : "Switch network"}
@@ -226,8 +227,10 @@ export default function ConnectionButton() {
                         )}
                         {safe?.source !== "safe-app" && (
                             <>
-                                <TextField
+                                <TextInput
                                     label="Add a Safe address"
+                                    placeholder="0x…"
+                                    technical
                                     value={address}
                                     onChange={(event) => setAddress(event.target.value)}
                                     error={Boolean(address && !ethers.isAddress(address))}
@@ -241,7 +244,7 @@ export default function ConnectionButton() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpen(false)} disabled={busy}>Close</Button>
-                    {safe?.source !== "safe-app" && <Button onClick={() => void useSafe(address)} disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}>
+                    {safe?.source !== "safe-app" && <Button onClick={() => void selectSafe(address)} disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}>
                         {busy && !busyAddress ? <CircularProgress size={18} /> : "Verify and remember Safe"}
                     </Button>}
                 </DialogActions>

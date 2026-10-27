@@ -1,10 +1,11 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { ContractInstance } from "../contracts/workspace";
 import ResponsiveDialog from "./ResponsiveDialog";
+import { TextInput } from "./inputs/FormFields";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -88,7 +89,7 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
             </Paper>
             <ResponsiveDialog open={Boolean(renaming)} onClose={() => setRenaming(null)}>
                 <DialogTitle>Rename contract</DialogTitle>
-                <DialogContent><TextField autoFocus fullWidth label="Contract label" value={label} onChange={(event) => setLabel(event.target.value)} onKeyDown={(event) => event.key === "Enter" && saveLabel()} sx={{mt: 0.5}} /></DialogContent>
+                <DialogContent><TextInput autoFocus fullWidth label="Contract label" value={label} onChange={(event) => setLabel(event.target.value)} onKeyDown={(event) => event.key === "Enter" && saveLabel()} /></DialogContent>
                 <DialogActions><Button onClick={() => setRenaming(null)}>Cancel</Button><Button variant="contained" disabled={!label.trim()} onClick={saveLabel}>Save</Button></DialogActions>
             </ResponsiveDialog>
         </>

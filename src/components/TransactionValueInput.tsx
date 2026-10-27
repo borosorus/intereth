@@ -1,5 +1,6 @@
-import { FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
+import { Box, MenuItem, Stack, Typography } from "@mui/material";
 import { createNumericValue, NumericValue, serializeNumericValue, toWeiValue, ValueUnit } from "../calls/parameters";
+import { SelectInput, TextInput } from "./inputs/FormFields";
 
 export {createNumericValue, serializeNumericValue, toWeiValue};
 export type {NumericValue, ValueUnit};
@@ -33,34 +34,30 @@ export default function TransactionValueInput({
                 {label}
             </Typography>
             <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
-                <TextField
+                <TextInput
                     label="Amount"
                     value={amount}
                     onChange={(e) => onAmountChange(e.target.value)}
                     fullWidth
                     size="small"
                     placeholder="0.05"
-                    sx={{
-                        "& .MuiInputBase-root": {
-                            backgroundColor: "rgba(255,255,255,0.9)",
-                        },
-                    }}
+                    technical
                 />
-                <FormControl sx={{minWidth: {xs: "100%", sm: 132}}} size="small">
-                    <InputLabel>Unit</InputLabel>
-                    <Select
-                        value={unit}
+                <Box sx={{width: {xs: "100%", sm: 132}, flex: "0 0 auto"}}>
+                    <SelectInput<ValueUnit>
                         label="Unit"
+                        size="small"
+                        value={unit}
                         onChange={(e) => onUnitChange(e.target.value as ValueUnit)}
-                        sx={{backgroundColor: "rgba(255,255,255,0.9)"}}
+                        sx={{width: "100%"}}
                     >
                         {VALUE_UNITS.map((option) => (
                             <MenuItem key={option.value} value={option.value}>
                                 {option.label}
                             </MenuItem>
                         ))}
-                    </Select>
-                </FormControl>
+                    </SelectInput>
+                </Box>
             </Stack>
             <Typography variant="caption" color="text.secondary">
                 {helperText}

@@ -10,7 +10,6 @@ import {
     IconButton,
     Paper,
     Stack,
-    TextField,
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -28,6 +27,7 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { QueuedCall } from "../../transaction-plan/types";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
+import { TextInput } from "../inputs/FormFields";
 import TransactionValueInput from "../TransactionValueInput";
 import CopyButton from "../CopyButton";
 import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../calls/displayValues";
@@ -238,10 +238,12 @@ function PlanCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (ca
                 />
             ) : (
                 <>
-                    <TextField
+                    <TextInput
                         label="Hex calldata"
                         value={rawData}
                         onChange={(event) => setRawData(event.target.value)}
+                        placeholder="0x…"
+                        technical
                         fullWidth
                         multiline
                         minRows={2}

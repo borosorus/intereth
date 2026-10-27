@@ -1,9 +1,10 @@
-import { Box, Button, IconButton, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import { ethers } from "ethers";
 import TransactionValueInput from "./TransactionValueInput";
 import { createEmptyParamValue, createNumericValue, isNumericValue, NumericValue, ParamValue, toWeiValue } from "../calls/parameters";
+import { TextInput } from "./inputs/FormFields";
 
 export {buildParamValue, createEmptyParamValue} from "../calls/parameters";
 export type {ParamValue} from "../calls/parameters";
@@ -266,18 +267,14 @@ export default function ParamInput({param, value, onChange, depth = 0, label}: P
     }
 
     return (
-        <TextField
+        <TextInput
             label={formatFieldLabel(param, label ?? "Value")}
             helperText={param.format("full")}
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
             size="small"
+            technical
             fullWidth
-            sx={{
-                "& .MuiInputBase-root": {
-                    backgroundColor: "rgba(255,255,255,0.9)",
-                },
-            }}
         />
     );
 }

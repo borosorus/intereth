@@ -6,7 +6,6 @@ import {
     DialogContent,
     DialogTitle,
     Stack,
-    TextField,
     Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
@@ -26,6 +25,7 @@ import { forceSendPreparedTransaction, sendPreparedTransaction } from "../transa
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import CallResult from "./CallResult";
 import ResponsiveDialog from "./ResponsiveDialog";
+import { TextInput } from "./inputs/FormFields";
 
 export interface ApprovalRecoveryRequest {
     requirement: Erc20ApprovalRequirement;
@@ -211,16 +211,18 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                                 <Typography variant="body2" sx={technicalValueSx}>{request.requirement.needed.toString()}</Typography>
                             </Stack>
                         </Stack>
-                        <TextField
+                        <TextInput
                             label="Token contract address"
+                            technical
                             value={tokenAddress}
                             onChange={(event) => { setTokenAddress(event.target.value); invalidate(); }}
                             disabled={busy || checking || approvalConfirmed}
                             fullWidth
                             helperText="Intereth fills this only when the failed transaction target can be verified as the token."
                         />
-                        <TextField
+                        <TextInput
                             label="Approval amount (base units)"
+                            technical
                             value={amount}
                             onChange={(event) => { setAmount(event.target.value); invalidate(); }}
                             disabled={busy || checking || approvalConfirmed}

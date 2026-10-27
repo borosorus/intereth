@@ -4,18 +4,13 @@ import {
     Chip,
     CircularProgress,
     Divider,
-    FormControl,
     FormControlLabel,
-    FormHelperText,
     InputAdornment,
-    InputLabel,
     ListSubheader,
     MenuItem,
     Paper,
-    Select,
     Stack,
     Switch,
-    TextField,
     Typography,
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
@@ -34,6 +29,7 @@ import { useWalletSession } from "../wallet/WalletSessionContext";
 import CopyButton from "./CopyButton";
 import RpcUrlChip from "./RpcUrlChip";
 import { ContractInterfaceFormat, parseContractInterface } from "../contractInterface";
+import { SelectInput, TextInput } from "./inputs/FormFields";
 
 enum CustomRpcState {
     disabled,
@@ -498,13 +494,16 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                     <WorkspaceSectionHeader title="Network & access" />
                     <Stack spacing={2} sx={{minWidth: 0}}>
                         <Box sx={{minWidth: 0}}>
-                            <FormControl fullWidth sx={{minWidth: 0}} error={!useConnectedAccount && predefinedRpcState === CustomRpcState.failed}>
-                                <InputLabel id="rpc-provider-label">Connection</InputLabel>
-                                <Select
-                                    labelId="rpc-provider-label"
+                            <SelectInput<string | number>
+                                    label="Connection"
+                                    error={!useConnectedAccount && predefinedRpcState === CustomRpcState.failed}
+                                    helperText={!useConnectedAccount && predefinedRpcState === CustomRpcState.connecting
+                                        ? "Checking RPC endpoint..."
+                                        : !useConnectedAccount && predefinedRpcState === CustomRpcState.failed
+                                            ? "Unable to reach this RPC endpoint."
+                                            : undefined}
                                     id="rpc-provider-select"
                                     value={useConnectedAccount ? "connected" : providerIndex}
-                                    label="Connection"
                                     MenuProps={{
                                         anchorOrigin: {vertical: "bottom", horizontal: "left"},
                                         transformOrigin: {vertical: "top", horizontal: "left"},
@@ -589,25 +588,26 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     <MenuItem value={-1}>
                                         Custom RPC
                                     </MenuItem>
-                                </Select>
-                                {!useConnectedAccount && predefinedRpcState === CustomRpcState.connecting && (
-                                    <FormHelperText>Checking RPC endpoint...</FormHelperText>
-                                )}
-                                {!useConnectedAccount && predefinedRpcState === CustomRpcState.failed && (
-                                    <FormHelperText>Unable to reach this RPC endpoint.</FormHelperText>
-                                )}
-                            </FormControl>
+                                </SelectInput>
                         </Box>
                         {providerIndex === -1 && !useConnectedAccount && (
                             <Box sx={{minWidth: 0}}>
-                                <TextField
+                                <TextInput
+                                    label="Custom RPC URL"
                                     fullWidth
                                     id="custom-rpc"
-                                    label="Custom HTTP RPC URL"
                                     value={customRpc}
                                     onChange={(event) => setCustomRpc(event.target.value)}
                                     error={customRpc !== '' && customRpcState === CustomRpcState.failed}
-                                    helperText={customRpcState === CustomRpcState.failed ? 'Unable to reach this RPC URL.' : undefined}
+                                    helperText={customRpcState === CustomRpcState.connecting
+                                        ? "Checking endpoint..."
+                                        : customRpcState === CustomRpcState.failed
+                                            ? "Unable to reach this RPC URL."
+                                            : customRpcState === CustomRpcState.connected && customRpcChainId
+                                                ? `Connected · Chain ${customRpcChainId}`
+                                                : undefined}
+                                    placeholder="https://rpc.example.org"
+                                    technical
                                     InputProps={{
                                         endAdornment: (
                                             <InputAdornment position="end">
@@ -644,17 +644,20 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
                     <WorkspaceSectionHeader title="Contract" />
-                    <TextField
-                        inputRef={addressInputRef}
+                    <TextInput
                         label="Contract address"
+                        inputRef={addressInputRef}
                         value={address}
                         onChange={(event) => setAddress(event.target.value.trim())}
                         error={address !== '' && !isAddressValid}
                         helperText={address !== '' && !isAddressValid ? 'Enter a valid EVM address.' : undefined}
+                        placeholder="0x…"
+                        technical
                         fullWidth
                     />
-                    <TextField
+                    <TextInput
                         label="Contract label"
+                        optional
                         value={label}
                         onChange={(event) => setLabel(event.target.value)}
                         fullWidth
@@ -674,9 +677,11 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             sx={{mr: {sm: 0}, flex: "0 0 auto"}}
                         />}
                     />
-                    <TextField
+                    <TextInput
                         label={activeInterfaceFormat === "json" ? "JSON ABI" : "Solidity interface"}
+                        optional
                         placeholder={activeInterfaceFormat === "json" ? JSON_ABI_PLACEHOLDER : SOLIDITY_INTERFACE_PLACEHOLDER}
+                        technical
                         multiline
                         rows={6}
                         value={activeAbi}
@@ -715,14 +720,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         </Box>
                     )}
                     <Divider />
-                    <Box sx={{display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap", rowGap: 1}}>
-                        <Typography variant="caption" color="text.secondary" sx={{flex: {sm: "0 0 auto"}}}>Interface options</Typography>
-                        <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 200}}}>
-                            <InputLabel id="interface-format-label">Interface format</InputLabel>
-                            <Select
-                                labelId="interface-format-label"
-                                value={activeInterfaceFormat}
+                    <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
+                        <Box sx={{width: {xs: "100%", sm: 220}}}>
+                            <SelectInput<ContractInterfaceFormat>
                                 label="Interface format"
+                                disabled={automaticAbi}
+                                size="small"
+                                value={activeInterfaceFormat}
+                                sx={{width: "100%"}}
                                 onChange={(event) => {
                                     setInterfaceFormat(event.target.value as ContractInterfaceFormat);
                                     setAbiPreset("custom");
@@ -730,14 +735,15 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                             >
                                 <MenuItem value="json">JSON ABI</MenuItem>
                                 <MenuItem value="solidity">Solidity interface</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <FormControl disabled={automaticAbi} size="small" sx={{width: {xs: "100%", sm: 200}}}>
-                            <InputLabel id="abi-preset-label">Preset</InputLabel>
-                            <Select
-                                labelId="abi-preset-label"
+                            </SelectInput>
+                        </Box>
+                        <Box sx={{width: {xs: "100%", sm: 220}}}>
+                            <SelectInput<AbiPresetSelection>
+                                label="ABI preset"
+                                disabled={automaticAbi}
+                                size="small"
                                 value={abiPreset}
-                                label="Preset"
+                                sx={{width: "100%"}}
                                 onChange={(event) => selectAbiPreset(event.target.value as AbiPresetSelection)}
                                 renderValue={(selection) => selection === "custom"
                                     ? "Custom ABI"
@@ -752,9 +758,9 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                         </Stack>
                                     </MenuItem>
                                 ))}
-                            </Select>
-                        </FormControl>
-                    </Box>
+                            </SelectInput>
+                        </Box>
+                    </Stack>
                 </Stack>
             </Box>
 

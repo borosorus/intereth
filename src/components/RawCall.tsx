@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, Typography, FormControl, InputLabel, Input, FormControlLabel, Switch, Stack } from "@mui/material";
+import { Alert, Box, Button, Paper, Typography, FormControlLabel, Switch, Stack } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
@@ -12,6 +12,7 @@ import { prepareRawCall } from "../calls/prepareCall";
 import { normalizeReadData } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
+import { TextInput } from "./inputs/FormFields";
 import { prepareRawWatch } from "../simulation/watchExpressions";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 
@@ -69,10 +70,15 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                 )}
             </Box>
             <Stack spacing={1.5}>
-                <FormControl fullWidth>
-                    <InputLabel htmlFor={dataInputId}>Hex calldata</InputLabel>
-                    <Input id={dataInputId} value={data} onChange={(e) => setData(e.target.value)} />
-                </FormControl>
+                <TextInput
+                    id={dataInputId}
+                    label="Hex calldata"
+                    value={data}
+                    onChange={(e) => setData(e.target.value)}
+                    placeholder="0x…"
+                    technical
+                    fullWidth
+                />
                 {!staticCall && (
                     <TransactionValueInput
                         amount={valueAmount}

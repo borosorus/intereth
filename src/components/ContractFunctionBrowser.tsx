@@ -1,8 +1,9 @@
 import SearchIcon from "@mui/icons-material/Search";
-import { Box, Button, InputAdornment, Stack, TextField, ToggleButton, Typography } from "@mui/material";
+import { Box, Button, InputAdornment, Stack, ToggleButton, Typography } from "@mui/material";
 import { ethers } from "ethers";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import ContractFunctionSection, { isReadFunction } from "./ContractFunctionSection";
+import { TextInput } from "./inputs/FormFields";
 
 export type FunctionFilter = "all" | "read" | "write" | "payable";
 interface FunctionViewState {query: string; filter: FunctionFilter}
@@ -55,7 +56,7 @@ export default function ContractFunctionBrowser({contractId, functions, renderFu
     return (
         <Stack spacing={2}>
             <Stack direction={{xs: "column", sm: "row"}} spacing={1} alignItems={{sm: "center"}}>
-                <TextField
+                <TextInput
                     size="small"
                     fullWidth
                     sx={{sm: {maxWidth: 320}}}
