@@ -28,6 +28,7 @@ export interface WalletSession {
     error: NormalizedError | null;
     clearError: () => void;
     connectWallet: () => Promise<ethers.JsonRpcSigner | null>;
+    disconnectWallet?: () => Promise<void>;
     switchChain: (chainId: string) => Promise<void>;
 }
 
@@ -53,7 +54,7 @@ function storedSafeSelection(): SafeAccountInfo | null {
 }
 
 export function WalletSessionProvider({children}: {children: ReactNode}) {
-    const [{wallet}, connect] = useConnectWallet();
+    const [{wallet}, connect, disconnect] = useConnectWallet();
     const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
     const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
     const [account, setAccount] = useState<string | null>(null);
@@ -145,6 +146,13 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
     }, [wallet]);
 
     useEffect(() => {
+        if (safeAccount?.source === "connected-account"
+            && (!account || account.toLowerCase() !== safeAccount.address.toLowerCase())) {
+            setSafeAccount(null);
+        }
+    }, [account, safeAccount]);
+
+    useEffect(() => {
         if (!provider || !wallet?.provider || !account || !chainId || status !== "ready" || safeAccount) return;
         let cancelled = false;
         void provider.getCode(account).then(async (code) => {
@@ -188,6 +196,23 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
             throw connectionError;
         }
     }, [connect]);
+
+    const disconnectWallet = useCallback(async () => {
+        if (!wallet) return;
+        try {
+            setError(null);
+            await disconnect({label: wallet.label});
+        } catch (disconnectError) {
+            // Web3-Onboard removes the wallet before parsing its optional
+            // last-connected-wallet storage value. When that value is absent,
+            // some browser builds throw a JSON parse error after disconnecting.
+            if (disconnectError instanceof SyntaxError && /json\.parse|unexpected end/i.test(disconnectError.message)) {
+                return;
+            }
+            setError(normalizeError(disconnectError, "Wallet disconnection failed"));
+            throw disconnectError;
+        }
+    }, [disconnect, wallet]);
 
     const clearError = useCallback(() => setError(null), []);
 
@@ -325,8 +350,9 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
         error,
         clearError,
         connectWallet,
+        disconnectWallet,
         switchChain,
-    }), [account, chainId, clearError, clearSafe, connectWallet, error, provider, removeSavedSafe, safeAccount, safeAppSdk, safeOwnerConnected, savedSafes, selectSafe, signer, status, switchChain, wallet?.provider]);
+    }), [account, chainId, clearError, clearSafe, connectWallet, disconnectWallet, error, provider, removeSavedSafe, safeAccount, safeAppSdk, safeOwnerConnected, savedSafes, selectSafe, signer, status, switchChain, wallet?.provider]);
 
     return <WalletSessionContext.Provider value={value}>{children}</WalletSessionContext.Provider>;
 }

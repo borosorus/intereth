@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemText, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemText, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import SecurityOutlinedIcon from "@mui/icons-material/SecurityOutlined";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { ethers } from "ethers";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
@@ -23,6 +25,8 @@ export default function ConnectionButton() {
     const [open, setOpen] = useState(false);
     const [address, setAddress] = useState("");
     const [busy, setBusy] = useState(false);
+    const [disconnectingWallet, setDisconnectingWallet] = useState(false);
+    const [walletMenuAnchor, setWalletMenuAnchor] = useState<HTMLElement | null>(null);
     const [busyAddress, setBusyAddress] = useState<string | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
     const safe = wallet.safeAccount;
@@ -47,6 +51,20 @@ export default function ConnectionButton() {
             await wallet.connectWallet();
         } catch (caught) {
             setError(normalizeError(caught, "Wallet connection failed"));
+        }
+    };
+
+    const disconnectWallet = async () => {
+        try {
+            setDisconnectingWallet(true);
+            setWalletMenuAnchor(null);
+            setError(null);
+            if (!wallet.disconnectWallet) throw new Error("Wallet disconnection is unavailable.");
+            await wallet.disconnectWallet();
+        } catch (caught) {
+            setError(normalizeError(caught, "Wallet disconnection failed"));
+        } finally {
+            setDisconnectingWallet(false);
         }
     };
 
@@ -98,8 +116,17 @@ export default function ConnectionButton() {
                     >
                         {wallet.account.slice(0, 6)}…{wallet.account.slice(-4)}
                     </Button>
-                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: "8px", borderBottomRightRadius: "8px", "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", bgcolor: "transparent", border: 0, borderRadius: "0 8px 8px 0", px: 0.8, minHeight: 38, "&:hover": {bgcolor: "rgba(255,255,255,0.14)"}, "@media (pointer: coarse)": {minHeight: 44}}}}>
+                    <Box sx={{display: "flex", alignItems: "center", borderLeft: "1px solid rgba(255,255,255,0.28)", borderTopRightRadius: "8px", borderBottomRightRadius: "8px", "&:hover": {bgcolor: "primary.dark"}, "& .MuiIconButton-root": {color: "primary.contrastText", bgcolor: "transparent", border: 0, borderRadius: 0, px: 0.65, minHeight: 38, "&:hover": {bgcolor: "rgba(255,255,255,0.14)"}, "@media (pointer: coarse)": {minHeight: 44}}}}>
                         <CopyButton value={wallet.account} label="Copy connected account address" size="small" />
+                        <IconButton
+                            aria-label="Wallet actions"
+                            aria-haspopup="menu"
+                            aria-expanded={Boolean(walletMenuAnchor)}
+                            disabled={disconnectingWallet}
+                            onClick={(event) => setWalletMenuAnchor(event.currentTarget)}
+                        >
+                            <MoreHorizIcon fontSize="small" />
+                        </IconButton>
                     </Box>
                 </Stack>
             ) : (
@@ -115,6 +142,18 @@ export default function ConnectionButton() {
                     <Box sx={{display: {xs: "inline", md: "none"}}}>{wallet.status === "loading" ? "Connecting…" : "Connect"}</Box>
                 </Button>
             )}
+            <Menu
+                anchorEl={walletMenuAnchor}
+                open={Boolean(walletMenuAnchor)}
+                onClose={() => setWalletMenuAnchor(null)}
+                anchorOrigin={{vertical: "bottom", horizontal: "right"}}
+                transformOrigin={{vertical: "top", horizontal: "right"}}
+            >
+                <MenuItem onClick={() => void disconnectWallet()} disabled={disconnectingWallet || safeExecutionInProgress}>
+                    {disconnectingWallet ? <CircularProgress size={16} sx={{mr: 1}} /> : <LogoutIcon fontSize="small" sx={{mr: 1}} />}
+                    Disconnect wallet
+                </MenuItem>
+            </Menu>
             {(safe || wallet.account || savedSafes.length > 0) && (
                 <Button
                     variant="outlined"

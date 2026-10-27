@@ -28,7 +28,7 @@ export default function ErrorDialog({error, onClose}: ErrorDialogProps) {
                     {error?.code && <Chip label={error.code} size="small" variant="outlined" color="error" sx={{alignSelf: "flex-start"}} />}
                     {error?.details && (
                         <Box>
-                            <Button size="small" onClick={() => setShowDetails((current) => !current)} sx={{textTransform: "none", px: 0}}>
+                            <Button size="small" onClick={() => setShowDetails((current) => !current)} sx={{textTransform: "none", px: 1, py: 0.5, minHeight: 32, borderRadius: 1.5}}>
                                 {showDetails ? "Hide technical details" : "Show technical details"}
                             </Button>
                             <Collapse in={showDetails}>
