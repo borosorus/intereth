@@ -10,18 +10,17 @@ const contracts: ContractInstance[] = [
 ];
 
 describe("ContractNavigation", () => {
-    it("selects and renames labeled contract instances", () => {
+    it("selects and removes labeled contract instances without rename controls", () => {
         const onSelect = vi.fn();
-        const onRename = vi.fn();
+        const onDelete = vi.fn();
         const onAdd = vi.fn();
-        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onRename={onRename} onDelete={vi.fn()} onAdd={onAdd} />);
+        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onDelete={onDelete} onAdd={onAdd} />);
         fireEvent.click(screen.getAllByRole("button", {name: "Add contract"})[0]);
         expect(onAdd).toHaveBeenCalledTimes(1);
         fireEvent.click(screen.getByText("Vault"));
         expect(onSelect).toHaveBeenCalledWith("two");
-        fireEvent.click(screen.getAllByRole("button", {name: "Rename Token"})[0]);
-        fireEvent.change(screen.getByLabelText("Contract label"), {target: {value: "USDC"}});
-        fireEvent.click(screen.getByRole("button", {name: "Save"}));
-        expect(onRename).toHaveBeenCalledWith("one", "USDC");
+        expect(screen.queryByRole("button", {name: /Rename/})).not.toBeInTheDocument();
+        fireEvent.click(screen.getAllByRole("button", {name: "Remove Token"})[0]);
+        expect(onDelete).toHaveBeenCalledWith("one");
     });
 });

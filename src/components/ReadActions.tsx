@@ -37,7 +37,7 @@ export default function ReadActions({
                     onClick={onOnChain}
                     sx={actionButtonSx}
                 >
-                    {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
+                    {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Call on-chain"}
                 </Button>
                 {onPinWatch && (
                     <Button variant="text" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={actionButtonSx}>
@@ -68,7 +68,7 @@ export default function ReadActions({
                 onClick={onOnChain}
                 sx={actionButtonSx}
             >
-                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Run on-chain"}
+                {loading === "onchain" ? <CircularProgress size={20} color="inherit" /> : "Call on-chain"}
             </Button>
             {onPinWatch && (
                 <Button variant="text" fullWidth disabled={!canPinWatch || loading !== null} onClick={onPinWatch} sx={actionButtonSx}>

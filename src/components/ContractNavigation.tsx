@@ -1,11 +1,8 @@
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AddIcon from "@mui/icons-material/Add";
-import { Box, Button, Chip, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItemButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import { Box, Chip, IconButton, List, ListItemButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
 import { ContractInstance } from "../contracts/workspace";
-import ResponsiveDialog from "./ResponsiveDialog";
-import { DropdownOptionContent, SelectControl, TextInput } from "./inputs/FormFields";
+import { DropdownOptionContent, SelectControl } from "./inputs/FormFields";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -21,24 +18,14 @@ function chainId(contract: ContractInstance) {
     return contract.isStatic ? contract.providerDetails?.chainId ?? "Unknown chain" : contract.walletChainId;
 }
 
-export default function ContractNavigation({contracts, selectedId, onSelect, onRename, onDelete, onAdd}: {
+export default function ContractNavigation({contracts, selectedId, onSelect, onDelete, onAdd}: {
     contracts: ContractInstance[];
     selectedId: string;
     onSelect: (id: string) => void;
-    onRename: (id: string, label: string) => void;
     onDelete: (id: string) => void;
     onAdd: () => void;
 }) {
-    const [renaming, setRenaming] = useState<ContractInstance | null>(null);
-    const [label, setLabel] = useState("");
-    useEffect(() => setLabel(renaming?.label ?? ""), [renaming]);
     const selected = contracts.find((contract) => contract.id === selectedId) ?? contracts[0];
-
-    const saveLabel = () => {
-        if (!renaming || !label.trim()) return;
-        onRename(renaming.id, label.trim());
-        setRenaming(null);
-    };
 
     return (
         <>
@@ -69,8 +56,7 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                             Chain {chainId(selected)} · {selected.isStatic ? "Read-only RPC" : "Connected account"} · {tinyAddress(selected.address)}
                         </Typography>
                         <Box sx={{display: "flex", flex: "0 0 auto"}}>
-                            <IconButton size="small" aria-label={`Rename ${selected.label}`} onClick={() => setRenaming(selected)}><EditOutlinedIcon fontSize="small" /></IconButton>
-                            <IconButton size="small" aria-label={`Remove ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+                            <IconButton size="small" color="error" aria-label={`Remove ${selected.label}`} onClick={() => onDelete(selected.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
                         </Box>
                     </Stack>
                 )}
@@ -82,28 +68,20 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onR
                 </Box>
                 <List disablePadding>
                     {contracts.map((contract) => (
-                        <ListItemButton key={contract.id} selected={contract.id === selectedId} onClick={() => onSelect(contract.id)} sx={{alignItems: "flex-start", gap: 0.5, py: 1.25}}>
-                            <Box sx={{minWidth: 0, flex: 1}}>
+                        <ListItemButton key={contract.id} selected={contract.id === selectedId} onClick={() => onSelect(contract.id)} sx={{alignItems: "flex-start", gap: 1, py: 1.5}}>
+                            <Stack spacing={0.75} sx={{minWidth: 0, flex: 1}}>
                                 <Typography variant="body2" sx={{fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{contract.label}</Typography>
                                 <Typography variant="caption" color="text.secondary" display="block">{shortAddress(contract.address)}</Typography>
-                                <Stack direction="row" spacing={0.5} sx={{mt: 0.75}} flexWrap="wrap" useFlexGap>
+                                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                                     <Chip size="small" variant="outlined" label={`Chain ${chainId(contract)}`} />
                                     <Chip size="small" color={contract.isStatic ? "primary" : "secondary"} variant="outlined" label={contract.isStatic ? "Read-only RPC" : "Connected account"} />
                                 </Stack>
-                            </Box>
-                            <Stack spacing={0.25}>
-                                <IconButton size="small" aria-label={`Rename ${contract.label}`} onClick={(event) => {event.stopPropagation(); setRenaming(contract);}}><EditOutlinedIcon fontSize="small" /></IconButton>
-                                <IconButton size="small" aria-label={`Remove ${contract.label}`} onClick={(event) => {event.stopPropagation(); onDelete(contract.id);}}><DeleteOutlineIcon fontSize="small" /></IconButton>
                             </Stack>
+                            <IconButton size="small" color="error" aria-label={`Remove ${contract.label}`} onClick={(event) => {event.stopPropagation(); onDelete(contract.id);}}><DeleteOutlineIcon fontSize="small" /></IconButton>
                         </ListItemButton>
                     ))}
                 </List>
             </Paper>
-            <ResponsiveDialog open={Boolean(renaming)} onClose={() => setRenaming(null)}>
-                <DialogTitle>Rename contract</DialogTitle>
-                <DialogContent><TextInput autoFocus fullWidth label="Contract label" value={label} onChange={(event) => setLabel(event.target.value)} onKeyDown={(event) => event.key === "Enter" && saveLabel()} /></DialogContent>
-                <DialogActions><Button onClick={() => setRenaming(null)}>Cancel</Button><Button variant="contained" disabled={!label.trim()} onClick={saveLabel}>Save</Button></DialogActions>
-            </ResponsiveDialog>
         </>
     );
 }

@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Paper, FormControlLabel, Switch, Stack } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack } from "@mui/material";
 import { ethers } from "ethers";
 import { useCallback, useId, useState } from "react";
 import ErrorDialog from "./ErrorDialog";
@@ -13,6 +13,7 @@ import { normalizeReadData } from "../calls/readCall";
 import ReadActions from "./ReadActions";
 import ApprovalRecoveryDialog from "./ApprovalRecoveryDialog";
 import { TextInput } from "./inputs/FormFields";
+import LabeledSwitch from "./inputs/LabeledSwitch";
 import WorkspaceSectionHeader from "./WorkspaceSectionHeader";
 import { prepareRawWatch } from "../simulation/watchExpressions";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
@@ -57,13 +58,14 @@ export default function RawCall({contract, isStaticOnly, disabled = false, chain
                     title="Raw call"
                     description="Provide calldata directly when you already have the encoded payload."
                     action={!isStaticOnly ? (
-                        <FormControlLabel
-                            control={<Switch checked={staticCall} onChange={() => {
+                        <LabeledSwitch
+                            label="Static call"
+                            checked={staticCall}
+                            onChange={() => {
                                 setStatic(!staticCall);
                                 actions.setResult(null);
                                 setError(null);
-                            }} />}
-                            label="Static call"
+                            }}
                         />
                     ) : undefined}
                 />

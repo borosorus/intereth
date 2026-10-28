@@ -43,7 +43,6 @@ export default function App(){
                       contracts={contracts}
                       selectedId={selectedContract.id}
                       onSelect={workspace.selectContract}
-                      onRename={workspace.renameContract}
                       onDelete={workspace.removeContract}
                       onAdd={() => setAddContractOpen(true)}
                     />

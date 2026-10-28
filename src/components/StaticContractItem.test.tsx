@@ -70,7 +70,7 @@ describe("StaticFunctionItem simulated reads", () => {
         expect(screen.getByText(/after 3 plan calls/)).toBeInTheDocument();
         expect(onChainCall).not.toHaveBeenCalled();
         // Canonical and speculative actions stay side by side after a run.
-        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Call on-chain"})).toBeInTheDocument();
     });
 
     it("keeps an explicit ordinary on-chain action", async () => {
@@ -101,7 +101,7 @@ describe("StaticFunctionItem simulated reads", () => {
 
         render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         fireEvent.click(screen.getByRole("button", {name: /active\(\) View/}));
-        fireEvent.click(screen.getByRole("button", {name: "Run on-chain"}));
+        fireEvent.click(screen.getByRole("button", {name: "Call on-chain"}));
 
         await waitFor(() => expect(onChainRead).toHaveBeenCalledWith());
         expect(await screen.findByText("false")).toBeInTheDocument();

@@ -4,17 +4,14 @@ import {
     Chip,
     CircularProgress,
     Divider,
-    FormControlLabel,
     InputAdornment,
     MenuItem,
     Paper,
     Stack,
-    Switch,
     Typography,
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ContractInstance } from "../contracts/workspace";
@@ -29,6 +26,7 @@ import CopyButton from "./CopyButton";
 import RpcUrlChip from "./RpcUrlChip";
 import { ContractInterfaceFormat, parseContractInterface } from "../contractInterface";
 import { DropdownGroupLabel, DropdownOptionContent, SelectInput, TextInput } from "./inputs/FormFields";
+import LabeledSwitch from "./inputs/LabeledSwitch";
 import { monoFont, workspaceSurfaceSx } from "../ui/styles";
 
 enum CustomRpcState {
@@ -209,7 +207,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
     }, [providerIndex, useConnectedAccount]);
 
     useEffect(() => {
-        if (providerIndex !== -1) {
+        if (providerIndex !== -1 || useConnectedAccount) {
             setCustomRpcState(CustomRpcState.disabled);
             setCustomRpcChainId('');
             return;
@@ -255,7 +253,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
             provider = null;
             activeProvider?.destroy();
         };
-    }, [customRpc, providerIndex]);
+    }, [customRpc, providerIndex, useConnectedAccount]);
 
     const selectedRpcUrl = useMemo(() => {
         if (providerIndex === -1) {
@@ -491,71 +489,61 @@ export default function ContractManager({addContract, showExamples}: ContractMan
         <Stack spacing={2.5} sx={{minWidth: 0}}>
             <Box sx={formSectionSx}>
                 <Stack spacing={1.25}>
-                    <WorkspaceSectionHeader title="Network & access" />
+                    <WorkspaceSectionHeader
+                        title="Network & access"
+                        action={<LabeledSwitch
+                            label={wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
+                            checked={useConnectedAccount}
+                            onChange={() => { void tryChangeUseConnectedAccount(); }}
+                        />}
+                    />
                     <Stack spacing={2} sx={{minWidth: 0}}>
                         <Box sx={{minWidth: 0}}>
                             <SelectInput<string | number>
-                                    label="Connection"
-                                    error={!useConnectedAccount && predefinedRpcState === CustomRpcState.failed}
-                                    helperText={!useConnectedAccount && predefinedRpcState === CustomRpcState.connecting
+                                label="Network"
+                                disabled={useConnectedAccount}
+                                error={!useConnectedAccount && predefinedRpcState === CustomRpcState.failed}
+                                helperText={useConnectedAccount
+                                    ? "Network selection follows the connected account."
+                                    : predefinedRpcState === CustomRpcState.connecting
                                         ? "Checking RPC endpoint..."
-                                        : !useConnectedAccount && predefinedRpcState === CustomRpcState.failed
+                                        : predefinedRpcState === CustomRpcState.failed
                                             ? "Unable to reach this RPC endpoint."
                                             : undefined}
-                                    id="rpc-provider-select"
-                                    value={useConnectedAccount ? "connected" : providerIndex}
-                                    onChange={(event) => {
-                                        if (event.target.value === "connected") {
-                                            void tryChangeUseConnectedAccount();
-                                            return;
-                                        }
-                                        if (useConnectedAccount) {
-                                            setUseConnectedAccount(false);
-                                        }
-                                        setProviderIndex(event.target.value as number);
-                                    }}
-                                    renderValue={(value) => {
-                                        let selectedLabel: string;
-                                        if (value === "connected") {
-                                            selectedLabel = wallet.isSafeMode ? "Active Safe" : "Connected account";
-                                        } else if (value === -1) {
-                                            selectedLabel = "Custom RPC";
-                                        } else {
-                                            const chain = chains[value as number];
-                                            selectedLabel = chain ? `${chain.label} · Chain ${chain.id}` : "";
-                                        }
-                                        return (
-                                            <Box component="span" sx={{display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
-                                                {selectedLabel}
-                                            </Box>
-                                        );
-                                    }}
-                                >
-                                    <DropdownGroupLabel>Access method</DropdownGroupLabel>
-                                    <MenuItem
-                                        value="connected"
-                                        sx={{
-                                            "&:hover": {bgcolor: "rgba(79, 70, 229, 0.07)"},
-                                        }}
-                                    >
-                                        <DropdownOptionContent
-                                            primary={wallet.isSafeMode ? "Use active Safe" : "Use connected account"}
-                                            secondary={wallet.isSafeMode ? "Read and execute as this Safe" : "Read and execute through your wallet"}
-                                            metadata={useConnectedAccount ? <CheckCircleOutlineIcon fontSize="small" color="primary" /> : undefined}
-                                            icon={<Box sx={{width: 34, height: 34, flex: "0 0 auto", display: "grid", placeItems: "center", borderRadius: 1, bgcolor: "rgba(79, 70, 229, 0.12)", color: "primary.main"}}><AccountBalanceWalletOutlinedIcon fontSize="small" /></Box>}
-                                        />
+                                id="rpc-provider-select"
+                                value={providerIndex}
+                                onChange={(event) => {
+                                    setProviderIndex(event.target.value as number);
+                                }}
+                                renderValue={(value) => {
+                                    let selectedLabel = "";
+                                    if (useConnectedAccount) {
+                                        selectedLabel = resolvedChainId && resolvedChainLabel
+                                            ? `${resolvedChainLabel} · Chain ${resolvedChainId}`
+                                            : wallet.isSafeMode ? "Active Safe network" : "Connected account network";
+                                    } else if (value === -1) {
+                                        selectedLabel = "Custom RPC";
+                                    } else {
+                                        const chain = chains[value as number];
+                                        selectedLabel = chain ? `${chain.label} · Chain ${chain.id}` : "";
+                                    }
+                                    return (
+                                        <Box component="span" sx={{display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                            {selectedLabel}
+                                        </Box>
+                                    );
+                                }}
+                            >
+                                <DropdownGroupLabel>Available networks</DropdownGroupLabel>
+                                {chains.map((chain, index) => (
+                                    <MenuItem key={chain.id} value={index}>
+                                        <DropdownOptionContent primary={chain.label} metadata={<Typography variant="caption" color="text.secondary">Chain {chain.id}</Typography>} />
                                     </MenuItem>
-                                    <Divider sx={{my: 0.75}} />
-                                    <DropdownGroupLabel>Network providers</DropdownGroupLabel>
-                                    {chains.map((chain, index) => (
-                                        <MenuItem key={chain.id} value={index}>
-                                            <DropdownOptionContent primary={chain.label} metadata={<Typography variant="caption" color="text.secondary">Chain {chain.id}</Typography>} />
-                                        </MenuItem>
-                                    ))}
-                                    <MenuItem value={-1}>
-                                        <DropdownOptionContent primary="Custom RPC" secondary="Use your own endpoint" />
-                                    </MenuItem>
-                                </SelectInput>
+                                ))}
+                                <MenuItem value={-1}>
+                                    <DropdownOptionContent primary="Custom RPC" secondary="Use your own endpoint" />
+                                </MenuItem>
+                            </SelectInput>
                         </Box>
                         {providerIndex === -1 && !useConnectedAccount && (
                             <Box sx={{minWidth: 0}}>
@@ -638,25 +626,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         title="Contract interface"
                         hintLabel="About contract interfaces"
                         hintContent="Fetch a verified ABI, enter JSON or Solidity declarations, use a preset, or leave it empty for raw calls."
-                        action={<FormControlLabel
-                            labelPlacement="start"
-                            control={<Switch size="small" color="secondary" checked={automaticAbi} onChange={toggleAutomaticAbi}/>}
-                            label="Fetch ABI automatically"
-                            sx={{
-                                m: 0,
-                                px: 1.25,
-                                py: 0.4,
-                                width: {xs: "100%", sm: "auto"},
-                                justifyContent: "space-between",
-                                gap: 1,
-                                border: "1px solid",
-                                borderColor: automaticAbi ? "rgba(79, 70, 229, 0.36)" : "divider",
-                                borderRadius: 2,
-                                bgcolor: automaticAbi ? "rgba(79, 70, 229, 0.07)" : "background.paper",
-                                transition: "background-color 150ms ease, border-color 150ms ease",
-                                "& .MuiFormControlLabel-label": {fontSize: "0.875rem", fontWeight: 600, color: "text.primary", whiteSpace: "nowrap"},
-                            }}
-                        />}
+                        action={<LabeledSwitch label="Fetch ABI automatically" checked={automaticAbi} onChange={toggleAutomaticAbi} />}
                     />
                     <Stack direction={{xs: "column", sm: "row"}} spacing={1.25}>
                         <Box sx={{width: {xs: "100%", sm: 220}}}>
@@ -716,7 +686,7 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                         error={!automaticAbi && Boolean(abiError)}
                         helperText={automaticAbi
                             ? (abiLookupState.status === "idle" || abiLookupState.status === "waiting"
-                                ? "Enter a valid contract address after selecting a network."
+                                ? "Enter a valid contract address after choosing a network or connected account."
                                 : abiLookupState.status === "loading"
                                     ? "Looking for a verified ABI..."
                                     : abiLookupState.status === "success"

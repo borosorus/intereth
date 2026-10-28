@@ -115,7 +115,7 @@ describe("DynamicFunctionItem queueing", () => {
 
         render(<DynamicFunctionItem contract={contract} frag={fragment} chainId="1" disabled />);
         fireEvent.click(screen.getByRole("button", {name: /count\(\) View/}));
-        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Call on-chain"})).toBeDisabled();
         fireEvent.click(screen.getByRole("button", {name: "Run speculative"}));
 
         await waitFor(() => expect(simulateRead).toHaveBeenCalledWith("1", {

@@ -18,7 +18,7 @@ describe("ReadActions capabilities", () => {
         );
 
         expect(screen.getByRole("button", {name: "Run speculative"})).toBeInTheDocument();
-        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Call on-chain"})).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Pin watch"}));
         expect(onPinWatch).toHaveBeenCalled();
     });
@@ -38,7 +38,7 @@ describe("ReadActions capabilities", () => {
         );
 
         expect(screen.queryByRole("button", {name: "Run speculative"})).not.toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Run on-chain"}));
+        fireEvent.click(screen.getByRole("button", {name: "Call on-chain"}));
         expect(onChain).toHaveBeenCalled();
     });
 
@@ -55,7 +55,7 @@ describe("ReadActions capabilities", () => {
             />,
         );
 
-        expect(screen.getByRole("button", {name: "Run on-chain"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Call on-chain"})).toBeDisabled();
         expect(screen.getByRole("button", {name: /Pin watch/})).toBeDisabled();
     });
 
