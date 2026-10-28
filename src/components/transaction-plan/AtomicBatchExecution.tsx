@@ -21,7 +21,7 @@ import {
     Eip5792BatchExecutor,
 } from "../../transaction-plan/batchExecutor";
 import { useTransactionPlan } from "../../transaction-plan/context";
-import { monoFont } from "../../ui/styles";
+import { monoFont, nestedSurfaceSx } from "../../ui/styles";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { BatchExecutionError, BatchExecutionState } from "../../transaction-plan/types";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
@@ -30,6 +30,7 @@ import ErrorDialog from "../ErrorDialog";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { executionPresentation, StateBadge } from "../StateBadge";
 import ExecutionReviewDialog, { ExecutionMechanism } from "./ExecutionReviewDialog";
+import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
 
 type CapabilityState = AtomicCapabilityProbe | {status: "unchecked" | "checking"};
 
@@ -240,7 +241,7 @@ function ReceiptList({execution}: {execution: BatchExecutionState}) {
         <Stack spacing={1}>
             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Receipts</Typography>
             {execution.receipts.map((receipt, index) => (
-                <Paper key={`${receipt.transactionHash}-${index}`} variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
+                <Paper key={`${receipt.transactionHash}-${index}`} variant="outlined" sx={nestedSurfaceSx}>
                     <Stack spacing={0.75}>
                         <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start"}}>
                             <Box sx={{minWidth: 0}}>
@@ -283,7 +284,7 @@ function SubmittedBatch({controller}: {controller: AtomicBatchController}) {
             <Alert severity={execution.status === "confirmed" ? "success" : execution.status === "pending" ? "info" : "error"}>
                 {message}
             </Alert>
-            <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
+            <Paper variant="outlined" sx={nestedSurfaceSx}>
                 <Stack spacing={0.75}>
                     <Box sx={{display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center"}}>
                         <Typography variant="subtitle2" sx={{fontWeight: 800}}>Batch status</Typography>
@@ -352,10 +353,10 @@ export default function AtomicBatchExecution({controller}: {controller: AtomicBa
     return (
         <Stack spacing={1.5}>
             <Divider />
-            <Box>
-                <Typography variant="subtitle1" sx={{fontWeight: 800}}>Atomic execution</Typography>
-                <Typography variant="caption" color="text.secondary">All plan calls must execute atomically or the wallet must reject the request.</Typography>
-            </Box>
+            <WorkspaceSectionHeader
+                title="Atomic execution"
+                description="All plan calls must execute atomically or the wallet must reject the request."
+            />
             {controller.execution.status === "idle" && controller.execution.error && (
                 <Alert severity="warning">{controller.execution.error.message}</Alert>
             )}

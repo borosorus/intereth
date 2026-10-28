@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
-import { accordionSurfaceSx, monoFont } from "../../ui/styles";
+import { accordionSurfaceSx, monoFont, nestedSurfaceSx } from "../../ui/styles";
 import InfoHint from "../InfoHint";
 import { BalanceChange, DecodedEvent, DecodedValue, PlanSimulatedCall, TokenMetadata } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
@@ -85,7 +85,7 @@ function EventDetails({event, chainId, metadataByAddress}: {
 }) {
     const metadata = metadataForToken(metadataByAddress, chainId, event.address);
     return (
-        <Paper variant="outlined" sx={{p: 1.25, borderRadius: 1.5}}>
+        <Paper variant="outlined" sx={nestedSurfaceSx}>
             <Stack spacing={0.75}>
                 <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
                     <Typography variant="subtitle2" sx={{fontWeight: 700}}>{event.name}</Typography>
@@ -196,7 +196,7 @@ function BalanceSummary({changes, chainId, metadataByAddress, resolving, planAcc
     queuedTargets: Set<string>;
 }) {
     return (
-        <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
+        <Paper variant="outlined" sx={nestedSurfaceSx}>
             <Stack spacing={1}>
                 <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
                     <Typography variant="subtitle2" sx={{fontWeight: 800}}>Net balance changes after the plan</Typography>

@@ -191,7 +191,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
     return (
         <ResponsiveDialog open={request !== null} onClose={busy ? undefined : onClose} maxWidth="sm">
             <DialogTitle>ERC-20 approval required</DialogTitle>
-            <DialogContent>
+            <DialogContent dividers>
                 {request && (
                     <Stack spacing={2} sx={{pt: 0.5}}>
                         <Alert severity="warning">

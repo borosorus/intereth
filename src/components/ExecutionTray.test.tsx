@@ -89,7 +89,17 @@ describe("ExecutionTray", () => {
         const state = planWithCalls(1);
         mockPlan({...state, sequentialExecution: {...state.sequentialExecution, status: "active"}});
         render(<ExecutionTray />);
-        expect(screen.getByText("Sending one by one")).toBeInTheDocument();
+        expect(screen.getByText("Preparing execution")).toBeInTheDocument();
+    });
+
+    it("identifies a Safe multi-call waiting for owner approvals", () => {
+        const state = planWithCalls(2);
+        mockPlan({...state, sequentialExecution: {
+            status: "active",
+            calls: [{callId: "call-0", status: "awaiting_approvals", safeBatch: true, approvedOwners: 1, threshold: 2}],
+        }});
+        render(<ExecutionTray />);
+        expect(screen.getByText("Safe multi-call awaiting approvals")).toBeInTheDocument();
     });
 
     it("flags session mismatches on the plan", () => {

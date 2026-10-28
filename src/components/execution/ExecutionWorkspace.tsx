@@ -15,7 +15,7 @@ import { useSimulation } from "../../simulation/context";
 import { shortAddress } from "../../calls/displayValues";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
-import { executionPresentation, StateBadge } from "../StateBadge";
+import { planExecutionPresentation, StateBadge } from "../StateBadge";
 import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
 import ResponsiveDialog from "../ResponsiveDialog";
 import SimulationInspector from "../simulation/SimulationInspector";
@@ -27,7 +27,7 @@ import PlanCallItem from "./PlanCallItem";
 import SessionNotice from "./SessionNotice";
 
 export default function ExecutionWorkspace({active = true}: {active?: boolean}) {
-    const {state, dispatch} = useTransactionPlan();
+    const {state, dispatch, sessionStatus} = useTransactionPlan();
     const {setActiveView} = useTransactionPlanUi();
     const simulation = useSimulation();
     const batchController = useAtomicBatchExecution(active);
@@ -35,6 +35,12 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
     const calls = state.plan.calls;
     const watches = state.plan.watches;
     const context = state.plan.context;
+    const executionStatus = planExecutionPresentation({
+        execution: state.execution,
+        sequential: state.sequentialExecution,
+        sessionStatus,
+        totalCalls: calls.length,
+    });
 
     return (
         <Stack spacing={0} sx={{minWidth: 0}}>
@@ -45,9 +51,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                     description={context
                         ? `Plan executes as ${shortAddress(context.account)} on chain ${context.chainId}.`
                         : "Calls you add from Explore run here, under one account and chain."}
-                    action={state.execution.status !== "idle" ? (
-                        <StateBadge {...executionPresentation(state.execution.status)} variant="filled" />
-                    ) : undefined}
+                    action={executionStatus ? <StateBadge {...executionStatus} /> : undefined}
                 />
             </Box>
             <Divider />

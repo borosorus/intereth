@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { shortAddress } from "../calls/displayValues";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
-import { executionPresentation, StateBadge, StateKind } from "./StateBadge";
+import { planExecutionPresentation, StateBadge } from "./StateBadge";
 
 // Slim bridge between the two views: while Explore is shown, this keeps the
 // pending plan visible where the user is working and makes the next step
@@ -40,13 +40,12 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
         watches > 0 ? `${watches} pinned ${watches === 1 ? "watch" : "watches"}` : null,
     ].filter(Boolean).join(" · ");
 
-    let status: {kind: StateKind; label: string} | null = null;
-    if (state.execution.status !== "idle") status = executionPresentation(state.execution.status);
-    else if (state.sequentialExecution.status === "active") status = {kind: "wallet", label: "Sending one by one"};
-    else if (sessionStatus === "chain_mismatch") status = {kind: "warning", label: "Wrong network"};
-    else if (sessionStatus === "account_mismatch") status = {kind: "warning", label: "Wrong account"};
-    else if (sessionStatus === "owner_mismatch") status = {kind: "warning", label: "Safe owner required"};
-    else if (sessionStatus === "disconnected") status = {kind: "warning", label: "Wallet disconnected"};
+    const status = planExecutionPresentation({
+        execution: state.execution,
+        sequential: state.sequentialExecution,
+        sessionStatus,
+        totalCalls: calls,
+    });
 
     return (
         <Box ref={regionRef} sx={{position: "sticky", bottom: {xs: "calc(8px + env(safe-area-inset-bottom))", sm: 12}, zIndex: 1, pt: 1}}>
@@ -63,7 +62,7 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
                             </Typography>
                         )}
                     </Stack>
-                    <Button size="small" variant="contained" onClick={requestExecution} sx={{flex: "0 0 auto"}}>
+                    <Button size="small" variant="contained" color="secondary" onClick={requestExecution} sx={{flex: "0 0 auto"}}>
                         Review execution
                     </Button>
                 </Stack>

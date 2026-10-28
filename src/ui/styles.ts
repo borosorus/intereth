@@ -7,6 +7,11 @@ export const workspaceSurfaceSx = {
     boxShadow: "0 2px 10px rgba(15, 23, 42, 0.035)",
 };
 
+export const nestedSurfaceSx = {
+    p: 1.5,
+    borderRadius: 2,
+} as const;
+
 export const dropdownMenuPaperSx = {
     maxWidth: "calc(100vw - 32px)",
     maxHeight: "min(440px, calc(100vh - 32px))",

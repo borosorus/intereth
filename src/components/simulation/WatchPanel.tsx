@@ -6,9 +6,9 @@ import { WatchResultValue } from "../../simulation/types";
 import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
-import InfoHint from "../InfoHint";
 import { StateBadge, watchPresentation } from "../StateBadge";
-import { monoFont } from "../../ui/styles";
+import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
+import { monoFont, nestedSurfaceSx } from "../../ui/styles";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -48,7 +48,7 @@ function WatchCard({watch}: {watch: WatchExpression}) {
     const hasQueuedCalls = simulation.queuedCallCount > 0;
 
     return (
-        <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
+        <Paper variant="outlined" sx={nestedSurfaceSx}>
             <Stack spacing={1}>
                 <Box sx={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1}}>
                     <Box sx={{minWidth: 0}}>
@@ -100,23 +100,19 @@ export default function WatchPanel({emptyHint}: {emptyHint?: string} = {}) {
 
     return (
         <Stack spacing={1.5}>
-            <Box sx={{display: "flex", flexDirection: {xs: "column", sm: "row"}, alignItems: {xs: "stretch", sm: "center"}, justifyContent: "space-between", gap: 1}}>
-                <Box sx={{minWidth: 0, display: "flex", alignItems: "center", gap: 0.5}}>
-                    <Box sx={{minWidth: 0}}>
-                        <Typography variant="subtitle1" sx={{fontWeight: 800}}>Watches</Typography>
-                        {(simulation.snapshot || watchBaseBlock) && (
-                            <Typography variant="caption" color="text.secondary">Base block {blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)}</Typography>
-                        )}
-                    </Box>
-                    <InfoHint
-                        label="About watches"
-                        content="Watches are pinned read expressions. On-chain values come from the pinned base block; speculative values recompute after the plan calls on that same base block."
-                    />
-                </Box>
-                <Button size="small" sx={{alignSelf: {xs: "flex-start", sm: "center"}}} startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
-                    Refresh
-                </Button>
-            </Box>
+            <WorkspaceSectionHeader
+                title="Watches"
+                hintLabel="About watches"
+                hintContent="Watches are pinned read expressions. On-chain values come from the pinned base block; speculative values recompute after the plan calls on that same base block."
+                action={<Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    {(simulation.snapshot || watchBaseBlock) && (
+                        <Typography variant="caption" color="text.secondary">Base block {blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)}</Typography>
+                    )}
+                    <Button size="small" startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
+                        Refresh
+                    </Button>
+                </Stack>}
+            />
             <SimulationEndpointStatus showReady={false} />
             {watches.length === 0
                 ? <Typography variant="body2" color="text.secondary">{emptyHint ?? "Open a read-only function and choose “Pin watch”."}</Typography>

@@ -28,7 +28,7 @@ import { QueuedCall } from "../../transaction-plan/types";
 import ErrorDialog from "../ErrorDialog";
 import FunctionCallEditor from "../FunctionCallEditor";
 import ActionButtonRow from "../ActionButtonRow";
-import { actionButtonSx, monoFont, workspaceSurfaceSx } from "../../ui/styles";
+import { actionButtonSx, monoFont, nestedSurfaceSx, workspaceSurfaceSx } from "../../ui/styles";
 import { TextInput } from "../inputs/FormFields";
 import TransactionValueInput from "../TransactionValueInput";
 import CopyButton from "../CopyButton";
@@ -36,6 +36,7 @@ import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../cal
 import { CallImpact, prioritizeBalanceChanges } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
+import { callImpactPresentation, StateBadge } from "../StateBadge";
 
 function createCallId() {
     return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -129,14 +130,13 @@ function CallImpactSummary({impact, call, metadataByAddress}: {
 }) {
     const [showAll, setShowAll] = useState(false);
     if (impact.state !== "ready") {
-        const label = impact.state === "refreshing" ? "Refreshing preview" : impact.state === "stale" ? "Preview stale" : "Preview unavailable";
-        return <Chip size="small" variant="outlined" label={label} color={impact.state === "stale" ? "warning" : "default"} sx={{alignSelf: "flex-start"}} />;
+        return <Box sx={{alignSelf: "flex-start"}}><StateBadge {...callImpactPresentation(impact.state)} /></Box>;
     }
 
     const ordered = prioritizeBalanceChanges(impact.balanceChanges, call.from, call.to);
     const visible = showAll ? ordered : ordered.slice(0, 2);
     return (
-        <Box sx={{p: 1.25, borderRadius: 1.5, bgcolor: "action.hover"}}>
+        <Box sx={{...nestedSurfaceSx, bgcolor: "action.hover"}}>
             <Stack spacing={0.75}>
                 <Box sx={{display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.75}}>
                     <Chip size="small" label={impact.call.status === "0x1" ? "Success" : "Reverted"} color={impact.call.status === "0x1" ? "success" : "error"} />

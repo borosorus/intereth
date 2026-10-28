@@ -159,6 +159,22 @@ describe("ExecutionWorkspace", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "REMOVE_CALL", callId: "abi-call"});
     });
 
+    it("shows the same Safe multi-call status in the Execution header", () => {
+        mockWallet();
+        const state = {
+            ...queuedState(),
+            sequentialExecution: {
+                status: "active" as const,
+                calls: [{callId: "abi-call", status: "pending" as const, safeBatch: true}],
+            },
+        };
+        mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: false});
+
+        render(<ExecutionWorkspace />);
+
+        expect(screen.getByText("Safe multi-call pending")).toBeInTheDocument();
+    });
+
     it("makes a restored matching draft immediately editable and confirms clearing", () => {
         const dispatch = vi.fn();
         mockWallet();

@@ -11,7 +11,8 @@ import { createSafeTransaction, executeSafeTransaction, findSafeExecutionReceipt
 import CopyButton from "../CopyButton";
 import ErrorDialog from "../ErrorDialog";
 import ExecutionReviewDialog, { ExecutionMechanism } from "./ExecutionReviewDialog";
-import { monoFont } from "../../ui/styles";
+import { monoFont, nestedSurfaceSx } from "../../ui/styles";
+import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
 
 function storedError(error: NormalizedError): BatchExecutionError {
     return {code: error.code, message: error.message};
@@ -489,12 +490,12 @@ export default function SequentialExecution() {
     return (
         <Stack spacing={1.5}>
             <Divider />
-            <Box>
-                <Typography variant="subtitle1" sx={{fontWeight: 800}}>{wallet.isSafeMode ? "Safe transactions" : "Individual transactions"}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {wallet.isSafeMode ? "Send each plan call as its own Safe transaction in order. Completed calls stay on-chain if a later call fails." : "Send plan calls one at a time in order. Confirmed calls stay on-chain if a later call fails."}
-                </Typography>
-            </Box>
+            <WorkspaceSectionHeader
+                title={wallet.isSafeMode ? "Safe transactions" : "Individual transactions"}
+                description={wallet.isSafeMode
+                    ? "Send each plan call as its own Safe transaction in order. Completed calls stay on-chain if a later call fails."
+                    : "Send plan calls one at a time in order. Confirmed calls stay on-chain if a later call fails."}
+            />
 
             {wallet.safeAccount?.source === "connected-account"
                 && wallet.account?.toLowerCase() === wallet.safeAccount.address.toLowerCase()
@@ -508,7 +509,7 @@ export default function SequentialExecution() {
                         const ready = execution.status === "active" && index === confirmedCount && (!record || record.status === "failed");
                         const presentation = statusPresentation(record, ready);
                         return (
-                            <Paper key={call.id} variant="outlined" sx={{p: 1.25, borderRadius: 1.5}}>
+                            <Paper key={call.id} variant="outlined" sx={nestedSurfaceSx}>
                                 <Stack spacing={0.5}>
                                     <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1}}>
                                         <Typography variant="body2" sx={{fontWeight: 700, overflowWrap: "anywhere"}}>

@@ -283,8 +283,8 @@ export default function ConnectionButton() {
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpen(false)} disabled={busy}>Close</Button>
-                    {safe?.source !== "safe-app" && <Button onClick={() => void selectSafe(address)} disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}>
+                    <Button variant="outlined" onClick={() => setOpen(false)} disabled={busy}>Close</Button>
+                    {safe?.source !== "safe-app" && <Button variant="contained" color="secondary" onClick={() => void selectSafe(address)} disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}>
                         {busy && !busyAddress ? <CircularProgress size={18} /> : "Verify and remember Safe"}
                     </Button>}
                 </DialogActions>

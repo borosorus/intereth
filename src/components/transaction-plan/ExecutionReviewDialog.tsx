@@ -22,7 +22,7 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { useWalletSession } from "../../wallet/WalletSessionContext";
 import ResponsiveDialog from "../ResponsiveDialog";
 import { simulationPresentation, StateBadge } from "../StateBadge";
-import { monoFont } from "../../ui/styles";
+import { monoFont, nestedSurfaceSx } from "../../ui/styles";
 
 export type ExecutionMechanism = "atomic-batch" | "smart-account" | "sequential" | "safe-batch";
 
@@ -113,7 +113,7 @@ export default function ExecutionReviewDialog({open, mechanism, onClose, onConfi
             <DialogTitle id="execution-review-title">Review wallet submission</DialogTitle>
             <DialogContent dividers>
                 <Stack spacing={2}>
-                    <Paper variant="outlined" sx={{p: 1.5, borderRadius: 2}}>
+                    <Paper variant="outlined" sx={nestedSurfaceSx}>
                         <Stack spacing={0.75}>
                             <Typography variant="subtitle2" sx={{fontWeight: 800}}>Submission</Typography>
                             <Typography variant="body2"><strong>Account:</strong> {context?.account ?? "Unavailable"}</Typography>
