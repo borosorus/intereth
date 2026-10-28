@@ -4,14 +4,12 @@ import { useEffect, useRef } from "react";
 import { shortAddress } from "../calls/displayValues";
 import { useTransactionPlan } from "../transaction-plan/context";
 import { useTransactionPlanUi } from "../transaction-plan/uiContext";
+import { actionButtonSx, workspaceSurfaceSx } from "../ui/styles";
 import { planExecutionPresentation, StateBadge } from "./StateBadge";
 
-// Slim bridge between the two views: while Explore is shown, this keeps the
-// pending plan visible where the user is working and makes the next step
-// (reviewing it in Execution) one click away. It only exists when there is
-// something in the plan, and it mirrors the plan's execution state so a
-// locked or troubled batch never looks like an idle draft.
-export default function ExecutionTray({onHeightChange}: {onHeightChange?: (height: number) => void} = {}) {
+// Floating plan summary for Explore. App keeps it at the lower right on
+// narrow screens and floats it along the right edge on desktop.
+export default function ExecutionTray({onHeightChange}: {onHeightChange?: (height: number) => void}) {
     const {state, sessionStatus} = useTransactionPlan();
     const {requestExecution} = useTransactionPlanUi();
     const calls = state.plan.calls.length;
@@ -22,7 +20,7 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
     useEffect(() => {
         const node = regionRef.current;
         if (!node || !onHeightChange) return undefined;
-        const report = () => onHeightChange(node.offsetHeight);
+        const report = () => onHeightChange(node.parentElement?.clientHeight || node.offsetHeight);
         report();
         const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(report) : undefined;
         observer?.observe(node);
@@ -48,21 +46,32 @@ export default function ExecutionTray({onHeightChange}: {onHeightChange?: (heigh
     });
 
     return (
-        <Box ref={regionRef} sx={{position: "sticky", bottom: {xs: "calc(8px + env(safe-area-inset-bottom))", sm: 12}, zIndex: 1, pt: 1}}>
-            <Paper variant="outlined" elevation={2} sx={{borderRadius: 2.5, px: 2, py: 1.25, bgcolor: "background.paper"}}>
-                <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between" flexWrap="wrap" rowGap={1}>
-                    <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" rowGap={0.5} sx={{minWidth: 0, maxWidth: "100%"}}>
+        <Box ref={regionRef} sx={{minWidth: 0}}>
+            <Paper variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 1.5, lg: 2}, boxShadow: "0 10px 28px rgba(15, 23, 42, 0.16)"}}>
+                <Stack spacing={{xs: 1, sm: 1.25, lg: 1.5}} sx={{minWidth: 0}}>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{minWidth: 0}}>
                         <PlaylistPlayIcon fontSize="small" color="secondary" sx={{flex: "0 0 auto"}} />
-                        <Typography variant="body2" sx={{fontWeight: 700, flex: "0 0 auto"}}>{counts}</Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{whiteSpace: "nowrap", display: {xs: "none", sm: "inline"}}}>in your plan</Typography>
-                        {status && <StateBadge {...status} />}
-                        {context && (
-                            <Typography variant="caption" color="text.secondary" noWrap sx={{minWidth: 0}}>
-                                · chain {context.chainId} · {shortAddress(context.account)}
-                            </Typography>
-                        )}
+                        <Box sx={{minWidth: 0}}>
+                            <Typography variant="subtitle2" sx={{fontWeight: 700}}>Execution plan</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{overflowWrap: "anywhere"}}>{counts}</Typography>
+                        </Box>
                     </Stack>
-                    <Button size="small" variant="contained" color="secondary" onClick={requestExecution} sx={{flex: "0 0 auto"}}>
+                    {status && (
+                        <Box sx={{
+                            alignSelf: "flex-start",
+                            maxWidth: "100%",
+                            "& .MuiChip-root": {height: "auto", maxWidth: "100%"},
+                            "& .MuiChip-label": {display: "block", whiteSpace: "normal", overflowWrap: "anywhere", py: 0.5},
+                        }}>
+                            <StateBadge {...status} />
+                        </Box>
+                    )}
+                    {context && (
+                        <Typography variant="caption" color="text.secondary" sx={{overflowWrap: "anywhere", minWidth: 0}}>
+                            Chain {context.chainId} · {shortAddress(context.account)}
+                        </Typography>
+                    )}
+                    <Button variant="contained" color="secondary" onClick={requestExecution} sx={actionButtonSx}>
                         Review execution
                     </Button>
                 </Stack>
