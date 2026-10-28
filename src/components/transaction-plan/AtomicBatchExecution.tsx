@@ -6,7 +6,6 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Divider,
     Paper,
     Stack,
     Typography,
@@ -352,9 +351,9 @@ export default function AtomicBatchExecution({controller}: {controller: AtomicBa
     }, [activeView]);
     return (
         <Stack spacing={1.5}>
-            <Divider />
             <WorkspaceSectionHeader
                 title="Atomic execution"
+                titleVariant="subtitle2"
                 description="All plan calls must execute atomically or the wallet must reject the request."
             />
             {controller.execution.status === "idle" && controller.execution.error && (

@@ -44,6 +44,10 @@ describe("WatchPanel", () => {
         });
 
         render(<WatchPanel />);
+        const summary = screen.getByRole("button", {name: /Watches/});
+        expect(summary).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByText("On-chain at base block")).not.toBeVisible();
+        fireEvent.click(summary);
         expect(screen.getByText("On-chain at base block")).toBeInTheDocument();
         expect(screen.getByText("Speculative after plan")).toBeInTheDocument();
         expect(screen.getByText("10")).toBeInTheDocument();
@@ -54,7 +58,7 @@ describe("WatchPanel", () => {
         expect(dispatch).toHaveBeenCalledWith({type: "REMOVE_WATCH", watchId: "watch-1"});
     });
 
-    it("shows pin guidance when nothing is pinned", () => {
+    it("hides the watches section when nothing is pinned", () => {
         mockedPlan.mockReturnValue({state: createEmptyTransactionPlanState(), dispatch: vi.fn(), sessionStatus: "empty", canEdit: false});
         mockedSimulation.mockReturnValue({
             active: false, watchActive: false, status: "idle", chainId: null, error: null, revision: "queue", queuedCallCount: 0,
@@ -62,7 +66,7 @@ describe("WatchPanel", () => {
             snapshot: null, watchEvaluations: {}, tokenMetadataByAddress: {}, tokenMetadataResolving: false,
         } as ReturnType<typeof useSimulation>);
         render(<WatchPanel />);
-        expect(screen.getByText(/Open a read-only function/)).toBeInTheDocument();
+        expect(screen.queryByText("Watches")).not.toBeInTheDocument();
     });
 
     it("shows browser RPC capability checks beside watches", () => {
@@ -76,7 +80,8 @@ describe("WatchPanel", () => {
         });
 
         render(<WatchPanel />);
-
+        expect(screen.getByText(/Checking the connected wallet RPC for eth_simulateV1 support/)).not.toBeVisible();
+        fireEvent.click(screen.getByRole("button", {name: /Watches/}));
         expect(screen.getByText(/Checking the connected wallet RPC for eth_simulateV1 support/)).toBeInTheDocument();
     });
 });

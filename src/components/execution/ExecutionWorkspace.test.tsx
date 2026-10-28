@@ -168,11 +168,21 @@ describe("ExecutionWorkspace", () => {
                 calls: [{callId: "abi-call", status: "pending" as const, safeBatch: true}],
             },
         };
+        mockWallet();
+        mockedWalletSession.mockReturnValue({
+            ...mockedWalletSession(),
+            isSafeMode: true,
+            safeOwnerConnected: true,
+            injectedProvider: {},
+            safeAccount: {address: TARGET, chainId: "1", owners: [ACCOUNT], threshold: 1, nonce: 0, version: null, source: "manual"},
+        });
         mockedTransactionPlan.mockReturnValue({state, dispatch: vi.fn(), sessionStatus: "ready", canEdit: false});
 
         render(<ExecutionWorkspace />);
 
         expect(screen.getByText("Safe multi-call pending")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Atomic"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Atomic"})).toBeDisabled();
     });
 
     it("makes a restored matching draft immediately editable and confirms clearing", () => {
@@ -213,6 +223,8 @@ describe("ExecutionWorkspace", () => {
 
         render(<ExecutionWorkspace />);
         expect(screen.getByText("Speculative preview")).toBeInTheDocument();
+        expect(screen.getByText("Preparing the plan preview…")).not.toBeVisible();
+        fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
         expect(screen.getByText("Preparing the plan preview…")).toBeInTheDocument();
         expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     });
@@ -244,13 +256,14 @@ describe("ExecutionWorkspace", () => {
 
         render(<ExecutionWorkspace />);
 
+        fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
         expect(screen.getByText("21,000 gas")).toBeInTheDocument();
         expect(screen.getByText("1 decoded event")).toBeInTheDocument();
         expect(screen.getByText("Plan sender · TKN")).toBeInTheDocument();
         expect(screen.getByText("-5 TKN")).toBeInTheDocument();
     });
 
-    it("offers execution controls alongside the preview", () => {
+    it("defaults to atomic and exposes sequential as an alternative", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({
             state: queuedState(),
@@ -263,7 +276,76 @@ describe("ExecutionWorkspace", () => {
 
         expect(screen.queryByText(/Switch to Interact/)).not.toBeInTheDocument();
         expect(screen.getByText("Speculative preview")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Atomic"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Sequential"})).toHaveAttribute("aria-pressed", "false");
         expect(screen.getByRole("button", {name: "Check wallet batching"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Review sequential execution"})).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", {name: "Sequential"}));
+        expect(screen.getByRole("button", {name: "Sequential"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Review sequential execution"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Check wallet batching"})).not.toBeInTheDocument();
+    });
+
+    it("keeps an explicit sequential choice when atomic capability resolves", async () => {
+        let resolveCapabilities!: (value: unknown) => void;
+        const send = vi.fn((method: string) => method === "wallet_getCapabilities"
+            ? new Promise((resolve) => { resolveCapabilities = resolve; })
+            : Promise.resolve({id: "0x1234"}));
+        mockRpcWallet(send);
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<ExecutionWorkspace />);
+        await waitFor(() => expect(resolveCapabilities).toBeTypeOf("function"));
+        fireEvent.click(screen.getByRole("button", {name: "Sequential"}));
+        await act(async () => resolveCapabilities({"0x1": {atomic: {status: "supported"}}}));
+
+        expect(screen.getByRole("button", {name: "Sequential"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Review sequential execution"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: "Send atomic batch"})).not.toBeInTheDocument();
+    });
+
+    it("uses the same selector for Safe multi-call and individual Safe transactions", () => {
+        mockWallet();
+        mockedWalletSession.mockReturnValue({
+            ...mockedWalletSession(),
+            isSafeMode: true,
+            safeOwnerConnected: true,
+            injectedProvider: {},
+            safeAccount: {address: TARGET, chainId: "1", owners: [ACCOUNT], threshold: 1, nonce: 0, version: null, source: "manual"},
+        });
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<ExecutionWorkspace />);
+
+        expect(screen.getByRole("button", {name: "Atomic"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: /Review one Safe transaction for all 2 calls/})).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Sequential"}));
+        expect(screen.getByRole("button", {name: "Review individual Safe transactions"})).toBeInTheDocument();
+        expect(screen.queryByRole("button", {name: /Review one Safe transaction/})).not.toBeInTheDocument();
+    });
+
+    it("keeps atomic mode available for a single Safe call", () => {
+        mockWallet();
+        mockedWalletSession.mockReturnValue({
+            ...mockedWalletSession(),
+            isSafeMode: true,
+            safeOwnerConnected: true,
+            injectedProvider: {},
+            safeAccount: {address: TARGET, chainId: "1", owners: [ACCOUNT], threshold: 1, nonce: 0, version: null, source: "manual"},
+        });
+        const state = queuedState();
+        mockedTransactionPlan.mockReturnValue({
+            state: {...state, plan: {...state.plan, calls: state.plan.calls.slice(0, 1)}},
+            dispatch: vi.fn(),
+            sessionStatus: "ready",
+            canEdit: true,
+        });
+
+        render(<ExecutionWorkspace />);
+
+        expect(screen.getByRole("button", {name: "Atomic"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Review one Safe transaction"})).toBeInTheDocument();
     });
 
     it("shows an empty plan state that returns to Explore", () => {
@@ -462,8 +544,14 @@ describe("ExecutionWorkspace", () => {
         });
 
         render(<ExecutionWorkspace />);
-        expect(await screen.findByText(/Atomic batching is unavailable/)).toBeInTheDocument();
-        expect(screen.getByText(/Use Send now from individual function or raw-call forms/)).toBeInTheDocument();
+        const fallbackNotice = await screen.findByRole("alert");
+        expect(fallbackNotice).toHaveTextContent(/Atomic unavailable/);
+        expect(fallbackNotice).toHaveTextContent(/Sequential selected/);
+        fireEvent.mouseOver(screen.getByRole("button", {name: "About atomic availability"}));
+        expect(await screen.findByText(/did not report atomic batching support/)).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Sequential"})).toHaveAttribute("aria-pressed", "true");
+        expect(screen.getByRole("button", {name: "Atomic"})).toBeDisabled();
+        expect(screen.getByRole("button", {name: "Review sequential execution"})).toBeInTheDocument();
         expect(screen.queryByRole("button", {name: /send atomic batch/i})).not.toBeInTheDocument();
     });
 

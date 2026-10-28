@@ -109,6 +109,15 @@ describe("InteractSimulationPreview", () => {
         expect(screen.getByText(/Speculative results only/)).toBeInTheDocument();
     });
 
+    it("keeps detailed simulation content inside the collapsed preview", () => {
+        mockReady();
+        render(<InteractSimulationPreview><div>Detailed simulation content</div></InteractSimulationPreview>);
+
+        expect(screen.getByText("Detailed simulation content")).not.toBeVisible();
+        fireEvent.click(screen.getByRole("button", {name: /Speculative preview/}));
+        expect(screen.getByText("Detailed simulation content")).toBeInTheDocument();
+    });
+
     it("marks retained results stale", () => {
         mockReady();
         mockedSimulation.mockReturnValue({...mockedSimulation(), status: "stale"});

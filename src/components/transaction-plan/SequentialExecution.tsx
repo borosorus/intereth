@@ -1,4 +1,4 @@
-import { Alert, Box, Button, Chip, CircularProgress, Divider, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, Paper, Stack, Typography } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NormalizedError, normalizeError } from "../../callUtils";
@@ -22,6 +22,8 @@ export function sequentialCallLabel(call: QueuedCall) {
     return call.display.functionSignature ?? "Raw transaction";
 }
 
+type SequentialExecutionMode = "atomic" | "sequential";
+
 function statusPresentation(record: SequentialCallExecution | undefined, ready: boolean) {
     if (!record) return ready ? {label: "Ready", color: "secondary" as const} : {label: "Waiting", color: "default" as const};
     if (record.status === "confirmed") return {label: "Confirmed", color: "success" as const};
@@ -31,7 +33,7 @@ function statusPresentation(record: SequentialCallExecution | undefined, ready: 
     return {label: "Awaiting wallet", color: "info" as const};
 }
 
-export default function SequentialExecution() {
+export default function SequentialExecution({mode = "sequential"}: {mode?: SequentialExecutionMode} = {}) {
     const {state, dispatch, sessionStatus} = useTransactionPlan();
     const wallet = useWalletSession();
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -45,6 +47,9 @@ export default function SequentialExecution() {
     useEffect(() => {
         if (activeView !== "execution") setReviewOpen(false);
     }, [activeView]);
+    useEffect(() => {
+        setReviewOpen(false);
+    }, [mode]);
     const execution = state.sequentialExecution;
     const records = execution.calls;
     const confirmedCount = records.filter((record) => record.status === "confirmed").length;
@@ -168,7 +173,7 @@ export default function SequentialExecution() {
     const sendSafeBatch = useCallback(async (retry = false) => {
         const calls = state.plan.calls;
         const retryingBatch = retry && execution.status === "active" && currentRecord?.status === "failed" && currentRecord.safeBatch;
-        if (!wallet.isSafeMode || calls.length < 2 || (execution.status !== "idle" && !retryingBatch) || sessionStatus !== "ready" || !calls[0]) return;
+        if (!wallet.isSafeMode || calls.length < 1 || (execution.status !== "idle" && !retryingBatch) || sessionStatus !== "ready" || !calls[0]) return;
         if (wallet.safeAccount?.source !== "safe-app" && (!wallet.account || !wallet.injectedProvider || !wallet.safeOwnerConnected || !wallet.safeAccount?.owners.some((owner) => owner.toLowerCase() === wallet.account!.toLowerCase()))) return;
         if (!retryingBatch) dispatch({type: "START_SEQUENTIAL_EXECUTION", startedAt: Date.now()});
         dispatch({type: "START_SEQUENTIAL_CALL", callId: calls[0].id, safeBatch: true});
@@ -489,11 +494,15 @@ export default function SequentialExecution() {
 
     return (
         <Stack spacing={1.5}>
-            <Divider />
             <WorkspaceSectionHeader
-                title={wallet.isSafeMode ? "Safe transactions" : "Individual transactions"}
+                title={wallet.isSafeMode
+                    ? mode === "atomic" ? "Safe multi-call" : "Safe transactions"
+                    : "Individual transactions"}
+                titleVariant="subtitle2"
                 description={wallet.isSafeMode
-                    ? "Send each plan call as its own Safe transaction in order. Completed calls stay on-chain if a later call fails."
+                    ? mode === "atomic"
+                        ? "Send all plan calls together in one Safe transaction. The batch either executes together or reverts together."
+                        : "Send each plan call as its own Safe transaction in order. Completed calls stay on-chain if a later call fails."
                     : "Send plan calls one at a time in order. Confirmed calls stay on-chain if a later call fails."}
             />
 
@@ -546,7 +555,7 @@ export default function SequentialExecution() {
 
             {execution.status === "idle" && (
                 <Stack spacing={0.75}>
-                    {wallet.isSafeMode && state.plan.calls.length > 1 && (
+                    {wallet.isSafeMode && mode === "atomic" && state.plan.calls.length > 0 && (
                         <Button
                             variant="contained"
                             color="secondary"
@@ -554,18 +563,22 @@ export default function SequentialExecution() {
                             disabled={!walletReady || !canSubmitSafeBatch || state.execution.status !== "idle"}
                             onClick={() => { setReviewMechanism("safe-batch"); setReviewOpen(true); }}
                         >
-                            Review one Safe transaction for all {state.plan.calls.length} calls
+                            {state.plan.calls.length === 1
+                                ? "Review one Safe transaction"
+                                : `Review one Safe transaction for all ${state.plan.calls.length} calls`}
                         </Button>
                     )}
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        fullWidth
-                        disabled={!walletReady || state.execution.status !== "idle"}
-                        onClick={() => { setReviewMechanism("sequential"); setReviewOpen(true); }}
-                    >
-                        {wallet.isSafeMode ? "Review individual Safe transactions" : "Review sequential execution"}
-                    </Button>
+                    {mode === "sequential" && (
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            fullWidth
+                            disabled={!walletReady || state.execution.status !== "idle"}
+                            onClick={() => { setReviewMechanism("sequential"); setReviewOpen(true); }}
+                        >
+                            {wallet.isSafeMode ? "Review individual Safe transactions" : "Review sequential execution"}
+                        </Button>
+                    )}
                 </Stack>
             )}
 

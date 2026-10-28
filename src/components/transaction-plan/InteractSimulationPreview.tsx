@@ -11,6 +11,7 @@ import {
     Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import type { ReactNode } from "react";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
 import { accordionSurfaceSx, monoFont } from "../../ui/styles";
@@ -106,7 +107,7 @@ function BalanceChangeRow({change, chainId, metadataByAddress}: {
     );
 }
 
-export default function InteractSimulationPreview() {
+export default function InteractSimulationPreview({children}: {children?: ReactNode}) {
     const simulation = useSimulation();
     const {state} = useTransactionPlan();
     const snapshot = simulation.snapshot;
@@ -136,7 +137,7 @@ export default function InteractSimulationPreview() {
                     <StateBadge {...presentation} />
                 </Box>
             </AccordionSummary>
-            <AccordionDetails id="interact-preview-content" sx={{pt: 0}}>
+            <AccordionDetails sx={{pt: 0}}>
                 <Stack spacing={1.25}>
                     <Typography variant="caption" color="text.secondary">
                         Speculative results only. Execution still uses the connected wallet.
@@ -196,6 +197,12 @@ export default function InteractSimulationPreview() {
                                     ))
                                     : <Typography variant="caption" color="text.secondary">No supported balance changes detected.</Typography>}
                             </Stack>
+                        </>
+                    )}
+                    {snapshot && children && (
+                        <>
+                            <Divider />
+                            {children}
                         </>
                     )}
                 </Stack>

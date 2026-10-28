@@ -90,29 +90,26 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                 </Stack>
             </Box>
 
-            <Divider />
-            <Box sx={{py: 2.5}}>
-                <WatchPanel emptyHint="Pin a read expression from Explore to track its on-chain and speculative values across this plan." />
-            </Box>
+            {watches.length > 0 && (
+                <>
+                    <Divider />
+                    <Box sx={{py: 2.5}}>
+                        <WatchPanel />
+                    </Box>
+                </>
+            )}
 
             {calls.length > 0 && (
                 <>
                     <Divider />
                     <Box sx={{py: 2.5}}>
-                        <Stack spacing={1.5}>
-                            <InteractSimulationPreview />
-                            {simulation.snapshot && <SimulationInspector />}
-                        </Stack>
+                        <InteractSimulationPreview>
+                            <SimulationInspector />
+                        </InteractSimulationPreview>
                     </Box>
                     <Divider />
                     <Box sx={{py: 2.5}}>
-                        <Stack spacing={1.5}>
-                            <WorkspaceSectionHeader
-                                title="Run plan"
-                                description="Choose how the plan reaches the network: as an atomic wallet batch when supported, or as individual transactions one at a time."
-                            />
-                            <TransactionExecutionOptions controller={batchController} />
-                        </Stack>
+                        <TransactionExecutionOptions controller={batchController} />
                     </Box>
                 </>
             )}

@@ -1,5 +1,6 @@
 import { DeleteOutline, Refresh } from "@mui/icons-material";
-import { Alert, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip, IconButton, Paper, Stack, Typography } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { ethers } from "ethers";
 import { useSimulation } from "../../simulation/context";
 import { WatchResultValue } from "../../simulation/types";
@@ -7,8 +8,8 @@ import { useTransactionPlan } from "../../transaction-plan/context";
 import { WatchExpression } from "../../transaction-plan/types";
 import SimulationEndpointStatus from "./SimulationEndpointStatus";
 import { StateBadge, watchPresentation } from "../StateBadge";
-import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
-import { monoFont, nestedSurfaceSx } from "../../ui/styles";
+import InfoHint from "../InfoHint";
+import { accordionSurfaceSx, monoFont, nestedSurfaceSx } from "../../ui/styles";
 
 function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
@@ -92,31 +93,48 @@ function WatchCard({watch}: {watch: WatchExpression}) {
     );
 }
 
-export default function WatchPanel({emptyHint}: {emptyHint?: string} = {}) {
+export default function WatchPanel() {
     const transactionPlan = useTransactionPlan();
     const simulation = useSimulation();
     const watches = transactionPlan.state.plan.watches;
     const watchBaseBlock = Object.values(simulation.watchEvaluations).find((evaluation) => evaluation.baseBlockNumber)?.baseBlockNumber;
 
+    if (watches.length === 0) return null;
+
     return (
-        <Stack spacing={1.5}>
-            <WorkspaceSectionHeader
-                title="Watches"
-                hintLabel="About watches"
-                hintContent="Watches are pinned read expressions. On-chain values come from the pinned base block; speculative values recompute after the plan calls on that same base block."
-                action={<Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                    {(simulation.snapshot || watchBaseBlock) && (
-                        <Typography variant="caption" color="text.secondary">Base block {blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)}</Typography>
-                    )}
-                    <Button size="small" startIcon={<Refresh />} disabled={!simulation.watchActive || watches.length === 0} onClick={simulation.retry}>
-                        Refresh
-                    </Button>
-                </Stack>}
-            />
-            <SimulationEndpointStatus showReady={false} />
-            {watches.length === 0
-                ? <Typography variant="body2" color="text.secondary">{emptyHint ?? "Open a read-only function and choose “Pin watch”."}</Typography>
-                : <Stack spacing={1}>{watches.map((watch) => <WatchCard key={watch.id} watch={watch} />)}</Stack>}
-        </Stack>
+        <Accordion disableGutters elevation={0} sx={accordionSurfaceSx}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />} aria-controls="watches-content" id="watches-header">
+                <Box sx={{display: "flex", alignItems: "center", gap: 1, minWidth: 0, pr: 1}}>
+                    <Box sx={{minWidth: 0}}>
+                        <Typography variant="subtitle2" sx={{fontWeight: 800}}>Watches</Typography>
+                        <Typography variant="caption" color="text.secondary">Pinned read expressions</Typography>
+                    </Box>
+                    <Chip size="small" variant="outlined" color="secondary" label={watches.length} />
+                </Box>
+            </AccordionSummary>
+            <AccordionDetails sx={{pt: 0}}>
+                <Stack spacing={1.5}>
+                    <Box sx={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap"}}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <InfoHint
+                                label="About watches"
+                                content="Watches are pinned read expressions. On-chain values come from the pinned base block; speculative values recompute after the plan calls on that same base block."
+                            />
+                            <Typography variant="caption" color="text.secondary">Track on-chain and speculative values</Typography>
+                        </Stack>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            {(simulation.snapshot || watchBaseBlock) && (
+                                <Typography variant="caption" color="text.secondary">Base block {blockLabel(simulation.snapshot?.baseBlockNumber ?? watchBaseBlock!)}</Typography>
+                            )}
+                            <Button size="small" startIcon={<Refresh />} disabled={!simulation.watchActive} onClick={simulation.retry}>
+                                Refresh
+                            </Button>
+                        </Stack>
+                    </Box>
+                    <SimulationEndpointStatus showReady={false} />
+                    <Stack spacing={1}>{watches.map((watch) => <WatchCard key={watch.id} watch={watch} />)}</Stack>
+                </Stack>
+            </AccordionDetails>
+        </Accordion>
     );
 }
