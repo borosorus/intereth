@@ -293,7 +293,14 @@ export default function PlanCallItem({call, index, total, impact, metadataByAddr
                     <CallSummary call={call} index={index} />
                     <CallImpactSummary impact={impact} call={call} metadataByAddress={metadataByAddress} />
                     <Divider />
-                    <Box sx={{display: "flex", flexWrap: "wrap", gap: 0.5}}>
+                    <Box sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 1,
+                        "& > .MuiButton-root": {px: 1.25, minHeight: 36},
+                        "& > .MuiIconButton-root": {p: 1},
+                    }}>
                         <IconButton
                             size="small"
                             aria-label={`Move call ${index + 1} up`}
