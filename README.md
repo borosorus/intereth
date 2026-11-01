@@ -13,7 +13,7 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Supports nested tuples, arrays, raw calldata, payable calls, and transaction values.
 - Formats unsigned integer inputs as wei, gwei, or ETH while previewing the final integer value.
 - Shows the active RPC URL and chain ID on read-only contract instances.
-- Saves contract identities and ABIs to an opt-in local address book; saved wallet contracts reopen read-only when the wallet or network is unavailable.
+- Saves contract identities and ABIs to an opt-in local address book; saved contracts appear above the examples on an empty workspace and reopen from the Contracts panel, falling back to read-only when the wallet or network is unavailable.
 - Builds an ordered, browser-persisted execution plan without opening the wallet.
 - Sends compatible plans as atomic wallet batches through EIP-5792.
 - Offers speculative reads, watches, and plan previews as explicit actions driven by current capabilities.
@@ -61,7 +61,7 @@ After submission, the plan is locked and its EIP-5792 batch identifier is stored
 
 ## Safe accounts
 
-Intereth detects when it is opened inside a Safe, and it can also use an existing Safe from a connected owner wallet. Choose **Use Safe** and enter the Safe address; Intereth checks the connected network and verifies that the wallet is one of its owners. Verified addresses are saved in a local Safe address book, keyed by network, and remain there when the wallet or active Safe is disconnected. You can switch between saved Safes or remove an address from this browser at any time; removal does not affect the Safe on chain. A selected Safe is revalidated when an owner reconnects on the same network.
+Intereth detects when it is opened inside a Safe, and it can also use an existing Safe from a connected owner wallet. Choose **Use Safe** and enter the Safe address; Intereth checks the connected network and verifies that the wallet is one of its owners. Verification reads the Safe's owners, threshold, and nonce directly, so adding a Safe does not load the Safe Protocol Kit; the kit is only loaded when a Safe transaction is created. After a successful add the address field clears and the dialog shows the verified Safe with options to add another or close. Verified addresses are saved in a local Safe address book, keyed by network, and remain there when the wallet or active Safe is disconnected. You can switch between saved Safes or remove an address from this browser at any time; removal does not affect the Safe on chain. A selected Safe is revalidated when an owner reconnects on the same network.
 
 For a plan with multiple calls, choose one Safe multi-call transaction to submit the entire ordered plan together, or execute each call as a separate Safe transaction. The multi-call uses Safe's MultiSendCallOnly and reverts all plan calls together if any call fails. A one-owner Safe can execute directly. A Safe with multiple owners records the connected owner's on-chain approval once for the selected transaction; connect another owner wallet to add an approval or execute after the threshold is met. Separate-call mode waits for each call to finish, so earlier calls remain completed if a later one fails. Inside the Safe app, Intereth sends the chosen one-call or multi-call transaction to Safe for its normal approval and execution flow.
 

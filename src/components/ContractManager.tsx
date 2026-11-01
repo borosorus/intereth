@@ -15,10 +15,12 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import { ethers } from "ethers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ContractInstance } from "../contracts/workspace";
+import { SavedContract } from "../contracts/savedContracts";
 import { chains, chainsById } from "../onboard";
 import { ABI_PRESETS, CONTRACT_EXAMPLES, ContractExample, formatAbi, ProviderDetails } from "../presets";
 import {AbiLookupError, AbiLookupSource, fetchVerifiedAbi} from "../abiLookup";
 import ErrorDialog from "./ErrorDialog";
+import SavedContractsRail from "./SavedContractsRail";
 import WorkspaceSectionHeader from "./WorkspaceSectionHeader";
 import { NormalizedError, normalizeError } from "../callUtils";
 import { useWalletSession } from "../wallet/WalletSessionContext";
@@ -46,6 +48,9 @@ type AbiLookupState =
 interface ContractManagerProps {
     addContract: (contract: ContractInstance) => void;
     showExamples: boolean;
+    savedContracts?: SavedContract[];
+    onOpenSavedContract?: (entry: SavedContract) => void;
+    onRemoveSavedContract?: (entry: SavedContract) => void;
 }
 
 const JSON_ABI_PLACEHOLDER = '[{"type":"function","name":"balanceOf","inputs":[{"name":"account","type":"address"}],"outputs":[{"type":"uint256"}],"stateMutability":"view"}]';
@@ -64,7 +69,7 @@ function ExampleContractsRail({selectedAddress, onSelect}: {selectedAddress: str
             component="aside"
             variant="outlined"
             aria-label="Example contracts"
-            sx={{...workspaceSurfaceSx, p: {xs: 1, sm: 1.5}, position: {md: "sticky"}, top: 88, bgcolor: "#f8fafc", borderColor: "rgba(148, 163, 184, 0.3)", boxShadow: "none"}}
+            sx={{...workspaceSurfaceSx, p: {xs: 1, sm: 1.5}, bgcolor: "#f8fafc", borderColor: "rgba(148, 163, 184, 0.3)", boxShadow: "none"}}
         >
             <Stack spacing={0.5}>
                 <Typography variant="subtitle2" color="text.secondary" sx={{fontWeight: 700, px: 0.5, pb: 0.5}}>Examples</Typography>
@@ -129,7 +134,7 @@ function ProviderSummary({details}: {details: ProviderDetails}) {
     );
 }
 
-export default function ContractManager({addContract, showExamples}: ContractManagerProps) {
+export default function ContractManager({addContract, showExamples, savedContracts = [], onOpenSavedContract, onRemoveSavedContract}: ContractManagerProps) {
     const [address, setAddress] = useState('');
     const [label, setLabel] = useState('');
     const [abi, setAbi] = useState('');
@@ -736,7 +741,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                 clearWalletError();
             }} />
         </Stack>
-        {showExamples && <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />}
+        {showExamples && (
+            <Stack spacing={2} sx={{minWidth: 0, position: {md: "sticky"}, top: 88}}>
+                {savedContracts.length > 0 && onOpenSavedContract && onRemoveSavedContract && (
+                    <SavedContractsRail contracts={savedContracts} onOpen={onOpenSavedContract} onRemove={onRemoveSavedContract} />
+                )}
+                <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />
+            </Stack>
+        )}
         </Box>
     );
 }

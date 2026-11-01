@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { useWalletSession } from "../wallet/WalletSessionContext";
+import { SavedContract } from "../contracts/savedContracts";
 import ContractManager from "./ContractManager";
 import {AbiLookupError, fetchVerifiedAbi} from "../abiLookup";
 
@@ -118,6 +119,43 @@ describe("ContractManager", () => {
         expect(screen.getByRole("button", {name: "Copy Wrapped Ether address"})).toBeInTheDocument();
         expect(screen.getByText("Network & access")).toBeInTheDocument();
         expect(addContract).not.toHaveBeenCalled();
+    });
+
+    it("places saved contracts above the examples in the empty workspace", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        const entry: SavedContract = {
+            version: 1,
+            id: "saved-1",
+            label: "Saved token",
+            address: "0x0000000000000000000000000000000000000010",
+            chainId: "1",
+            abi: "[]",
+            access: "read-only",
+            savedAt: 1,
+        };
+        const onOpenSavedContract = vi.fn();
+        render(
+            <ContractManager
+                addContract={vi.fn()}
+                showExamples
+                savedContracts={[entry]}
+                onOpenSavedContract={onOpenSavedContract}
+                onRemoveSavedContract={vi.fn()}
+            />,
+        );
+
+        const saved = screen.getByRole("complementary", {name: "Saved contracts"});
+        const examples = screen.getByRole("complementary", {name: "Example contracts"});
+        expect(saved.compareDocumentPosition(examples) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", {name: "Open"}));
+        expect(onOpenSavedContract).toHaveBeenCalledWith(entry);
+    });
+
+    it("hides the saved rail when the address book is empty", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        render(<ContractManager addContract={vi.fn()} showExamples />);
+
+        expect(screen.queryByRole("complementary", {name: "Saved contracts"})).not.toBeInTheDocument();
     });
 
     it("fetches a verified ABI in automatic mode and promotes it when disabled", async () => {

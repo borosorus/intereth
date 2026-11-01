@@ -1,5 +1,4 @@
 import ContractManager from './components/ContractManager';
-import BookmarksOutlinedIcon from '@mui/icons-material/BookmarksOutlined';
 import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, useMediaQuery } from '@mui/material';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
@@ -56,20 +55,18 @@ export default function App(){
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Box sx={{display: activeView === "explore" ? "block" : "none"}}>
             <Stack spacing={3} sx={{minWidth: 0}}>
-                <Stack direction="row" justifyContent="flex-end">
-                  <Button
-                    variant="text"
-                    size="small"
-                    startIcon={<BookmarksOutlinedIcon />}
-                    onClick={() => setSavedContractsOpen(true)}
-                  >
-                    Saved contracts{workspace.savedContracts.length > 0 ? ` (${workspace.savedContracts.length})` : ""}
-                  </Button>
-                </Stack>
-                {contracts.length === 0 && <ContractManager addContract={workspace.addContract} showExamples />}
+                {contracts.length === 0 && (
+                  <ContractManager
+                    addContract={workspace.addContract}
+                    showExamples
+                    savedContracts={workspace.savedContracts}
+                    onOpenSavedContract={workspace.openSavedContract}
+                    onRemoveSavedContract={workspace.removeSavedContract}
+                  />
+                )}
                 {selectedContract && (
                   <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(99, 102, 241, 0.045), #fff 34%)"}}>
-                    <Box sx={{display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "250px minmax(0, 1fr)"}, gap: 2, alignItems: "start"}}>
+                    <Box sx={{display: "grid", gridTemplateColumns: {xs: "minmax(0, 1fr)", md: "280px minmax(0, 1fr)"}, gap: 2.5, alignItems: "start"}}>
                       <ContractNavigation
                         contracts={contracts}
                         selectedId={selectedContract.id}

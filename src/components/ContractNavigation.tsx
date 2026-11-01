@@ -2,7 +2,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
 import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
 import BookmarksOutlinedIcon from "@mui/icons-material/BookmarksOutlined";
-import { Box, Chip, IconButton, List, ListItemButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
+import { Badge, Box, Button, Chip, IconButton, List, ListItemButton, MenuItem, Paper, Stack, Typography } from "@mui/material";
 import { ContractInstance } from "../contracts/workspace";
 import { DropdownOptionContent, SelectControl } from "./inputs/FormFields";
 
@@ -53,8 +53,10 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onD
                         ))}
                     </SelectControl>
                     </Box>
-                    <IconButton color="secondary" aria-label="Saved contracts" onClick={onOpenSaved}>
-                        <BookmarksOutlinedIcon />
+                    <IconButton color="secondary" aria-label={savedCount > 0 ? `Saved contracts (${savedCount})` : "Saved contracts"} onClick={onOpenSaved}>
+                        <Badge badgeContent={savedCount} color="secondary" max={99}>
+                            <BookmarksOutlinedIcon />
+                        </Badge>
                     </IconButton>
                     <IconButton color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon /></IconButton>
                 </Stack>
@@ -70,12 +72,37 @@ export default function ContractNavigation({contracts, selectedId, onSelect, onD
                     </Stack>
                 )}
             </Box>
-            <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 88}}>
-                <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1}}>
-                    <Box><Typography variant="subtitle2" sx={{fontWeight: 800}}>Contracts</Typography><Typography variant="caption" color="text.secondary">{contracts.length} open {contracts.length === 1 ? "instance" : "instances"}</Typography></Box>
-                    <Stack direction="row" spacing={0.25}>
-                        <IconButton size="small" color="secondary" aria-label={savedCount > 0 ? `Saved contracts (${savedCount})` : "Saved contracts"} onClick={onOpenSaved}><BookmarksOutlinedIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="secondary" aria-label="Add contract" onClick={onAdd}><AddIcon fontSize="small" /></IconButton>
+            <Paper variant="outlined" sx={{display: {xs: "none", md: "block"}, borderRadius: 2.5, overflow: "hidden", alignSelf: "start", position: "sticky", top: 88, borderColor: "#cbd5e1", bgcolor: "#fbfcfe"}}>
+                <Box sx={{p: 1.5, borderBottom: "1px solid", borderColor: "divider", bgcolor: "rgba(99, 102, 241, 0.04)"}}>
+                    <Stack spacing={1}>
+                        <Box>
+                            <Typography variant="subtitle2" sx={{fontWeight: 800}}>Contracts</Typography>
+                            <Typography variant="caption" color="text.secondary">{contracts.length} open {contracts.length === 1 ? "instance" : "instances"}</Typography>
+                        </Box>
+                        <Stack spacing={0.75}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="secondary"
+                                startIcon={<AddIcon fontSize="small" />}
+                                onClick={onAdd}
+                                fullWidth
+                                sx={{justifyContent: "flex-start", textTransform: "none"}}
+                            >
+                                Add contract
+                            </Button>
+                            <Button
+                                size="small"
+                                variant="outlined"
+                                color="secondary"
+                                startIcon={<BookmarksOutlinedIcon fontSize="small" />}
+                                onClick={onOpenSaved}
+                                fullWidth
+                                sx={{justifyContent: "flex-start", textTransform: "none"}}
+                            >
+                                Saved contracts{savedCount > 0 ? ` (${savedCount})` : ""}
+                            </Button>
+                        </Stack>
                     </Stack>
                 </Box>
                 <List disablePadding>

@@ -29,6 +29,8 @@ describe("ContractNavigation", () => {
             />,
         );
         fireEvent.click(screen.getAllByRole("button", {name: "Add contract"})[0]);
+        expect(screen.getAllByRole("button", {name: "Add contract"})).toHaveLength(2);
+        expect(screen.getAllByRole("button", {name: "Saved contracts (3)"})).toHaveLength(2);
         expect(onAdd).toHaveBeenCalledTimes(1);
         fireEvent.click(screen.getAllByRole("button", {name: "Saved contracts (3)"})[0]);
         expect(onOpenSaved).toHaveBeenCalledTimes(1);
