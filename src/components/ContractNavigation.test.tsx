@@ -10,13 +10,30 @@ const contracts: ContractInstance[] = [
 ];
 
 describe("ContractNavigation", () => {
-    it("selects and removes labeled contract instances without rename controls", () => {
+    it("selects, saves, opens saved contracts, and removes instances", () => {
         const onSelect = vi.fn();
         const onDelete = vi.fn();
         const onAdd = vi.fn();
-        render(<ContractNavigation contracts={contracts} selectedId="one" onSelect={onSelect} onDelete={onDelete} onAdd={onAdd} />);
+        const onSave = vi.fn();
+        const onOpenSaved = vi.fn();
+        render(
+            <ContractNavigation
+                contracts={contracts}
+                selectedId="one"
+                onSelect={onSelect}
+                onDelete={onDelete}
+                onAdd={onAdd}
+                onSave={onSave}
+                onOpenSaved={onOpenSaved}
+                savedCount={3}
+            />,
+        );
         fireEvent.click(screen.getAllByRole("button", {name: "Add contract"})[0]);
         expect(onAdd).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getAllByRole("button", {name: "Saved contracts (3)"})[0]);
+        expect(onOpenSaved).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getAllByRole("button", {name: "Save Token"})[0]);
+        expect(onSave).toHaveBeenCalledWith("one");
         fireEvent.click(screen.getByText("Vault"));
         expect(onSelect).toHaveBeenCalledWith("two");
         expect(screen.queryByRole("button", {name: /Rename/})).not.toBeInTheDocument();

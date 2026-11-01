@@ -1,4 +1,5 @@
 import ContractManager from './components/ContractManager';
+import BookmarksOutlinedIcon from '@mui/icons-material/BookmarksOutlined';
 import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, useMediaQuery } from '@mui/material';
 import { useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
@@ -7,6 +8,7 @@ import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
 import ExecutionTray from './components/ExecutionTray';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
+import SavedContractsDialog from './components/SavedContractsDialog';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
@@ -18,6 +20,7 @@ export default function App(){
     const {state} = useTransactionPlan();
     const isWideViewport = useMediaQuery('(min-width:1280px)');
     const [addContractOpen, setAddContractOpen] = useState(false);
+    const [savedContractsOpen, setSavedContractsOpen] = useState(false);
     const [managerGeneration, setManagerGeneration] = useState(0);
     const [trayHeight, setTrayHeight] = useState(0);
     const {contracts, selectedContract} = workspace;
@@ -31,6 +34,11 @@ export default function App(){
       setManagerGeneration((current) => current + 1);
     };
 
+    const saveContract = (id: string) => {
+      const contract = contracts.find((candidate) => candidate.id === id);
+      if (contract) workspace.saveContract(contract);
+    };
+
     // Both views stay mounted so execution status polling and in-flight
     // submission state survive view switches; the inactive view is hidden.
     return (
@@ -38,6 +46,16 @@ export default function App(){
         <Container maxWidth="lg" sx={{py: {xs: 3, md: 4}}}>
           <Box sx={{display: activeView === "explore" ? "block" : "none"}}>
             <Stack spacing={3} sx={{minWidth: 0}}>
+                <Stack direction="row" justifyContent="flex-end">
+                  <Button
+                    variant="text"
+                    size="small"
+                    startIcon={<BookmarksOutlinedIcon />}
+                    onClick={() => setSavedContractsOpen(true)}
+                  >
+                    Saved contracts{workspace.savedContracts.length > 0 ? ` (${workspace.savedContracts.length})` : ""}
+                  </Button>
+                </Stack>
                 {contracts.length === 0 && <ContractManager addContract={workspace.addContract} showExamples />}
                 {selectedContract && (
                   <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(99, 102, 241, 0.045), #fff 34%)"}}>
@@ -48,6 +66,9 @@ export default function App(){
                         onSelect={workspace.selectContract}
                         onDelete={workspace.removeContract}
                         onAdd={() => setAddContractOpen(true)}
+                        onSave={saveContract}
+                        onOpenSaved={() => setSavedContractsOpen(true)}
+                        savedCount={workspace.savedContracts.length}
                       />
                       <Stack spacing={2} sx={{minWidth: 0}}>
                         {selectedContract.isStatic ?
@@ -100,6 +121,15 @@ export default function App(){
           </DialogContent>
           <DialogActions><Button onClick={() => setAddContractOpen(false)}>Cancel</Button></DialogActions>
         </ResponsiveDialog>
+        <SavedContractsDialog
+          open={savedContractsOpen}
+          contracts={workspace.savedContracts}
+          onClose={() => setSavedContractsOpen(false)}
+          onOpen={(entry) => {
+            if (workspace.openSavedContract(entry)) setSavedContractsOpen(false);
+          }}
+          onRemove={workspace.removeSavedContract}
+        />
         <Snackbar
           open={Boolean(workspace.notice)}
           autoHideDuration={7000}
