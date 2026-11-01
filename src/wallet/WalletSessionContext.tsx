@@ -4,7 +4,7 @@ import type SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import type { SafeInfoExtended } from "@safe-global/safe-apps-sdk";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NormalizedError, normalizeError } from "../callUtils";
-import { loadSafeProtocolKit } from "./safeProtocolKit";
+import { readSafeAccount } from "./safeAccountReader";
 import { readActiveSafe, readSavedSafes, safeAddressKey, SavedSafeAddress, writeActiveSafe, writeSavedSafes } from "./safeStorage";
 
 export type WalletSessionStatus = "disconnected" | "loading" | "ready" | "error";
@@ -162,22 +162,15 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
         void provider.getCode(account).then(async (code) => {
             if (code === "0x" || cancelled) return;
             try {
-                const {default: Safe} = await loadSafeProtocolKit();
-                const protocolKit = await Safe.init({provider: wallet.provider as never, safeAddress: account});
-                const [owners, threshold, version, nonce] = await Promise.all([
-                    protocolKit.getOwners(),
-                    protocolKit.getThreshold(),
-                    protocolKit.getContractVersion(),
-                    protocolKit.getNonce(),
-                ]);
-                if (cancelled || !owners.length || threshold < 1 || threshold > owners.length) return;
+                const details = await readSafeAccount(provider, account);
+                if (cancelled) return;
                 setSafeAccount({
                     address: ethers.getAddress(account),
                     chainId,
-                    owners: owners.map(ethers.getAddress),
-                    threshold,
-                    nonce,
-                    version,
+                    owners: details.owners,
+                    threshold: details.threshold,
+                    nonce: details.nonce,
+                    version: details.version,
                     source: "connected-account",
                 });
             } catch {
@@ -278,32 +271,30 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
             throw Object.assign(new Error("Enter a valid Safe address."), {code: "INVALID_ARGUMENT"});
         }
         const safeAddress = ethers.getAddress(address);
-        const code = await provider.getCode(safeAddress);
-        if (code === "0x") {
-            throw Object.assign(new Error("The selected address has no contract code on the connected network."), {code: "NOT_A_SAFE"});
-        }
-        const {default: Safe} = await loadSafeProtocolKit();
-        const protocolKit = await Safe.init({provider: wallet!.provider as never, signer: account, safeAddress});
-        const [owners, threshold] = await Promise.all([
-            protocolKit.getOwners(),
-            protocolKit.getThreshold(),
-        ]);
-        const [version, nonce] = await Promise.all([protocolKit.getContractVersion(), protocolKit.getNonce()]);
+        const details = await readSafeAccount(provider, safeAddress);
         if (request !== safeSelectionRequest.current
             || currentWalletIdentity.current.account?.toLowerCase() !== ownerAccount.toLowerCase()
             || currentWalletIdentity.current.chainId !== selectedChainId) {
             throw Object.assign(new Error("The connected account or network changed before Safe verification finished."), {code: "WALLET_SESSION_CHANGED"});
         }
-        if (!owners.some((owner) => owner.toLowerCase() === account.toLowerCase())) {
+        if (!details.owners.some((owner) => owner.toLowerCase() === account.toLowerCase())) {
             throw Object.assign(new Error("The connected wallet is not an owner of this Safe."), {code: "SAFE_OWNER_REQUIRED"});
         }
-        const next = {address: safeAddress, chainId, owners: owners.map(ethers.getAddress), threshold, nonce, version, source: "manual" as const};
+        const next = {
+            address: safeAddress,
+            chainId,
+            owners: details.owners,
+            threshold: details.threshold,
+            nonce: details.nonce,
+            version: details.version,
+            source: "manual" as const,
+        };
         setSafeAccount(next);
         const saved = {address: safeAddress, chainId};
         writeActiveSafe(saved);
         rememberSafe(saved);
         return next;
-    }, [account, chainId, provider, rememberSafe, signer, wallet]);
+    }, [account, chainId, provider, rememberSafe, signer]);
 
     useEffect(() => {
         if (safeAccount?.source !== "manual" || safeAccount.threshold !== 0 || !account || !chainId || chainId !== safeAccount.chainId || status !== "ready") return;
