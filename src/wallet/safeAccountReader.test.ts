@@ -22,6 +22,7 @@ const selectors: Record<SafeFunction, string> = {
 
 function fakeProvider(options: {
     code?: string;
+    codeError?: Error;
     owners?: string[];
     threshold?: bigint;
     nonce?: bigint;
@@ -30,7 +31,10 @@ function fakeProvider(options: {
 } = {}) {
     const calls: string[] = [];
     const provider: SafeCallProvider = {
-        getCode: async () => options.code ?? "0x6080",
+        getCode: async () => {
+            if (options.codeError) throw options.codeError;
+            return options.code ?? "0x6080";
+        },
         call: async ({data}) => {
             const selector = data.slice(0, 10);
             calls.push(selector);
@@ -86,6 +90,22 @@ describe("readSafeAccount", () => {
         await expect(readSafeAccount(provider, OWNER)).rejects.toMatchObject({
             code: "NOT_A_SAFE",
             message: expect.stringMatching(/no contract code/),
+        });
+    });
+
+    it("propagates contract code lookup failures", async () => {
+        const failure = new Error("RPC unavailable");
+        const {provider} = fakeProvider({codeError: failure});
+
+        await expect(readSafeAccount(provider, OWNER)).rejects.toBe(failure);
+    });
+
+    it("rejects a Safe version the execution kit does not support", async () => {
+        const {provider} = fakeProvider({version: "2.0.0"});
+
+        await expect(readSafeAccount(provider, OWNER)).rejects.toMatchObject({
+            code: "NOT_A_SAFE",
+            message: expect.stringMatching(/not supported/),
         });
     });
 

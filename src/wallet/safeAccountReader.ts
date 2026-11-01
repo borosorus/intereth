@@ -13,6 +13,10 @@ const SAFE_ACCOUNT_INTERFACE = new ethers.Interface([
     "function VERSION() view returns (string)",
 ]);
 
+// Mirrors the versions the Safe Protocol Kit can create transactions for, so
+// an unsupported Safe is rejected before it is added as the active account.
+const SUPPORTED_SAFE_VERSIONS = new Set(["1.0.0", "1.1.0", "1.1.1", "1.2.0", "1.3.0", "1.4.1", "1.5.0"]);
+
 export interface SafeAccountDetails {
     owners: string[];
     threshold: number;
@@ -56,7 +60,10 @@ export async function readSafeAccount(provider: SafeCallProvider, address: strin
         readSafeFunction(provider, safeAddress, "VERSION"),
     ]);
 
-    if (code.status === "fulfilled" && (!code.value || code.value === "0x")) {
+    if (code.status === "rejected") {
+        throw code.reason;
+    }
+    if (!code.value || code.value === "0x") {
         throw notASafe("The selected address has no contract code on the connected network.");
     }
     if (owners.status === "rejected" || threshold.status === "rejected" || nonce.status === "rejected") {
@@ -66,17 +73,21 @@ export async function readSafeAccount(provider: SafeCallProvider, address: strin
     const parsedOwners = (owners.value[0] as string[]).filter((owner) => ethers.isAddress(owner)).map(ethers.getAddress);
     const thresholdValue = threshold.value[0] as bigint;
     const nonceValue = nonce.value[0] as bigint;
+    const safeVersion = version.status === "fulfilled" ? String(version.value[0]) : null;
     if (parsedOwners.length === 0 || thresholdValue < 1n || thresholdValue > BigInt(parsedOwners.length)) {
         throw notASafe("The selected address returned an invalid Safe owner configuration.");
     }
     if (nonceValue < 0n || !Number.isSafeInteger(Number(nonceValue))) {
         throw notASafe("The selected address returned an invalid Safe nonce.");
     }
+    if (safeVersion && !SUPPORTED_SAFE_VERSIONS.has(safeVersion)) {
+        throw notASafe(`Safe version ${safeVersion} is not supported by Intereth's execution tools.`);
+    }
 
     return {
         owners: parsedOwners,
         threshold: Number(thresholdValue),
         nonce: Number(nonceValue),
-        version: version.status === "fulfilled" ? String(version.value[0]) : null,
+        version: safeVersion,
     };
 }
