@@ -98,13 +98,13 @@ describe("useContractWorkspace", () => {
         expect(result.current.savedContracts).toHaveLength(1);
         const [saved] = result.current.savedContracts;
         expect(saved).toEqual({
-            version: 2,
+            version: 3,
+            label: "Saved token",
             address: TARGET,
             chainId: "1",
             abi: CONTRACT_INTERFACE.formatJson(),
             savedAt: expect.any(Number),
         });
-        expect(saved).not.toHaveProperty("label");
         expect(saved).not.toHaveProperty("access");
         expect(saved).not.toHaveProperty("provider");
     });

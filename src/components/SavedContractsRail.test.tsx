@@ -4,7 +4,8 @@ import { SavedContract } from "../contracts/savedContracts";
 import SavedContractsRail from "./SavedContractsRail";
 
 const entry: SavedContract = {
-    version: 2,
+    version: 3,
+    label: "Saved token",
     address: "0x0000000000000000000000000000000000000010",
     chainId: "1",
     abi: "[]",
@@ -12,14 +13,18 @@ const entry: SavedContract = {
 };
 
 describe("SavedContractsRail", () => {
-    it("uses and removes saved contracts", () => {
+    it("shows the saved label, address, and chain with use and remove actions", () => {
         const onUse = vi.fn();
         const onRemove = vi.fn();
         render(<SavedContractsRail contracts={[entry]} onUse={onUse} onRemove={onRemove} />);
 
         expect(screen.getByRole("complementary", {name: "Saved contracts"})).toBeInTheDocument();
         expect(screen.getByText("Saved contracts (1)")).toBeInTheDocument();
+        expect(screen.getByText("Saved token")).toBeInTheDocument();
         expect(screen.getByText("0x000000…000010")).toBeInTheDocument();
+        expect(screen.getByText("Chain 1")).toBeInTheDocument();
+        expect(screen.getByRole("button", {name: "Copy Saved token address"})).toBeInTheDocument();
+
         fireEvent.click(screen.getByRole("button", {name: "Use saved contract 0x000000…000010 on chain 1"}));
         expect(onUse).toHaveBeenCalledWith(entry);
         fireEvent.click(screen.getByRole("button", {name: "Remove saved contract 0x000000…000010 on chain 1"}));

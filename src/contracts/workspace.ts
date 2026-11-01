@@ -125,7 +125,8 @@ export function useContractWorkspace() {
             return false;
         }
         const entry: SavedContract = {
-            version: 2,
+            version: 3,
+            label: contract.label.trim() || `Contract ${shortAddress(contract.address)}`,
             address: ethers.getAddress(contract.address),
             chainId,
             abi,
@@ -137,7 +138,7 @@ export function useContractWorkspace() {
             return false;
         }
         setSavedContracts(next);
-        setNotice(`Saved ${contract.label} to this browser.`);
+        setNotice(`Saved ${entry.label} to this browser.`);
         return true;
     }, []);
 

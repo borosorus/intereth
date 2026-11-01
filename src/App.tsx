@@ -62,10 +62,15 @@ export default function App(){
       setDialogPrefill(null);
     };
 
-    // Saved contracts only carry identity and interface data, so choosing one
-    // fills the form; the user still picks the network and connection.
+    // Saved contracts carry identity, label, and interface data, so choosing
+    // one fills the form; the user still picks the network and connection.
     const useSavedContract = (entry: SavedContract) => {
-      const prefill: ContractPrefill = {address: entry.address, chainId: entry.chainId, abi: entry.abi};
+      const prefill: ContractPrefill = {
+        label: entry.label,
+        address: entry.address,
+        chainId: entry.chainId,
+        abi: entry.abi,
+      };
       setSavedContractsOpen(false);
       if (contracts.length === 0) {
         setInlinePrefill(prefill);

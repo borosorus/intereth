@@ -21,7 +21,7 @@ export default function SavedContractsRail({contracts, onUse, onRemove}: {
                 </Typography>
                 {contracts.length === 0 ? (
                     <Typography variant="body2" color="text.secondary" sx={{px: 0.5}}>
-                        No saved contracts yet. Bookmark a contract from the Contracts panel to keep its address and interface here.
+                        No saved contracts yet. Bookmark a contract from the Contracts panel to keep its label, address, and interface here.
                     </Typography>
                 ) : (
                     <SavedContractsList contracts={contracts} onUse={onUse} onRemove={onRemove} compact />

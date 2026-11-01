@@ -1,7 +1,8 @@
 import { ethers } from "ethers";
 
 export interface SavedContract {
-    version: 2;
+    version: 3;
+    label: string;
     address: string;
     chainId: string;
     abi: string;
@@ -11,6 +12,17 @@ export interface SavedContract {
 export const SAVED_CONTRACTS_KEY = "intereth.saved-contracts";
 export const MAX_SAVED_CONTRACTS = 50;
 export const MAX_SAVED_ABI_LENGTH = 512_000;
+export const MAX_SAVED_LABEL_LENGTH = 120;
+
+function defaultLabel(address: string) {
+    return `Contract ${address.slice(0, 8)}…${address.slice(-6)}`;
+}
+
+function normalizedLabel(value: unknown, address: string): string {
+    if (typeof value !== "string") return defaultLabel(address);
+    const trimmed = value.trim();
+    return trimmed ? trimmed.slice(0, MAX_SAVED_LABEL_LENGTH) : defaultLabel(address);
+}
 
 function normalizedChainId(value: unknown): string | null {
     if (typeof value !== "string" || !/^\d+$/.test(value)) return null;
@@ -34,20 +46,21 @@ function normalizedAbi(value: unknown): string | null {
 }
 
 /**
- * Reads a stored entry as the current schema. Version 1 entries also carried a
- * label, access mode, and provider; those connection details are discarded so
- * the saved contract only describes its identity and interface.
+ * Reads a stored entry as the current schema. Version 1 entries also carried
+ * an access mode and provider, and version 2 dropped the label; connection
+ * details are discarded and a missing label falls back to the address.
  */
 function normalizeEntry(value: unknown): SavedContract | null {
     if (!value || typeof value !== "object") return null;
     const entry = value as {
         version?: unknown;
+        label?: unknown;
         address?: unknown;
         chainId?: unknown;
         abi?: unknown;
         savedAt?: unknown;
     };
-    if ((entry.version !== 1 && entry.version !== 2)
+    if ((entry.version !== 1 && entry.version !== 2 && entry.version !== 3)
         || typeof entry.address !== "string" || !ethers.isAddress(entry.address)
         || typeof entry.savedAt !== "number" || !Number.isFinite(entry.savedAt) || entry.savedAt < 0) {
         return null;
@@ -55,10 +68,12 @@ function normalizeEntry(value: unknown): SavedContract | null {
     const chainId = normalizedChainId(entry.chainId);
     const abi = normalizedAbi(entry.abi);
     if (!chainId || !abi) return null;
+    const address = ethers.getAddress(entry.address);
 
     return {
-        version: 2,
-        address: ethers.getAddress(entry.address),
+        version: 3,
+        label: normalizedLabel(entry.label, address),
+        address,
         chainId,
         abi,
         savedAt: entry.savedAt,

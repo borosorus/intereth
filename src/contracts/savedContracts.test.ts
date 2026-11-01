@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import {
     MAX_SAVED_ABI_LENGTH,
     MAX_SAVED_CONTRACTS,
+    MAX_SAVED_LABEL_LENGTH,
     SAVED_CONTRACTS_KEY,
     SavedContract,
     readSavedContracts,
@@ -16,7 +17,8 @@ const ABI = new ethers.Interface(["function balanceOf(address account) view retu
 
 function entry(overrides: Partial<SavedContract> = {}): SavedContract {
     return {
-        version: 2,
+        version: 3,
+        label: overrides.label ?? "Saved token",
         address: overrides.address ?? ADDRESS,
         chainId: overrides.chainId ?? "1",
         abi: overrides.abi ?? ABI,
@@ -38,13 +40,13 @@ describe("savedContracts", () => {
         expect(writeSavedContracts([first])).toBe(true);
         expect(readSavedContracts()).toEqual([first]);
 
-        const updated = entry({abi: JSON.stringify([{type: "function", name: "symbol", inputs: [], outputs: [{type: "string"}], stateMutability: "view"}]), savedAt: 2});
+        const updated = entry({label: "Renamed token", abi: JSON.stringify([{type: "function", name: "symbol", inputs: [], outputs: [{type: "string"}], stateMutability: "view"}]), savedAt: 2});
         const next = upsertSavedContract(readSavedContracts(), updated);
         expect(writeSavedContracts(next)).toBe(true);
         expect(readSavedContracts()).toEqual([updated]);
     });
 
-    it("migrates version 1 entries and strips connection details", () => {
+    it("migrates version 1 entries, keeping the label and dropping connection details", () => {
         window.localStorage.setItem(SAVED_CONTRACTS_KEY, JSON.stringify([{
             version: 1,
             id: "saved-1",
@@ -61,9 +63,20 @@ describe("savedContracts", () => {
         const stored = JSON.parse(window.localStorage.getItem(SAVED_CONTRACTS_KEY) ?? "[]") as Record<string, unknown>[];
         expect(stored).toEqual([entry({savedAt: 5})]);
         expect(stored[0]).not.toHaveProperty("id");
-        expect(stored[0]).not.toHaveProperty("label");
         expect(stored[0]).not.toHaveProperty("access");
         expect(stored[0]).not.toHaveProperty("provider");
+    });
+
+    it("derives a label when migrating version 2 entries", () => {
+        window.localStorage.setItem(SAVED_CONTRACTS_KEY, JSON.stringify([{
+            version: 2,
+            address: ADDRESS,
+            chainId: "1",
+            abi: ABI,
+            savedAt: 5,
+        }]));
+
+        expect(readSavedContracts()).toEqual([entry({label: "Contract 0x000000…000010", savedAt: 5})]);
     });
 
     it("rewrites storage only when the canonical value changes", () => {
@@ -85,7 +98,7 @@ describe("savedContracts", () => {
             entry({chainId: "1.5"}),
             entry({abi: "not-json"}),
             entry({abi: JSON.stringify({not: "an array"})}),
-            {...entry(), version: 3},
+            {...entry(), version: 4},
             {...entry(), savedAt: "now"},
         ]));
 
@@ -126,11 +139,19 @@ describe("savedContracts", () => {
         expect(readSavedContracts()).toEqual([]);
     });
 
-    it("normalizes checksummed addresses and chain IDs", () => {
+    it("normalizes checksummed addresses, chain IDs, and labels", () => {
         const lowerAddress = ADDRESS.toLowerCase();
-        const raw = entry({address: lowerAddress, chainId: "0001"});
+        const raw = entry({address: lowerAddress, chainId: "0001", label: "  Saved token  "});
         const next = upsertSavedContract([], raw);
         expect(next[0]?.address).toBe(ADDRESS);
         expect(next[0]?.chainId).toBe("1");
+        expect(next[0]?.label).toBe("Saved token");
+    });
+
+    it("falls back to an address label and caps long labels", () => {
+        expect(upsertSavedContract([], entry({label: "   "}))[0]?.label).toBe("Contract 0x000000…000010");
+
+        const capped = upsertSavedContract([], entry({label: "x".repeat(MAX_SAVED_LABEL_LENGTH + 20)}))[0];
+        expect(capped?.label).toHaveLength(MAX_SAVED_LABEL_LENGTH);
     });
 });

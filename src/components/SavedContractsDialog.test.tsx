@@ -5,7 +5,8 @@ import { SavedContract } from "../contracts/savedContracts";
 import SavedContractsDialog from "./SavedContractsDialog";
 
 const entry: SavedContract = {
-    version: 2,
+    version: 3,
+    label: "Saved token",
     address: "0x0000000000000000000000000000000000000010",
     chainId: "1",
     abi: new ethers.Interface(["function balanceOf(address account) view returns (uint256)"]).formatJson(),
@@ -26,6 +27,7 @@ describe("SavedContractsDialog", () => {
             />,
         );
 
+        expect(screen.getByText("Saved token")).toBeInTheDocument();
         expect(screen.getByText(entry.address)).toBeInTheDocument();
         expect(screen.getByText("Chain 1")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", {name: "Use saved contract 0x000000…000010 on chain 1"}));
@@ -44,7 +46,7 @@ describe("SavedContractsDialog", () => {
                 onRemove={vi.fn()}
             />,
         );
-        expect(screen.getByText(/keep only the address, ABI, and chain ID/)).toBeInTheDocument();
+        expect(screen.getByText(/keep only the label, address, ABI, and chain ID/)).toBeInTheDocument();
         expect(screen.getByText(/No saved contracts yet/)).toBeInTheDocument();
     });
 });

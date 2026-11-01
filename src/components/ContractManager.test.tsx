@@ -124,7 +124,8 @@ describe("ContractManager", () => {
     it("places saved contracts above the examples in the empty workspace", () => {
         mockedWalletSession.mockReturnValue(walletSession());
         const entry: SavedContract = {
-            version: 2,
+            version: 3,
+            label: "Saved token",
             address: "0x0000000000000000000000000000000000000010",
             chainId: "1",
             abi: "[]",
@@ -155,12 +156,12 @@ describe("ContractManager", () => {
             <ContractManager
                 addContract={vi.fn()}
                 showExamples={false}
-                prefill={{address: FIRST_ADDRESS, chainId: "1", abi}}
+                prefill={{label: "Saved token", address: FIRST_ADDRESS, chainId: "1", abi}}
             />,
         );
 
         expect(screen.getByLabelText("Contract address")).toHaveValue(FIRST_ADDRESS);
-        expect(screen.getByLabelText("Contract label")).toHaveValue("");
+        expect(screen.getByLabelText("Contract label")).toHaveValue("Saved token");
         expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(abi);
         expect(screen.getByRole("checkbox", {name: "Use connected account"})).not.toBeChecked();
         expect(screen.getByText("Test chain · Chain 1")).toBeInTheDocument();
@@ -173,7 +174,7 @@ describe("ContractManager", () => {
             <ContractManager
                 addContract={vi.fn()}
                 showExamples={false}
-                prefill={{address: FIRST_ADDRESS, chainId: "42", abi: "[]"}}
+                prefill={{label: "Saved token", address: FIRST_ADDRESS, chainId: "42", abi: "[]"}}
             />,
         );
 
@@ -189,21 +190,23 @@ describe("ContractManager", () => {
             <ContractManager
                 addContract={vi.fn()}
                 showExamples={false}
-                prefill={{address: FIRST_ADDRESS, chainId: "1", abi: firstAbi}}
+                prefill={{label: "First token", address: FIRST_ADDRESS, chainId: "1", abi: firstAbi}}
             />,
         );
 
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: SECOND_ADDRESS}});
+        fireEvent.change(screen.getByLabelText("Contract label"), {target: {value: "Edited label"}});
         fireEvent.change(screen.getByRole("textbox", {name: "JSON ABI"}), {target: {value: "[]"}});
         rerender(
             <ContractManager
                 addContract={vi.fn()}
                 showExamples={false}
-                prefill={{address: SECOND_ADDRESS, chainId: "1", abi: secondAbi}}
+                prefill={{label: "Second token", address: SECOND_ADDRESS, chainId: "1", abi: secondAbi}}
             />,
         );
 
         expect(screen.getByLabelText("Contract address")).toHaveValue(SECOND_ADDRESS);
+        expect(screen.getByLabelText("Contract label")).toHaveValue("Second token");
         expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(secondAbi);
     });
 

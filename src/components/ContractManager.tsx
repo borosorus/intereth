@@ -47,6 +47,7 @@ type AbiLookupState =
     | {status: "not-found" | "error"};
 
 export interface ContractPrefill {
+    label: string;
     address: string;
     chainId: string;
     abi: string;
@@ -296,12 +297,12 @@ export default function ContractManager({addContract, showExamples, prefill, sav
         ? chainsById.get(resolvedChainId)?.label ?? "Unknown network"
         : null;
 
-    // A saved contract only suggests a network and interface. Reset the
+    // A saved contract suggests its label, network, and interface. Reset the
     // connection mode and any previous endpoint so the user makes that choice.
     useEffect(() => {
         if (!prefill) return;
         setAddress(ethers.getAddress(prefill.address));
-        setLabel("");
+        setLabel(prefill.label);
         setAbi(prefill.abi);
         setInterfaceFormat("json");
         setAbiPreset("custom");
