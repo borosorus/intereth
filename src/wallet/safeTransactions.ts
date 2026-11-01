@@ -1,11 +1,12 @@
-import Safe from "@safe-global/protocol-kit";
 import { ethers } from "ethers";
 import { ExecutableCall } from "../calls/executable";
+import { loadSafeProtocolKit } from "./safeProtocolKit";
+import type { SafeProtocolKit } from "./safeProtocolKit";
 
 export interface SafeTransactionDraft {
-    protocolKit: Safe;
+    protocolKit: SafeProtocolKit;
     provider: ethers.BrowserProvider;
-    transaction: Awaited<ReturnType<Safe["createTransaction"]>>;
+    transaction: Awaited<ReturnType<SafeProtocolKit["createTransaction"]>>;
     safeTxHash: string;
     nonce: number;
     blockNumber: number;
@@ -42,6 +43,7 @@ export async function createSafeTransaction(
 ): Promise<SafeTransactionDraft> {
     const browserProvider = new ethers.BrowserProvider(eip1193Provider as never);
     const blockNumber = await browserProvider.getBlockNumber();
+    const {default: Safe} = await loadSafeProtocolKit();
     const protocolKit = await Safe.init({
         provider: eip1193Provider as never,
         signer: ethers.getAddress(ownerAddress),

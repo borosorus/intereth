@@ -10,6 +10,21 @@ export default defineConfig({
   // namespace instead of its .default, so React receives an object and the
   // app renders blank. This flag restores the __esModule-aware interop.
   legacy: { inconsistentCjsInterop: true },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'safe', test: /node_modules[\\/]@safe-global[\\/]/, priority: 40, includeDependenciesRecursively: false },
+            { name: 'web3-onboard', test: /node_modules[\\/]@web3-onboard[\\/](core|react)[\\/]/, priority: 30, includeDependenciesRecursively: false, maxSize: 450_000 },
+            { name: 'ethers', test: /node_modules[\\/]ethers[\\/]/, priority: 20 },
+            { name: 'mui', test: /node_modules[\\/](@mui|@emotion)[\\/]/, priority: 10 },
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 5 },
+          ],
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

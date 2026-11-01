@@ -1,10 +1,9 @@
 import ContractManager from './components/ContractManager';
 import BookmarksOutlinedIcon from '@mui/icons-material/BookmarksOutlined';
 import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, useMediaQuery } from '@mui/material';
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
 import StaticContractItem from './components/StaticContractItem';
-import ExecutionWorkspace from './components/execution/ExecutionWorkspace';
 import ExecutionTray from './components/ExecutionTray';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
@@ -13,6 +12,8 @@ import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
 import { workspaceSurfaceSx } from './ui/styles';
+
+const ExecutionWorkspace = lazy(() => import('./components/execution/ExecutionWorkspace'));
 
 export default function App(){
     const workspace = useContractWorkspace();
@@ -23,10 +24,19 @@ export default function App(){
     const [savedContractsOpen, setSavedContractsOpen] = useState(false);
     const [managerGeneration, setManagerGeneration] = useState(0);
     const [trayHeight, setTrayHeight] = useState(0);
+    const [executionMounted, setExecutionMounted] = useState(activeView === "execution");
     const {contracts, selectedContract} = workspace;
     const trayVisible = state.plan.calls.length > 0 || state.plan.watches.length > 0;
     const wideExplore = activeView === "explore" && trayVisible && isWideViewport;
     const reserveMobileTraySpace = activeView === "explore" && trayVisible && !isWideViewport;
+    const executionNeedsMount = activeView === "execution"
+        || state.execution.status === "submitting"
+        || state.execution.status === "pending"
+        || state.sequentialExecution.status === "active";
+
+    useEffect(() => {
+      if (executionNeedsMount) setExecutionMounted(true);
+    }, [executionNeedsMount]);
 
     const addFromDialog = (contract: ContractInstance) => {
       workspace.addContract(contract);
@@ -108,11 +118,19 @@ export default function App(){
               </Box>
             )}
           </Box>
-          <Box sx={{display: activeView === "execution" ? "block" : "none"}}>
-            <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(2, 132, 199, 0.04), #fff 40%)"}}>
-              <ExecutionWorkspace active={activeView === "execution"} />
-            </Paper>
-          </Box>
+          {executionMounted && (
+            <Box sx={{display: activeView === "execution" ? "block" : "none"}}>
+              <Suspense fallback={(
+                <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}}}>
+                  <Alert severity="info">Loading execution workspace…</Alert>
+                </Paper>
+              )}>
+                <Paper component="section" variant="outlined" sx={{...workspaceSurfaceSx, p: {xs: 1.25, sm: 2}, background: "linear-gradient(140deg, rgba(2, 132, 199, 0.04), #fff 40%)"}}>
+                  <ExecutionWorkspace active={activeView === "execution"} />
+                </Paper>
+              </Suspense>
+            </Box>
+          )}
         </Container>
         <ResponsiveDialog open={addContractOpen} onClose={() => setAddContractOpen(false)} maxWidth="md">
           <DialogTitle>Add contract</DialogTitle>

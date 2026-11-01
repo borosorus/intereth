@@ -1,9 +1,10 @@
 import { useConnectWallet } from "@web3-onboard/react";
 import { ethers } from "ethers";
-import SafeAppsSDK, { SafeInfoExtended } from "@safe-global/safe-apps-sdk";
+import type SafeAppsSDK from "@safe-global/safe-apps-sdk";
+import type { SafeInfoExtended } from "@safe-global/safe-apps-sdk";
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { NormalizedError, normalizeError } from "../callUtils";
-import Safe from "@safe-global/protocol-kit";
+import { loadSafeProtocolKit } from "./safeProtocolKit";
 import { readActiveSafe, readSavedSafes, safeAddressKey, SavedSafeAddress, writeActiveSafe, writeSavedSafes } from "./safeStorage";
 
 export type WalletSessionStatus = "disconnected" | "loading" | "ready" | "error";
@@ -72,29 +73,32 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
     // running in an iframe. Outside Safe the request times out quickly.
     useEffect(() => {
         if (window.parent === window) return;
-        const sdk = new SafeAppsSDK();
         let cancelled = false;
         let timeout: number | undefined;
-        Promise.race([
-            sdk.safe.getInfo(),
-            new Promise<never>((_, reject) => {
-                timeout = window.setTimeout(() => reject(new Error("Safe host handshake timed out")), 5000);
-            }),
-        ]).then((info: SafeInfoExtended) => {
-            if (cancelled || !ethers.isAddress(info.safeAddress) || !Number.isInteger(info.chainId) || info.chainId <= 0) return;
-            setSafeAppSdk(sdk);
-            setSafeAccount({
-                address: ethers.getAddress(info.safeAddress),
-                chainId: String(info.chainId),
-                owners: info.owners.filter((owner) => ethers.isAddress(owner)).map(ethers.getAddress),
-                threshold: info.threshold,
-                nonce: info.nonce,
-                version: info.version ?? null,
-                source: "safe-app",
+        void import("@safe-global/safe-apps-sdk").then(({default: SafeAppsSDK}) => {
+            if (cancelled) return;
+            const sdk = new SafeAppsSDK();
+            Promise.race([
+                sdk.safe.getInfo(),
+                new Promise<never>((_, reject) => {
+                    timeout = window.setTimeout(() => reject(new Error("Safe host handshake timed out")), 5000);
+                }),
+            ]).then((info: SafeInfoExtended) => {
+                if (cancelled || !ethers.isAddress(info.safeAddress) || !Number.isInteger(info.chainId) || info.chainId <= 0) return;
+                setSafeAppSdk(sdk);
+                setSafeAccount({
+                    address: ethers.getAddress(info.safeAddress),
+                    chainId: String(info.chainId),
+                    owners: info.owners.filter((owner) => ethers.isAddress(owner)).map(ethers.getAddress),
+                    threshold: info.threshold,
+                    nonce: info.nonce,
+                    version: info.version ?? null,
+                    source: "safe-app",
+                });
+            }).catch(() => undefined).finally(() => {
+                if (timeout !== undefined) window.clearTimeout(timeout);
             });
-        }).catch(() => undefined).finally(() => {
-            if (timeout !== undefined) window.clearTimeout(timeout);
-        });
+        }).catch(() => undefined);
         return () => { cancelled = true; if (timeout !== undefined) window.clearTimeout(timeout); };
     }, []);
 
@@ -158,6 +162,7 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
         void provider.getCode(account).then(async (code) => {
             if (code === "0x" || cancelled) return;
             try {
+                const {default: Safe} = await loadSafeProtocolKit();
                 const protocolKit = await Safe.init({provider: wallet.provider as never, safeAddress: account});
                 const [owners, threshold, version, nonce] = await Promise.all([
                     protocolKit.getOwners(),
@@ -277,6 +282,7 @@ export function WalletSessionProvider({children}: {children: ReactNode}) {
         if (code === "0x") {
             throw Object.assign(new Error("The selected address has no contract code on the connected network."), {code: "NOT_A_SAFE"});
         }
+        const {default: Safe} = await loadSafeProtocolKit();
         const protocolKit = await Safe.init({provider: wallet!.provider as never, signer: account, safeAddress});
         const [owners, threshold] = await Promise.all([
             protocolKit.getOwners(),
