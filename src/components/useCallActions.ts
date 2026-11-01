@@ -129,7 +129,7 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
         } finally {
             setIsResponseLoading(false);
         }
-    }, [wallet.account, wallet.executionAccount, wallet.executionChainId, wallet.injectedProvider, wallet.isSafeMode, wallet.safeAccount, wallet.safeAppSdk, wallet.safeOwnerConnected, wallet.signer]);
+    }, [wallet.account, wallet.chainId, wallet.executionAccount, wallet.executionChainId, wallet.injectedProvider, wallet.isSafeMode, wallet.safeAccount, wallet.safeAppSdk, wallet.safeOwnerConnected, wallet.signer]);
 
     const queueCall = useCallback(async (prepare: PreparedCallFactory) => {
         try {
@@ -149,7 +149,7 @@ export function useCallActions({chainId}: {chainId?: string} = {}) {
         } finally {
             setIsQueueing(false);
         }
-    }, [transactionPlan, wallet.executionAccount, wallet.executionChainId, wallet.isSafeMode, wallet.safeAppSdk, wallet.safeOwnerConnected]);
+    }, [transactionPlan, wallet.account, wallet.chainId, wallet.executionAccount, wallet.executionChainId, wallet.isSafeMode, wallet.safeAppSdk, wallet.safeOwnerConnected]);
 
     const runOnchainRead = useCallback(async (run: OnchainReadThunk, fallbackTitle?: string) => {
         setIsResponseLoading(true);

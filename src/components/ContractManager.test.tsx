@@ -48,7 +48,7 @@ describe("ContractManager", () => {
     it("keeps the interface editor at a fixed, internally scrollable size", () => {
         renderManager();
 
-        const editor = screen.getByLabelText("JSON ABI");
+        const editor = screen.getByRole("textbox", {name: "JSON ABI"});
         expect(editor).toHaveAttribute("rows", "6");
         expect(window.getComputedStyle(editor).overflowY).toBe("auto");
         expect(window.getComputedStyle(editor).resize).toBe("none");
@@ -60,14 +60,14 @@ describe("ContractManager", () => {
     it("switches placeholders without populating the editor", () => {
         renderManager();
 
-        const jsonEditor = screen.getByLabelText("JSON ABI");
+        const jsonEditor = screen.getByRole("textbox", {name: "JSON ABI"});
         expect(jsonEditor).toHaveValue("");
         expect(jsonEditor).toHaveAttribute("placeholder", expect.stringContaining('"type":"function"'));
 
-        fireEvent.mouseDown(screen.getByLabelText("Interface format"));
+        fireEvent.mouseDown(screen.getByRole("combobox", {name: /Interface format/}));
         fireEvent.click(screen.getByRole("option", {name: "Solidity interface"}));
 
-        const solidityEditor = screen.getByLabelText("Solidity interface");
+        const solidityEditor = screen.getByRole("textbox", {name: "Solidity interface"});
         expect(solidityEditor).toHaveValue("");
         expect(solidityEditor).toHaveAttribute("placeholder", expect.stringContaining("function withdraw(address recipient, uint256 amount) external"));
     });
@@ -79,11 +79,11 @@ describe("ContractManager", () => {
         const networkHeading = screen.getByText("Network & access");
         const contractHeading = screen.getByText("Contract");
         expect(networkHeading.compareDocumentPosition(contractHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        expect(screen.getByText("Test chain · 1")).toBeInTheDocument();
+        expect(screen.getByText("Test chain · Chain 1")).toBeInTheDocument();
 
         // The compact collapsed display must not hide the full chain identity.
-        fireEvent.mouseDown(screen.getByLabelText("RPC Provider"));
-        expect(screen.getByRole("option", {name: "Test chain (Chain 1)"})).toBeInTheDocument();
+        fireEvent.mouseDown(screen.getByRole("combobox", {name: /Network/}));
+        expect(screen.getByRole("option", {name: /Test chain.*Chain 1/})).toBeInTheDocument();
     });
 
     it("shows the browser wallet chain ID", () => {
@@ -131,9 +131,9 @@ describe("ContractManager", () => {
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
 
-        const editor = screen.getByLabelText("JSON ABI");
+        const editor = screen.getByRole("textbox", {name: "JSON ABI"});
         expect(editor).toBeDisabled();
-        expect(screen.getByLabelText("Preset")).toHaveAttribute("aria-disabled", "true");
+        expect(screen.getByRole("combobox", {name: /ABI preset/})).toHaveAttribute("aria-disabled", "true");
         await act(async () => {
             vi.advanceTimersByTime(500);
             await Promise.resolve();
@@ -171,13 +171,13 @@ describe("ContractManager", () => {
             resolveFirst({abi: oldAbi, source: "Sourcify"});
             await Promise.resolve();
         });
-        expect(screen.getByLabelText("JSON ABI")).not.toHaveValue(JSON.stringify(oldAbi, null, 2));
+        expect(screen.getByRole("textbox", {name: "JSON ABI"})).not.toHaveValue(JSON.stringify(oldAbi, null, 2));
 
         await act(async () => {
             resolveSecond({abi: newAbi, source: "Blockscout"});
             await Promise.resolve();
         });
-        expect(screen.getByLabelText("JSON ABI")).toHaveValue(JSON.stringify(newAbi, null, 2));
+        expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(JSON.stringify(newAbi, null, 2));
         expect(screen.getByText("Fetched verified ABI from Blockscout.")).toBeInTheDocument();
     });
 
@@ -190,7 +190,7 @@ describe("ContractManager", () => {
         const manualAbi = JSON.stringify(["function name() view returns (string)"]);
         fireEvent.click(screen.getByRole("checkbox", {name: "Use connected account"}));
         fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: FIRST_ADDRESS}});
-        fireEvent.change(screen.getByLabelText("JSON ABI"), {target: {value: manualAbi}});
+        fireEvent.change(screen.getByRole("textbox", {name: "JSON ABI"}), {target: {value: manualAbi}});
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
         await act(async () => {
             vi.advanceTimersByTime(500);
@@ -200,6 +200,6 @@ describe("ContractManager", () => {
         expect(screen.getByText("No verified ABI was found for this address on chain 1.")).toBeInTheDocument();
         expect(screen.getByRole("button", {name: "Add instance"})).toBeDisabled();
         fireEvent.click(screen.getByRole("checkbox", {name: "Fetch ABI automatically"}));
-        expect(screen.getByLabelText("JSON ABI")).toHaveValue(manualAbi);
+        expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(manualAbi);
     });
 });

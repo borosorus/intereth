@@ -516,17 +516,14 @@ export default function ContractManager({addContract, showExamples}: ContractMan
                                     setProviderIndex(event.target.value as number);
                                 }}
                                 renderValue={(value) => {
-                                    let selectedLabel = "";
-                                    if (useConnectedAccount) {
-                                        selectedLabel = resolvedChainId && resolvedChainLabel
+                                    const chain = value === -1 ? null : chains[value as number];
+                                    const selectedLabel = useConnectedAccount
+                                        ? resolvedChainId && resolvedChainLabel
                                             ? `${resolvedChainLabel} · Chain ${resolvedChainId}`
-                                            : wallet.isSafeMode ? "Active Safe network" : "Connected account network";
-                                    } else if (value === -1) {
-                                        selectedLabel = "Custom RPC";
-                                    } else {
-                                        const chain = chains[value as number];
-                                        selectedLabel = chain ? `${chain.label} · Chain ${chain.id}` : "";
-                                    }
+                                            : wallet.isSafeMode ? "Active Safe network" : "Connected account network"
+                                        : value === -1
+                                            ? "Custom RPC"
+                                            : chain ? `${chain.label} · Chain ${chain.id}` : "";
                                     return (
                                         <Box component="span" sx={{display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                             {selectedLabel}

@@ -79,7 +79,6 @@ export function TextInput({label, optional = false, technical = false, id, sx, .
                 {...props}
                 id={inputId}
                 label={undefined}
-                aria-labelledby={labelId}
                 variant="outlined"
                 sx={inputSx}
             />

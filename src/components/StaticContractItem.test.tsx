@@ -93,17 +93,22 @@ describe("StaticFunctionItem simulated reads", () => {
             simulateRead,
         });
         const fragment = new ethers.Interface(["function active() view returns (bool)"]).getFunction("active")!;
-        const onChainRead = vi.fn().mockResolvedValue(false);
+        const onChainRead = vi.fn().mockResolvedValue(ethers.AbiCoder.defaultAbiCoder().encode(["bool"], [false]));
         const contract = {
-            runner: {call: vi.fn()},
-            getFunction: vi.fn().mockReturnValue(onChainRead),
+            runner: {call: onChainRead},
+            getAddress: vi.fn().mockResolvedValue("0x0000000000000000000000000000000000000010"),
+            getFunction: vi.fn(),
         } as unknown as ethers.BaseContract;
 
         render(<StaticFunctionItem contract={contract} frag={fragment} chainId="1" />);
         fireEvent.click(screen.getByRole("button", {name: /active\(\) View/}));
         fireEvent.click(screen.getByRole("button", {name: "Call on-chain"}));
 
-        await waitFor(() => expect(onChainRead).toHaveBeenCalledWith());
+        await waitFor(() => expect(onChainRead).toHaveBeenCalledWith({
+            to: "0x0000000000000000000000000000000000000010",
+            data: fragment.selector,
+            from: "0x0000000000000000000000000000000000000001",
+        }));
         expect(await screen.findByText("false")).toBeInTheDocument();
         expect(screen.getByText("On-chain")).toBeInTheDocument();
         expect(simulateRead).not.toHaveBeenCalled();

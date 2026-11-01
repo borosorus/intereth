@@ -100,7 +100,8 @@ describe("useContractWorkspace", () => {
         rerender();
 
         await waitFor(() => expect(result.current.contracts.map((contract) => contract.id)).toEqual(["static"]));
-        expect(result.current.notice).toContain("Wallet network changed");
+        expect(result.current.notice).toContain("Active network changed");
+        expect(result.current.notice).toContain("1 wallet contract instance was cleared");
 
         act(() => result.current.dismissNotice());
         expect(result.current.notice).toBeNull();
