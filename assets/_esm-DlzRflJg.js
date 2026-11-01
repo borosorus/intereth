@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-BWaJ3C7D.js";import{t}from"./defineChain-BAD-jvmT.js";function n({chains:e,id:t}){return e.find(e=>e.id===t)}var r=e({defineChain:()=>t,extractChain:()=>n});export{r as t};
