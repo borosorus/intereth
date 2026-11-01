@@ -144,7 +144,7 @@ describe("ContractManager", () => {
         const saved = screen.getByRole("complementary", {name: "Saved contracts"});
         const examples = screen.getByRole("complementary", {name: "Example contracts"});
         expect(saved.compareDocumentPosition(examples) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        fireEvent.click(screen.getByRole("button", {name: "Use"}));
+        fireEvent.click(screen.getByRole("button", {name: "Use saved contract 0x000000…000010 on chain 1"}));
         expect(onUseSavedContract).toHaveBeenCalledWith(entry);
     });
 

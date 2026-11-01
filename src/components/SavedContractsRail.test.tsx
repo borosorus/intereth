@@ -20,7 +20,7 @@ describe("SavedContractsRail", () => {
         expect(screen.getByRole("complementary", {name: "Saved contracts"})).toBeInTheDocument();
         expect(screen.getByText("Saved contracts (1)")).toBeInTheDocument();
         expect(screen.getByText("0x000000…000010")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Use"}));
+        fireEvent.click(screen.getByRole("button", {name: "Use saved contract 0x000000…000010 on chain 1"}));
         expect(onUse).toHaveBeenCalledWith(entry);
         fireEvent.click(screen.getByRole("button", {name: "Remove saved contract 0x000000…000010 on chain 1"}));
         expect(onRemove).toHaveBeenCalledWith(entry);

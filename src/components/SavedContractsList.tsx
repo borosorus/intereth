@@ -31,7 +31,13 @@ export default function SavedContractsList({contracts, onUse, onRemove, compact 
                             </Stack>
                         </Stack>
                         <Stack direction="row" spacing={0.5} alignItems="center" sx={compact ? {alignSelf: "flex-end"} : undefined}>
-                            <Button size="small" variant="contained" color="secondary" onClick={() => onUse(entry)}>
+                            <Button
+                                size="small"
+                                variant="contained"
+                                color="secondary"
+                                aria-label={`Use saved contract ${shortAddress(entry.address)} on chain ${entry.chainId}`}
+                                onClick={() => onUse(entry)}
+                            >
                                 Use
                             </Button>
                             <IconButton

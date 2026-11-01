@@ -28,7 +28,7 @@ describe("SavedContractsDialog", () => {
 
         expect(screen.getByText(entry.address)).toBeInTheDocument();
         expect(screen.getByText("Chain 1")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Use"}));
+        fireEvent.click(screen.getByRole("button", {name: "Use saved contract 0x000000…000010 on chain 1"}));
         expect(onUse).toHaveBeenCalledWith(entry);
         fireEvent.click(screen.getByRole("button", {name: "Remove saved contract 0x000000…000010 on chain 1"}));
         expect(onRemove).toHaveBeenCalledWith(entry);
