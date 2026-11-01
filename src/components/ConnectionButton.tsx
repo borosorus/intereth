@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Box, Button, Chip, CircularProgress, DialogActions, DialogContent, DialogTitle, IconButton, List, ListItem, ListItemText, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
@@ -8,6 +8,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { ethers } from "ethers";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { useTransactionPlan } from "../transaction-plan/context";
+import { chainsById } from "../chainConfig";
 import CopyButton from "./CopyButton";
 import { NormalizedError, normalizeError } from "../callUtils";
 import ErrorDialog from "./ErrorDialog";
@@ -19,16 +20,33 @@ function shortAddress(address: string) {
     return `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
+function networkLabel(chainId: string) {
+    return chainsById.get(chainId)?.label ?? `chain ${chainId}`;
+}
+
+type SafeAction = {kind: "add"} | {kind: "select" | "switch"; address: string};
+
+interface AddedSafeResult {
+    address: string;
+    chainId: string;
+    owners: number;
+    threshold: number;
+    alreadySaved: boolean;
+}
+
 export default function ConnectionButton() {
     const wallet = useWalletSession();
     const {state: planState} = useTransactionPlan();
     const [open, setOpen] = useState(false);
     const [address, setAddress] = useState("");
-    const [busy, setBusy] = useState(false);
+    const [pendingAction, setPendingAction] = useState<SafeAction | null>(null);
+    const [addResult, setAddResult] = useState<AddedSafeResult | null>(null);
+    const [addError, setAddError] = useState<NormalizedError | null>(null);
     const [disconnectingWallet, setDisconnectingWallet] = useState(false);
     const [walletMenuAnchor, setWalletMenuAnchor] = useState<HTMLElement | null>(null);
-    const [busyAddress, setBusyAddress] = useState<string | null>(null);
     const [error, setError] = useState<NormalizedError | null>(null);
+    const addressInputRef = useRef<HTMLInputElement>(null);
+    const busy = pendingAction !== null;
     const safe = wallet.safeAccount;
     const savedSafes = wallet.savedSafes ?? [];
     const hasSafeExecutionRecord = planState.sequentialExecution.calls.some((call) => Boolean(call.safeTxHash || call.safeBatch));
@@ -43,6 +61,11 @@ export default function ConnectionButton() {
         trackedSafeContext
         && trackedSafeContext.account.toLowerCase() === safeAddress.toLowerCase()
         && trackedSafeContext.chainId === chainId,
+    );
+    const isPendingSelect = (safeAddress: string) => Boolean(
+        pendingAction
+        && pendingAction.kind !== "add"
+        && pendingAction.address.toLowerCase() === safeAddress.toLowerCase(),
     );
 
     const connect = async () => {
@@ -68,34 +91,80 @@ export default function ConnectionButton() {
         }
     };
 
+    const openSafeDialog = () => {
+        setAddResult(null);
+        setAddError(null);
+        setOpen(true);
+    };
+
+    const closeSafeDialog = () => {
+        if (busy) return;
+        setAddResult(null);
+        setAddError(null);
+        setOpen(false);
+    };
+
     const selectSafe = async (safeAddress: string) => {
+        setPendingAction({kind: "select", address: safeAddress});
         try {
-            setBusy(true);
-            setBusyAddress(safeAddress);
             setError(null);
             if (!wallet.selectSafe) throw new Error("Safe selection is unavailable.");
             await wallet.selectSafe(safeAddress);
         } catch (caught) {
             setError(normalizeError(caught, "Safe verification failed"));
         } finally {
-            setBusy(false);
-            setBusyAddress(null);
+            setPendingAction(null);
         }
+    };
+
+    const addSafe = async () => {
+        if (!wallet.selectSafe) {
+            setAddError(normalizeError(new Error("Safe selection is unavailable."), "Safe verification failed"));
+            return;
+        }
+        setPendingAction({kind: "add"});
+        setAddResult(null);
+        setAddError(null);
+        try {
+            const added = await wallet.selectSafe(address);
+            const alreadySaved = savedSafes.some((entry) => (
+                entry.address.toLowerCase() === added.address.toLowerCase() && entry.chainId === added.chainId
+            ));
+            setAddress("");
+            setAddResult({
+                address: added.address,
+                chainId: added.chainId,
+                owners: added.owners.length,
+                threshold: added.threshold,
+                alreadySaved,
+            });
+        } catch (caught) {
+            setAddError(normalizeError(caught, "Safe verification failed"));
+        } finally {
+            setPendingAction(null);
+        }
+    };
+
+    const startAnotherSafe = () => {
+        setAddResult(null);
+        setAddError(null);
+        setAddress("");
+        requestAnimationFrame(() => addressInputRef.current?.focus());
     };
 
     const removeSafe = (safeAddress: string, chainId: string) => {
         wallet.removeSavedSafe?.(safeAddress, chainId);
     };
 
-    const switchToChain = async (chainId: string) => {
+    const switchToChain = async (chainId: string, safeAddress: string) => {
+        setPendingAction({kind: "switch", address: safeAddress});
         try {
-            setBusy(true);
             setError(null);
             await wallet.switchChain(chainId);
         } catch (caught) {
             setError(normalizeError(caught, "Network switch failed"));
         } finally {
-            setBusy(false);
+            setPendingAction(null);
         }
     };
 
@@ -161,7 +230,7 @@ export default function ConnectionButton() {
                     size="medium"
                     startIcon={<SecurityOutlinedIcon />}
                     aria-label={safeLabel ? `Manage Safe ${safeLabel}` : wallet.account ? "Manage Safe accounts" : "Saved Safes"}
-                    onClick={() => setOpen(true)}
+                    onClick={openSafeDialog}
                     sx={{
                         borderRadius: "8px",
                         textTransform: "none",
@@ -186,7 +255,7 @@ export default function ConnectionButton() {
                 </Button>
             )}
 
-            <ResponsiveDialog open={open} onClose={() => !busy && setOpen(false)} maxWidth="sm" aria-labelledby="safe-accounts-title">
+            <ResponsiveDialog open={open} onClose={closeSafeDialog} maxWidth="sm" aria-labelledby="safe-accounts-title">
                 <DialogTitle id="safe-accounts-title">Safe accounts</DialogTitle>
                 <DialogContent dividers>
                     <Stack spacing={1.5}>
@@ -229,10 +298,10 @@ export default function ConnectionButton() {
                                                             variant="contained"
                                                             color="secondary"
                                                             disabled={busy || !wallet.account || Boolean(wallet.safeAppSdk) || (safeExecutionInProgress && !trackedSafe)}
-                                                            onClick={() => sameNetwork ? void selectSafe(entry.address) : void switchToChain(entry.chainId)}
+                                                            onClick={() => sameNetwork ? void selectSafe(entry.address) : void switchToChain(entry.chainId, entry.address)}
                                                             sx={{minHeight: 32, px: 1.25, fontWeight: 700, boxShadow: "none", "@media (pointer: coarse)": {minHeight: 44}}}
                                                         >
-                                                            {busyAddress === entry.address ? <CircularProgress size={16} color="inherit" /> : sameNetwork ? "Use" : "Switch network"}
+                                                            {isPendingSelect(entry.address) ? <CircularProgress size={16} color="inherit" /> : sameNetwork ? "Use" : "Switch network"}
                                                         </Button>
                                                     )}
                                                     <IconButton
@@ -266,27 +335,61 @@ export default function ConnectionButton() {
                             <Alert severity="info">This Safe is the connected account. Connect one of its owner wallets to choose and use another Safe.</Alert>
                         )}
                         {safe?.source !== "safe-app" && (
-                            <>
-                                <TextInput
-                                    label="Add a Safe address"
-                                    placeholder="0x…"
-                                    technical
-                                    value={address}
-                                    onChange={(event) => setAddress(event.target.value)}
-                                    error={Boolean(address && !ethers.isAddress(address))}
-                                    helperText={address && !ethers.isAddress(address) ? "Enter a valid EVM address." : `Connected account: ${wallet.account ?? "none"} · chain ${wallet.chainId ?? "unknown"}`}
-                                    fullWidth
-                                />
-                                {!wallet.account && <Alert severity="warning">Connect a Safe owner wallet to verify and add an address.</Alert>}
-                            </>
+                            addResult ? (
+                                <Alert severity="success" aria-label="Safe added">
+                                    <Stack spacing={0.5}>
+                                        <Typography variant="body2" sx={{overflowWrap: "anywhere"}}>
+                                            Safe <Box component="span" sx={{fontFamily: monoFont}}>{addResult.address}</Box> verified on {networkLabel(addResult.chainId)} and set as active.
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {addResult.owners} {addResult.owners === 1 ? "owner" : "owners"} · threshold {addResult.threshold} · {addResult.alreadySaved ? "already in your address book" : "saved to your address book"}
+                                        </Typography>
+                                    </Stack>
+                                </Alert>
+                            ) : (
+                                <>
+                                    <TextInput
+                                        label="Add a Safe address"
+                                        inputRef={addressInputRef}
+                                        placeholder="0x…"
+                                        technical
+                                        value={address}
+                                        onChange={(event) => {
+                                            setAddress(event.target.value);
+                                            setAddError(null);
+                                        }}
+                                        error={Boolean(address && !ethers.isAddress(address))}
+                                        helperText={address && !ethers.isAddress(address) ? "Enter a valid EVM address." : `Connected account: ${wallet.account ?? "none"} · chain ${wallet.chainId ?? "unknown"}`}
+                                        fullWidth
+                                    />
+                                    {!wallet.account && <Alert severity="warning">Connect a Safe owner wallet to verify and add an address.</Alert>}
+                                    {addError && <Alert severity="error">{addError.message}</Alert>}
+                                </>
+                            )
                         )}
                     </Stack>
                 </DialogContent>
                 <DialogActions>
-                    <Button variant="outlined" onClick={() => setOpen(false)} disabled={busy}>Close</Button>
-                    {safe?.source !== "safe-app" && <Button variant="contained" color="secondary" onClick={() => void selectSafe(address)} disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}>
-                        {busy && !busyAddress ? <CircularProgress size={18} /> : "Verify and remember Safe"}
-                    </Button>}
+                    {addResult ? (
+                        <>
+                            <Button variant="outlined" onClick={startAnotherSafe} disabled={busy}>Add another Safe</Button>
+                            <Button variant="contained" color="secondary" onClick={closeSafeDialog} disabled={busy}>Done</Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="outlined" onClick={closeSafeDialog} disabled={busy}>Close</Button>
+                            {safe?.source !== "safe-app" && (
+                                <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    onClick={() => void addSafe()}
+                                    disabled={busy || (safeExecutionInProgress && !isTrackedSafe(address, wallet.chainId ?? "")) || !ethers.isAddress(address) || !wallet.account || !wallet.chainId}
+                                >
+                                    {pendingAction?.kind === "add" ? <CircularProgress size={18} /> : "Verify and add Safe"}
+                                </Button>
+                            )}
+                        </>
+                    )}
                 </DialogActions>
             </ResponsiveDialog>
             <ErrorDialog error={error} onClose={() => setError(null)} />
