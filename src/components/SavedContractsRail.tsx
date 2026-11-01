@@ -3,9 +3,9 @@ import { SavedContract } from "../contracts/savedContracts";
 import SavedContractsList from "./SavedContractsList";
 import { workspaceSurfaceSx } from "../ui/styles";
 
-export default function SavedContractsRail({contracts, onOpen, onRemove}: {
+export default function SavedContractsRail({contracts, onUse, onRemove}: {
     contracts: SavedContract[];
-    onOpen: (entry: SavedContract) => void;
+    onUse: (entry: SavedContract) => void;
     onRemove: (entry: SavedContract) => void;
 }) {
     return (
@@ -21,10 +21,10 @@ export default function SavedContractsRail({contracts, onOpen, onRemove}: {
                 </Typography>
                 {contracts.length === 0 ? (
                     <Typography variant="body2" color="text.secondary" sx={{px: 0.5}}>
-                        No saved contracts yet. Bookmark a contract from the Contracts panel to reopen it here.
+                        No saved contracts yet. Bookmark a contract from the Contracts panel to keep its address and interface here.
                     </Typography>
                 ) : (
-                    <SavedContractsList contracts={contracts} onOpen={onOpen} onRemove={onRemove} compact />
+                    <SavedContractsList contracts={contracts} onUse={onUse} onRemove={onRemove} compact />
                 )}
             </Stack>
         </Paper>

@@ -13,7 +13,7 @@ Live app: [borosorus.github.io/intereth](https://borosorus.github.io/intereth)
 - Supports nested tuples, arrays, raw calldata, payable calls, and transaction values.
 - Formats unsigned integer inputs as wei, gwei, or ETH while previewing the final integer value.
 - Shows the active RPC URL and chain ID on read-only contract instances.
-- Saves contract identities and ABIs to an opt-in local address book; saved contracts appear above the examples on an empty workspace and reopen from the Contracts panel, falling back to read-only when the wallet or network is unavailable.
+- Saves contract identity and interface data to an opt-in local address book; saved contracts appear above the examples on an empty workspace and open from the Contracts panel as a prefilled form where you choose the network and connection.
 - Builds an ordered, browser-persisted execution plan without opening the wallet.
 - Sends compatible plans as atomic wallet batches through EIP-5792.
 - Offers speculative reads, watches, and plan previews as explicit actions driven by current capabilities.
@@ -67,7 +67,7 @@ For a plan with multiple calls, choose one Safe multi-call transaction to submit
 
 Safe support uses the Safe app connection and Safe Protocol Kit directly; it does not require a Safe Transaction Service API key. Plan tracking is stored in this browser, so on-chain approvals remain authoritative if local browser data is cleared.
 
-The execution plan contains public addresses, calldata, values, and wallet status data in browser local storage. The Safe address book stores public Safe addresses and network IDs there. The opt-in contract address book stores public contract addresses, chain IDs, labels, ABIs, access mode, and any custom RPC URL you chose. Intereth never stores private keys or wallet authorization signatures. Clearing site data removes the saved plan and both address books.
+The execution plan contains public addresses, calldata, values, and wallet status data in browser local storage. The Safe address book stores public Safe addresses and network IDs there. The opt-in contract address book stores only public contract addresses, chain IDs, and ABIs; selecting one prefills the add-contract form and never restores a previous account, access mode, or RPC endpoint. Intereth never stores private keys or wallet authorization signatures. Clearing site data removes the saved plan and both address books.
 
 Custom RPC endpoints are validated before use. Their full URLs are displayed in the interface, including any embedded API keys, so avoid exposing the page in screenshots or screen shares when using credentialed URLs.
 

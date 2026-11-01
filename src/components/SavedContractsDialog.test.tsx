@@ -5,49 +5,46 @@ import { SavedContract } from "../contracts/savedContracts";
 import SavedContractsDialog from "./SavedContractsDialog";
 
 const entry: SavedContract = {
-    version: 1,
-    id: "saved-1",
-    label: "Saved token",
+    version: 2,
     address: "0x0000000000000000000000000000000000000010",
     chainId: "1",
     abi: new ethers.Interface(["function balanceOf(address account) view returns (uint256)"]).formatJson(),
-    access: "read-only",
-    provider: {label: "Ethereum", url: "https://rpc.example", chainId: "1"},
     savedAt: 1,
 };
 
 describe("SavedContractsDialog", () => {
-    it("opens and removes saved contracts", () => {
-        const onOpen = vi.fn();
+    it("uses and removes saved contracts", () => {
+        const onUse = vi.fn();
         const onRemove = vi.fn();
         render(
             <SavedContractsDialog
                 open
                 contracts={[entry]}
                 onClose={vi.fn()}
-                onOpen={onOpen}
+                onUse={onUse}
                 onRemove={onRemove}
             />,
         );
 
-        expect(screen.getByText("Saved token")).toBeInTheDocument();
+        expect(screen.getByText(entry.address)).toBeInTheDocument();
         expect(screen.getByText("Chain 1")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", {name: "Open"}));
-        expect(onOpen).toHaveBeenCalledWith(entry);
-        fireEvent.click(screen.getByRole("button", {name: "Remove saved contract Saved token"}));
+        fireEvent.click(screen.getByRole("button", {name: "Use"}));
+        expect(onUse).toHaveBeenCalledWith(entry);
+        fireEvent.click(screen.getByRole("button", {name: "Remove saved contract 0x000000…000010 on chain 1"}));
         expect(onRemove).toHaveBeenCalledWith(entry);
     });
 
-    it("explains the empty state", () => {
+    it("explains that saved contracts only keep identity and interface data", () => {
         render(
             <SavedContractsDialog
                 open
                 contracts={[]}
                 onClose={vi.fn()}
-                onOpen={vi.fn()}
+                onUse={vi.fn()}
                 onRemove={vi.fn()}
             />,
         );
+        expect(screen.getByText(/keep only the address, ABI, and chain ID/)).toBeInTheDocument();
         expect(screen.getByText(/No saved contracts yet/)).toBeInTheDocument();
     });
 });

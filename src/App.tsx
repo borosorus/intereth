@@ -1,4 +1,4 @@
-import ContractManager from './components/ContractManager';
+import ContractManager, { ContractPrefill } from './components/ContractManager';
 import { Alert, Box, Button, Container, DialogActions, DialogContent, DialogTitle, Paper, Snackbar, Stack, useMediaQuery } from '@mui/material';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import DynamicContractItem from './components/DynamicContractItem';
@@ -7,6 +7,7 @@ import ExecutionTray from './components/ExecutionTray';
 import ContractNavigation from './components/ContractNavigation';
 import ResponsiveDialog from './components/ResponsiveDialog';
 import SavedContractsDialog from './components/SavedContractsDialog';
+import { SavedContract } from './contracts/savedContracts';
 import { ContractInstance, useContractWorkspace } from './contracts/workspace';
 import { useTransactionPlan } from './transaction-plan/context';
 import { useTransactionPlanUi } from './transaction-plan/uiContext';
@@ -20,6 +21,8 @@ export default function App(){
     const {state} = useTransactionPlan();
     const isWideViewport = useMediaQuery('(min-width:1280px)');
     const [addContractOpen, setAddContractOpen] = useState(false);
+    const [dialogPrefill, setDialogPrefill] = useState<ContractPrefill | null>(null);
+    const [inlinePrefill, setInlinePrefill] = useState<ContractPrefill | null>(null);
     const [savedContractsOpen, setSavedContractsOpen] = useState(false);
     const [managerGeneration, setManagerGeneration] = useState(0);
     const [trayHeight, setTrayHeight] = useState(0);
@@ -39,8 +42,37 @@ export default function App(){
 
     const addFromDialog = (contract: ContractInstance) => {
       workspace.addContract(contract);
+      setDialogPrefill(null);
       setAddContractOpen(false);
       setManagerGeneration((current) => current + 1);
+    };
+
+    const addFromInline = (contract: ContractInstance) => {
+      workspace.addContract(contract);
+      setInlinePrefill(null);
+    };
+
+    const openAddContract = () => {
+      setDialogPrefill(null);
+      setAddContractOpen(true);
+    };
+
+    const closeAddContract = () => {
+      setAddContractOpen(false);
+      setDialogPrefill(null);
+    };
+
+    // Saved contracts only carry identity and interface data, so choosing one
+    // fills the form; the user still picks the network and connection.
+    const useSavedContract = (entry: SavedContract) => {
+      const prefill: ContractPrefill = {address: entry.address, chainId: entry.chainId, abi: entry.abi};
+      setSavedContractsOpen(false);
+      if (contracts.length === 0) {
+        setInlinePrefill(prefill);
+        return;
+      }
+      setDialogPrefill(prefill);
+      setAddContractOpen(true);
     };
 
     const saveContract = (id: string) => {
@@ -57,10 +89,11 @@ export default function App(){
             <Stack spacing={3} sx={{minWidth: 0}}>
                 {contracts.length === 0 && (
                   <ContractManager
-                    addContract={workspace.addContract}
+                    addContract={addFromInline}
                     showExamples
+                    prefill={inlinePrefill}
                     savedContracts={workspace.savedContracts}
-                    onOpenSavedContract={workspace.openSavedContract}
+                    onUseSavedContract={useSavedContract}
                     onRemoveSavedContract={workspace.removeSavedContract}
                   />
                 )}
@@ -72,7 +105,7 @@ export default function App(){
                         selectedId={selectedContract.id}
                         onSelect={workspace.selectContract}
                         onDelete={workspace.removeContract}
-                        onAdd={() => setAddContractOpen(true)}
+                        onAdd={openAddContract}
                         onSave={saveContract}
                         onOpenSaved={() => setSavedContractsOpen(true)}
                         savedCount={workspace.savedContracts.length}
@@ -129,20 +162,18 @@ export default function App(){
             </Box>
           )}
         </Container>
-        <ResponsiveDialog open={addContractOpen} onClose={() => setAddContractOpen(false)} maxWidth="md">
+        <ResponsiveDialog open={addContractOpen} onClose={closeAddContract} maxWidth="md">
           <DialogTitle>Add contract</DialogTitle>
           <DialogContent dividers sx={{pt: 2}}>
-            <ContractManager key={managerGeneration} addContract={addFromDialog} showExamples={false} />
+            <ContractManager key={managerGeneration} addContract={addFromDialog} showExamples={false} prefill={dialogPrefill} />
           </DialogContent>
-          <DialogActions><Button onClick={() => setAddContractOpen(false)}>Cancel</Button></DialogActions>
+          <DialogActions><Button onClick={closeAddContract}>Cancel</Button></DialogActions>
         </ResponsiveDialog>
         <SavedContractsDialog
           open={savedContractsOpen}
           contracts={workspace.savedContracts}
           onClose={() => setSavedContractsOpen(false)}
-          onOpen={(entry) => {
-            if (workspace.openSavedContract(entry)) setSavedContractsOpen(false);
-          }}
+          onUse={useSavedContract}
           onRemove={workspace.removeSavedContract}
         />
         <Snackbar

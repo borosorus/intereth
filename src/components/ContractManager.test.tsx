@@ -124,22 +124,19 @@ describe("ContractManager", () => {
     it("places saved contracts above the examples in the empty workspace", () => {
         mockedWalletSession.mockReturnValue(walletSession());
         const entry: SavedContract = {
-            version: 1,
-            id: "saved-1",
-            label: "Saved token",
+            version: 2,
             address: "0x0000000000000000000000000000000000000010",
             chainId: "1",
             abi: "[]",
-            access: "read-only",
             savedAt: 1,
         };
-        const onOpenSavedContract = vi.fn();
+        const onUseSavedContract = vi.fn();
         render(
             <ContractManager
                 addContract={vi.fn()}
                 showExamples
                 savedContracts={[entry]}
-                onOpenSavedContract={onOpenSavedContract}
+                onUseSavedContract={onUseSavedContract}
                 onRemoveSavedContract={vi.fn()}
             />,
         );
@@ -147,8 +144,67 @@ describe("ContractManager", () => {
         const saved = screen.getByRole("complementary", {name: "Saved contracts"});
         const examples = screen.getByRole("complementary", {name: "Example contracts"});
         expect(saved.compareDocumentPosition(examples) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-        fireEvent.click(screen.getByRole("button", {name: "Open"}));
-        expect(onOpenSavedContract).toHaveBeenCalledWith(entry);
+        fireEvent.click(screen.getByRole("button", {name: "Use"}));
+        expect(onUseSavedContract).toHaveBeenCalledWith(entry);
+    });
+
+    it("prefills a saved contract without choosing a connection", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        const abi = JSON.stringify([{type: "function", name: "balanceOf", inputs: [], outputs: [{type: "uint256"}], stateMutability: "view"}]);
+        render(
+            <ContractManager
+                addContract={vi.fn()}
+                showExamples={false}
+                prefill={{address: FIRST_ADDRESS, chainId: "1", abi}}
+            />,
+        );
+
+        expect(screen.getByLabelText("Contract address")).toHaveValue(FIRST_ADDRESS);
+        expect(screen.getByLabelText("Contract label")).toHaveValue("");
+        expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(abi);
+        expect(screen.getByRole("checkbox", {name: "Use connected account"})).not.toBeChecked();
+        expect(screen.getByText("Test chain · Chain 1")).toBeInTheDocument();
+        expect(screen.queryByText(/This saved contract uses chain/)).not.toBeInTheDocument();
+    });
+
+    it("keeps a saved contract's unknown network selectable through a custom RPC", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        render(
+            <ContractManager
+                addContract={vi.fn()}
+                showExamples={false}
+                prefill={{address: FIRST_ADDRESS, chainId: "42", abi: "[]"}}
+            />,
+        );
+
+        expect(screen.getByText("This saved contract uses chain 42. Enter an RPC URL for that network or use a connected account on it.")).toBeInTheDocument();
+        expect(screen.getByLabelText("Custom RPC URL")).toBeInTheDocument();
+    });
+
+    it("reapplies a newly selected saved contract over previous edits", () => {
+        mockedWalletSession.mockReturnValue(walletSession());
+        const firstAbi = JSON.stringify([{type: "function", name: "first", inputs: [], outputs: [], stateMutability: "view"}]);
+        const secondAbi = JSON.stringify([{type: "function", name: "second", inputs: [], outputs: [], stateMutability: "view"}]);
+        const {rerender} = render(
+            <ContractManager
+                addContract={vi.fn()}
+                showExamples={false}
+                prefill={{address: FIRST_ADDRESS, chainId: "1", abi: firstAbi}}
+            />,
+        );
+
+        fireEvent.change(screen.getByLabelText("Contract address"), {target: {value: SECOND_ADDRESS}});
+        fireEvent.change(screen.getByRole("textbox", {name: "JSON ABI"}), {target: {value: "[]"}});
+        rerender(
+            <ContractManager
+                addContract={vi.fn()}
+                showExamples={false}
+                prefill={{address: SECOND_ADDRESS, chainId: "1", abi: secondAbi}}
+            />,
+        );
+
+        expect(screen.getByLabelText("Contract address")).toHaveValue(SECOND_ADDRESS);
+        expect(screen.getByRole("textbox", {name: "JSON ABI"})).toHaveValue(secondAbi);
     });
 
     it("hides the saved rail when the address book is empty", () => {

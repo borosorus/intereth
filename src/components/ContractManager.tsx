@@ -1,4 +1,5 @@
 import {
+    Alert,
     Box,
     Button,
     Chip,
@@ -45,11 +46,18 @@ type AbiLookupState =
     | {status: "success"; source: AbiLookupSource}
     | {status: "not-found" | "error"};
 
+export interface ContractPrefill {
+    address: string;
+    chainId: string;
+    abi: string;
+}
+
 interface ContractManagerProps {
     addContract: (contract: ContractInstance) => void;
     showExamples: boolean;
+    prefill?: ContractPrefill | null;
     savedContracts?: SavedContract[];
-    onOpenSavedContract?: (entry: SavedContract) => void;
+    onUseSavedContract?: (entry: SavedContract) => void;
     onRemoveSavedContract?: (entry: SavedContract) => void;
 }
 
@@ -134,7 +142,7 @@ function ProviderSummary({details}: {details: ProviderDetails}) {
     );
 }
 
-export default function ContractManager({addContract, showExamples, savedContracts = [], onOpenSavedContract, onRemoveSavedContract}: ContractManagerProps) {
+export default function ContractManager({addContract, showExamples, prefill, savedContracts = [], onUseSavedContract, onRemoveSavedContract}: ContractManagerProps) {
     const [address, setAddress] = useState('');
     const [label, setLabel] = useState('');
     const [abi, setAbi] = useState('');
@@ -287,6 +295,29 @@ export default function ContractManager({addContract, showExamples, savedContrac
     const resolvedChainLabel = resolvedChainId
         ? chainsById.get(resolvedChainId)?.label ?? "Unknown network"
         : null;
+
+    // A saved contract only suggests a network and interface. Reset the
+    // connection mode and any previous endpoint so the user makes that choice.
+    useEffect(() => {
+        if (!prefill) return;
+        setAddress(ethers.getAddress(prefill.address));
+        setLabel("");
+        setAbi(prefill.abi);
+        setInterfaceFormat("json");
+        setAbiPreset("custom");
+        setAutomaticAbi(false);
+        setFetchedAbi("");
+        setAbiLookupState({status: "idle"});
+        setUseConnectedAccount(false);
+        setCustomRpc("");
+        setCustomRpcChainId("");
+        setCustomRpcState(CustomRpcState.disabled);
+        setProviderIndex(chains.findIndex((chain) => chain.id === prefill.chainId));
+        requestAnimationFrame(() => {
+            addressInputRef.current?.scrollIntoView?.({behavior: "smooth", block: "center"});
+            addressInputRef.current?.focus({preventScroll: true});
+        });
+    }, [prefill]);
 
     useEffect(() => {
         if (!automaticAbi) {
@@ -547,6 +578,11 @@ export default function ContractManager({addContract, showExamples, savedContrac
                                 </MenuItem>
                             </SelectInput>
                         </Box>
+                        {prefill && providerIndex === -1 && !useConnectedAccount && !customRpc && !chains.some((chain) => chain.id === prefill.chainId) && (
+                            <Alert severity="info">
+                                This saved contract uses chain {prefill.chainId}. Enter an RPC URL for that network or use a connected account on it.
+                            </Alert>
+                        )}
                         {providerIndex === -1 && !useConnectedAccount && (
                             <Box sx={{minWidth: 0}}>
                                 <TextInput
@@ -743,8 +779,8 @@ export default function ContractManager({addContract, showExamples, savedContrac
         </Stack>
         {showExamples && (
             <Stack spacing={2} sx={{minWidth: 0, position: {md: "sticky"}, top: 88}}>
-                {savedContracts.length > 0 && onOpenSavedContract && onRemoveSavedContract && (
-                    <SavedContractsRail contracts={savedContracts} onOpen={onOpenSavedContract} onRemove={onRemoveSavedContract} />
+                {savedContracts.length > 0 && onUseSavedContract && onRemoveSavedContract && (
+                    <SavedContractsRail contracts={savedContracts} onUse={onUseSavedContract} onRemove={onRemoveSavedContract} />
                 )}
                 <ExampleContractsRail selectedAddress={address} onSelect={selectExample} />
             </Stack>

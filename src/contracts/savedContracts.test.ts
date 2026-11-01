@@ -16,15 +16,11 @@ const ABI = new ethers.Interface(["function balanceOf(address account) view retu
 
 function entry(overrides: Partial<SavedContract> = {}): SavedContract {
     return {
-        version: 1,
-        id: overrides.id ?? "saved-1",
-        label: overrides.label ?? "Saved token",
+        version: 2,
         address: overrides.address ?? ADDRESS,
         chainId: overrides.chainId ?? "1",
         abi: overrides.abi ?? ABI,
-        access: overrides.access ?? "read-only",
         savedAt: overrides.savedAt ?? 1,
-        ...(overrides.provider ? {provider: overrides.provider} : {}),
     };
 }
 
@@ -42,10 +38,44 @@ describe("savedContracts", () => {
         expect(writeSavedContracts([first])).toBe(true);
         expect(readSavedContracts()).toEqual([first]);
 
-        const updated = entry({label: "Updated token", savedAt: 2});
+        const updated = entry({abi: JSON.stringify([{type: "function", name: "symbol", inputs: [], outputs: [{type: "string"}], stateMutability: "view"}]), savedAt: 2});
         const next = upsertSavedContract(readSavedContracts(), updated);
         expect(writeSavedContracts(next)).toBe(true);
         expect(readSavedContracts()).toEqual([updated]);
+    });
+
+    it("migrates version 1 entries and strips connection details", () => {
+        window.localStorage.setItem(SAVED_CONTRACTS_KEY, JSON.stringify([{
+            version: 1,
+            id: "saved-1",
+            label: "Saved token",
+            address: ADDRESS,
+            chainId: "1",
+            abi: ABI,
+            access: "wallet",
+            provider: {label: "Test RPC", url: "https://rpc.example", chainId: "1"},
+            savedAt: 5,
+        }]));
+
+        expect(readSavedContracts()).toEqual([entry({savedAt: 5})]);
+        const stored = JSON.parse(window.localStorage.getItem(SAVED_CONTRACTS_KEY) ?? "[]") as Record<string, unknown>[];
+        expect(stored).toEqual([entry({savedAt: 5})]);
+        expect(stored[0]).not.toHaveProperty("id");
+        expect(stored[0]).not.toHaveProperty("label");
+        expect(stored[0]).not.toHaveProperty("access");
+        expect(stored[0]).not.toHaveProperty("provider");
+    });
+
+    it("rewrites storage only when the canonical value changes", () => {
+        const seeded = JSON.stringify([entry()]);
+        window.localStorage.setItem(SAVED_CONTRACTS_KEY, seeded);
+        const setItem = vi.spyOn(Storage.prototype, "setItem");
+        try {
+            expect(readSavedContracts()).toEqual([entry()]);
+            expect(setItem).not.toHaveBeenCalled();
+        } finally {
+            setItem.mockRestore();
+        }
     });
 
     it("drops malformed entries instead of partially loading them", () => {
@@ -55,16 +85,15 @@ describe("savedContracts", () => {
             entry({chainId: "1.5"}),
             entry({abi: "not-json"}),
             entry({abi: JSON.stringify({not: "an array"})}),
-            entry({provider: {label: "Wrong chain", url: "https://rpc.example", chainId: "10"}}),
-            entry({access: "wallet", provider: {label: "Ignored", url: "https://rpc.example", chainId: "1"}}),
+            {...entry(), version: 3},
+            {...entry(), savedAt: "now"},
         ]));
 
-        expect(readSavedContracts()).toEqual([entry({access: "wallet"})]);
+        expect(readSavedContracts()).toEqual([entry()]);
     });
 
     it("caps stored entries and ABI size", () => {
         const entries = Array.from({length: MAX_SAVED_CONTRACTS + 5}, (_, index) => entry({
-            id: `saved-${index}`,
             address: address(index + 1),
             savedAt: index + 1,
         }));

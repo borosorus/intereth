@@ -3,11 +3,11 @@ import { SavedContract } from "../contracts/savedContracts";
 import ResponsiveDialog from "./ResponsiveDialog";
 import SavedContractsList from "./SavedContractsList";
 
-export default function SavedContractsDialog({open, contracts, onClose, onOpen, onRemove}: {
+export default function SavedContractsDialog({open, contracts, onClose, onUse, onRemove}: {
     open: boolean;
     contracts: SavedContract[];
     onClose: () => void;
-    onOpen: (entry: SavedContract) => void;
+    onUse: (entry: SavedContract) => void;
     onRemove: (entry: SavedContract) => void;
 }) {
     return (
@@ -16,14 +16,14 @@ export default function SavedContractsDialog({open, contracts, onClose, onOpen, 
             <DialogContent dividers>
                 <Stack spacing={1.5}>
                     <Typography variant="body2" color="text.secondary">
-                        Saved contracts stay in this browser. Opening a wallet contract without a matching wallet and network opens it read-only.
+                        Saved contracts keep only the address, ABI, and chain ID. Choosing one fills the add-contract form so you can pick the network and connection.
                     </Typography>
                     {contracts.length === 0 ? (
                         <Typography variant="body2" color="text.secondary">
-                            No saved contracts yet. Use the bookmark action on an open contract to save its address, interface, and network here.
+                            No saved contracts yet. Use the bookmark action on an open contract to save its address and interface here.
                         </Typography>
                     ) : (
-                        <SavedContractsList contracts={contracts} onOpen={onOpen} onRemove={onRemove} />
+                        <SavedContractsList contracts={contracts} onUse={onUse} onRemove={onRemove} />
                     )}
                 </Stack>
             </DialogContent>

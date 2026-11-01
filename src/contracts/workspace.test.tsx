@@ -41,14 +41,13 @@ function readOnlyInstance(label = "Saved token"): ContractInstance {
     };
 }
 
-function walletContractInstance(label = "Saved wallet contract"): ContractInstance {
+function readOnlyInstanceWithoutNetwork(): ContractInstance {
     return {
-        id: "wallet-save",
-        label,
+        id: "static-unknown",
+        label: "Unknown network",
         address: TARGET,
         contract: contractWithInterface(),
-        isStatic: false,
-        walletChainId: "1",
+        isStatic: true,
     };
 }
 
@@ -91,86 +90,42 @@ describe("useContractWorkspace", () => {
         expect(result.current.contracts[0].contract).toBe(contract.contract);
     });
 
-    it("saves and reopens read-only contracts in the local address book", () => {
+    it("saves only the address, chain ID, and interface to the local address book", () => {
         const {result} = renderHook(() => useContractWorkspace());
         const contract = readOnlyInstance();
 
         act(() => expect(result.current.saveContract(contract)).toBe(true));
         expect(result.current.savedContracts).toHaveLength(1);
-        expect(result.current.savedContracts[0]).toMatchObject({
-            label: "Saved token",
+        const [saved] = result.current.savedContracts;
+        expect(saved).toEqual({
+            version: 2,
             address: TARGET,
             chainId: "1",
-            access: "read-only",
-            provider: {label: "Test RPC", url: "http://localhost:1/rpc", chainId: "1"},
+            abi: CONTRACT_INTERFACE.formatJson(),
+            savedAt: expect.any(Number),
         });
-
-        act(() => result.current.removeContract(contract.id));
-        act(() => expect(result.current.openSavedContract(result.current.savedContracts[0])).toBe(true));
-
-        expect(result.current.contracts).toHaveLength(1);
-        expect(result.current.contracts[0]).toMatchObject({label: "Saved token", isStatic: true});
+        expect(saved).not.toHaveProperty("label");
+        expect(saved).not.toHaveProperty("access");
+        expect(saved).not.toHaveProperty("provider");
     });
 
-    it("selects an already open contract instead of duplicating it", () => {
+    it("removes a saved contract by chain and address", () => {
         const {result} = renderHook(() => useContractWorkspace());
         act(() => result.current.saveContract(readOnlyInstance()));
-        act(() => result.current.openSavedContract(result.current.savedContracts[0]));
-        const selectedId = result.current.selectedContractId;
 
-        act(() => result.current.openSavedContract(result.current.savedContracts[0]));
+        act(() => expect(result.current.removeSavedContract(result.current.savedContracts[0])).toBe(true));
 
-        expect(result.current.contracts).toHaveLength(1);
-        expect(result.current.selectedContractId).toBe(selectedId);
-        expect(result.current.notice).toContain("already open");
+        expect(result.current.savedContracts).toEqual([]);
+        expect(result.current.notice).toContain("Removed 0x000000…000010 on chain 1 from saved contracts.");
     });
 
-    it("opens a saved wallet contract with the matching signer", () => {
-        const signer = {} as ethers.JsonRpcSigner;
-        mockedWallet.mockReturnValue({
-            ...mockedWallet(),
-            signer,
-            status: "ready",
-            account: ACCOUNT,
-            chainId: "1",
-        });
+    it("refuses to save a contract whose network is unknown", () => {
         const {result} = renderHook(() => useContractWorkspace());
 
-        act(() => result.current.saveContract(walletContractInstance()));
-        expect(result.current.savedContracts[0].access).toBe("wallet");
-        act(() => result.current.removeContract("wallet-save"));
-        act(() => expect(result.current.openSavedContract(result.current.savedContracts[0])).toBe(true));
+        act(() => expect(result.current.saveContract(readOnlyInstanceWithoutNetwork())).toBe(false));
 
-        expect(result.current.contracts).toHaveLength(1);
-        expect(result.current.contracts[0]).toMatchObject({
-            label: "Saved wallet contract",
-            isStatic: false,
-            walletChainId: "1",
-        });
-    });
-
-    it("falls back to read-only when a saved wallet contract has no matching wallet", () => {
-        mockedWallet.mockReturnValue({
-            ...mockedWallet(),
-            signer: {} as ethers.JsonRpcSigner,
-            status: "ready",
-            account: ACCOUNT,
-            chainId: "1",
-        });
-        const {result, rerender} = renderHook(() => useContractWorkspace());
-        act(() => result.current.saveContract(walletContractInstance()));
-        act(() => result.current.removeContract("wallet-save"));
-
-        mockedWallet.mockReturnValue({
-            status: "disconnected", account: null, chainId: null,
-            provider: null, signer: null, error: null,
-            clearError: vi.fn(), connectWallet: vi.fn(), switchChain: vi.fn(),
-        });
-        rerender();
-        act(() => expect(result.current.openSavedContract(result.current.savedContracts[0])).toBe(true));
-
-        expect(result.current.contracts[0]).toMatchObject({isStatic: true, providerDetails: {chainId: "1"}});
-        expect(result.current.notice).toContain("read-only");
+        expect(result.current.savedContracts).toEqual([]);
+        expect(result.current.notice).toContain("network is unknown");
     });
 
     it("destroys the owned RPC provider when a read-only instance is removed", async () => {
