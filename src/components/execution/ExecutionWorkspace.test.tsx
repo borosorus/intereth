@@ -303,6 +303,37 @@ describe("ExecutionWorkspace", () => {
         expect(screen.getByRole("dialog", {name: "Add ERC-20 approval"})).toBeInTheDocument();
     });
 
+    it("shows a plan preflight verdict, gas, fee, and compact effects", () => {
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            active: true,
+            status: "ready",
+            chainId: "1",
+            configured: true,
+            revision: "preflight",
+            feeEstimate: {status: "ready", gasPriceWei: "1000000000", revision: "preflight", error: null},
+            snapshot: {
+                revision: "preflight", capturedAt: 1, chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {},
+                balanceChanges: [{asset: "native", account: ACCOUNT, delta: "-1000000000000000"}],
+                calls: ["abi-call", "raw-call"].map((callId) => ({
+                    callId, status: "0x1", returnData: "0x", gasUsed: "0x5208", logs: [], decodedEvents: [], raw: {},
+                })),
+            },
+        });
+        mockWallet();
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<ExecutionWorkspace />);
+
+        expect(screen.getByText("Plan preflight")).toBeInTheDocument();
+        expect(screen.getByText("All 2 calls succeed in simulation.")).toBeInTheDocument();
+        expect(screen.getByText("42,000")).toBeInTheDocument();
+        expect(screen.getByText("0.000042 ETH")).toBeInTheDocument();
+        expect(screen.getByText("Net balance effects")).toBeInTheDocument();
+        expect(screen.getAllByText("Plan sender").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("-0.001 native").length).toBeGreaterThan(0);
+    });
+
     it("defaults to atomic and exposes sequential as an alternative", () => {
         mockWallet();
         mockedTransactionPlan.mockReturnValue({

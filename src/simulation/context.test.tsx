@@ -75,6 +75,7 @@ function mockWatchOnlyPlan() {
 function rpcResult(method: string, params: unknown[]) {
     if (method === "eth_chainId") return "0x1";
     if (method === "eth_blockNumber") return "0x64";
+    if (method === "eth_gasPrice") return "0x3b9aca00";
     if (method === "eth_call") return "0x002a";
     const request = params[0] as {blockStateCalls: Array<{calls: unknown[]}>};
     return [{number: "0x65", calls: request.blockStateCalls[0].calls.map((_, index, calls) => ({
@@ -149,6 +150,27 @@ describe("SimulationProvider", () => {
         view.rerender(<Probe />);
         expect(screen.getByText("ready")).toBeInTheDocument();
         expect(currentSimulation.canSimulateChain("1")).toBe(true);
+    });
+
+    it("fetches a gas price for the current simulation snapshot", async () => {
+        mockPlan();
+        render(<Probe />, {wrapper: Wrapper});
+
+        await runDebounce();
+        await act(async () => {
+            await Promise.resolve();
+            await Promise.resolve();
+            await Promise.resolve();
+        });
+
+        expect(currentSimulation.feeEstimate).toMatchObject({
+            status: "ready",
+            gasPriceWei: "1000000000",
+            revision: currentSimulation.revision,
+        });
+        expect(vi.mocked(global.fetch).mock.calls.filter(([, request]) => (
+            JSON.parse(String(request?.body)) as {method: string}
+        ).method === "eth_gasPrice")).toHaveLength(1);
     });
 
     it("retains the last snapshot as stale when execution starts", async () => {

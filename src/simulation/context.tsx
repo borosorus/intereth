@@ -27,6 +27,13 @@ export interface BrowserSimulationCapability {
     error: NormalizedError | null;
 }
 
+export interface FeeEstimate {
+    status: "idle" | "loading" | "ready" | "unavailable";
+    gasPriceWei: string | null;
+    revision: string | null;
+    error: NormalizedError | null;
+}
+
 interface SimulationState {
     status: SimulationStatus;
     chainId: string | null;
@@ -46,6 +53,7 @@ interface SimulationContextValue extends SimulationState {
     watchEvaluations: Record<string, WatchEvaluation>;
     tokenMetadataByAddress: Record<string, TokenMetadata>;
     tokenMetadataResolving: boolean;
+    feeEstimate?: FeeEstimate;
     retry: () => void;
     canSimulateChain: (chainId: string) => boolean;
     simulateRead: (chainId: string, read: SimulatedRead) => Promise<SimulatedReadResult>;
@@ -96,6 +104,12 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const [watchEvaluations, setWatchEvaluations] = useState<Record<string, WatchEvaluation>>({});
     const [tokenMetadataByAddress, setTokenMetadataByAddress] = useState<Record<string, TokenMetadata>>({});
     const [tokenMetadataResolving, setTokenMetadataResolving] = useState(false);
+    const [feeEstimate, setFeeEstimate] = useState<FeeEstimate>({
+        status: "idle",
+        gasPriceWei: null,
+        revision: null,
+        error: null,
+    });
     const [metadataService] = useState(() => new TokenMetadataService());
     const [retryCount, setRetryCount] = useState(0);
     const [browserCapability, setBrowserCapability] = useState<BrowserCapabilityState>({
@@ -112,6 +126,7 @@ export function SimulationProvider({children}: {children: ReactNode}) {
     const requestIdRef = useRef(0);
     const probeRequestIdRef = useRef(0);
     const metadataRequestIdRef = useRef(0);
+    const feeRequestIdRef = useRef(0);
     const context = transactionPlan.state.plan.context;
     const executionAccount = wallet.executionAccount ?? wallet.account;
     const executionChainId = wallet.executionChainId ?? wallet.chainId;
@@ -369,6 +384,43 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         };
     }, [calls, configured, context, endpointCandidates, retryCount, revision, sessionAllowed, transactionPlan.state.execution, watchRevision, watches]);
 
+    useEffect(() => {
+        const requestId = ++feeRequestIdRef.current;
+        const snapshot = state.snapshot;
+        const client = clientRef.current;
+        if (!snapshot) {
+            setFeeEstimate({status: "idle", gasPriceWei: null, revision: null, error: null});
+            return;
+        }
+        if (!client) {
+            setFeeEstimate({status: "unavailable", gasPriceWei: null, revision: snapshot.revision, error: null});
+            return;
+        }
+        setFeeEstimate({status: "loading", gasPriceWei: null, revision: snapshot.revision, error: null});
+        void client.getGasPrice()
+            .then((gasPrice) => {
+                if (requestId !== feeRequestIdRef.current) return;
+                setFeeEstimate({
+                    status: "ready",
+                    gasPriceWei: BigInt(gasPrice).toString(),
+                    revision: snapshot.revision,
+                    error: null,
+                });
+            })
+            .catch((feeError) => {
+                if (requestId !== feeRequestIdRef.current) return;
+                setFeeEstimate({
+                    status: "unavailable",
+                    gasPriceWei: null,
+                    revision: snapshot.revision,
+                    error: normalizeError(feeError, "Gas price unavailable"),
+                });
+            });
+        return () => {
+            if (requestId === feeRequestIdRef.current) feeRequestIdRef.current += 1;
+        };
+    }, [state.snapshot]);
+
     const retry = useCallback(() => setRetryCount((current) => current + 1), []);
 
     const canSimulateChain = useCallback((chainId: string) => (
@@ -500,10 +552,11 @@ export function SimulationProvider({children}: {children: ReactNode}) {
         watchEvaluations,
         tokenMetadataByAddress,
         tokenMetadataResolving,
+        feeEstimate,
         retry,
         canSimulateChain,
         simulateRead,
-    }), [active, browserCapability.chainId, browserCapability.error, browserCapability.status, calls.length, canSimulateChain, configured, endpointSource, endpointStatus, retry, revision, simulateRead, state, tokenMetadataByAddress, tokenMetadataResolving, watchActive, watchEvaluations]);
+    }), [active, browserCapability.chainId, browserCapability.error, browserCapability.status, calls.length, canSimulateChain, configured, endpointSource, endpointStatus, feeEstimate, retry, revision, simulateRead, state, tokenMetadataByAddress, tokenMetadataResolving, watchActive, watchEvaluations]);
 
     return <SimulationContext.Provider value={value}>{children}</SimulationContext.Provider>;
 }

@@ -54,6 +54,13 @@ describe("SimulationClient", () => {
         await expect(clientWith("100").client.getBlockNumber()).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
     });
 
+    it("reads a validated gas price", async () => {
+        const {client, send} = clientWith("0x3b9aca00");
+        await expect(client.getGasPrice()).resolves.toBe("0x3b9aca00");
+        expect(send).toHaveBeenCalledWith("eth_gasPrice", []);
+        await expect(clientWith("fast").client.getGasPrice()).rejects.toMatchObject({code: "SIMULATION_RESPONSE_INVALID"});
+    });
+
     it("probes eth_simulateV1 with a harmless identity-precompile call", async () => {
         const send = vi.fn()
             .mockResolvedValueOnce("0x1")

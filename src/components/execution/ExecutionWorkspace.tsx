@@ -24,6 +24,7 @@ import WatchPanel from "../simulation/WatchPanel";
 import InteractSimulationPreview from "../transaction-plan/InteractSimulationPreview";
 import TransactionExecutionOptions from "../transaction-plan/TransactionExecutionOptions";
 import { useAtomicBatchExecution } from "../transaction-plan/AtomicBatchExecution";
+import ExecutionPreflight from "./ExecutionPreflight";
 import PlanCallItem, { ApprovalReviewRequest } from "./PlanCallItem";
 import SessionNotice from "./SessionNotice";
 
@@ -106,9 +107,12 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                 <>
                     <Divider />
                     <Box sx={{py: 2.5}}>
-                        <InteractSimulationPreview>
-                            <SimulationInspector />
-                        </InteractSimulationPreview>
+                        <Stack spacing={1.5}>
+                            <ExecutionPreflight />
+                            <InteractSimulationPreview>
+                                <SimulationInspector />
+                            </InteractSimulationPreview>
+                        </Stack>
                     </Box>
                     <Divider />
                     <Box sx={{py: 2.5}}>

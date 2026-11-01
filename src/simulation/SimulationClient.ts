@@ -255,6 +255,14 @@ export class SimulationClient implements QueuedStateSimulationClient {
         return blockNumber;
     }
 
+    async getGasPrice() {
+        const gasPrice = await this.transport.send("eth_gasPrice", []);
+        if (!isHexQuantity(gasPrice)) {
+            throw simulationError("SIMULATION_RESPONSE_INVALID", "The simulation RPC returned an invalid gas price.");
+        }
+        return gasPrice;
+    }
+
     async assertSimulationSupport(expectedChainId: string, from: string) {
         await this.assertChain(expectedChainId);
         const response = await this.transport.send("eth_simulateV1", [{
