@@ -130,6 +130,18 @@ export function transactionPlanReducer(state: TransactionPlanState, action: Tran
             calls.splice(index + 1, 0, action.call);
             return {...state, plan: {...state.plan, calls}};
         }
+        case "INSERT_CALL_BEFORE": {
+            if (!planIsMutable(state) || !callMatchesPlan(state, action.call) || hasCallId(state, action.call.id)) {
+                return state;
+            }
+            const index = state.plan.calls.findIndex((call) => call.id === action.beforeCallId);
+            if (index < 0) {
+                return state;
+            }
+            const calls = [...state.plan.calls];
+            calls.splice(index, 0, action.call);
+            return {...state, plan: {...state.plan, calls}};
+        }
         case "MOVE_CALL": {
             if (!planIsMutable(state)) {
                 return state;

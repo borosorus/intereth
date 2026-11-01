@@ -33,6 +33,8 @@ export interface ApprovalRecoveryRequest {
     originalCall: QueuedCall;
 }
 
+export type ApprovalDialogMode = "recover" | "insert";
+
 const technicalValueSx = {
     fontFamily: monoFont,
     overflowWrap: "anywhere",
@@ -40,8 +42,10 @@ const technicalValueSx = {
 
 interface ApprovalRecoveryDialogProps {
     request: ApprovalRecoveryRequest | null;
+    mode?: ApprovalDialogMode;
+    beforeCallId?: string;
     onClose: () => void;
-    onOriginalResult: (result: Extract<CallResultData, {kind: "transaction"}>) => void;
+    onOriginalResult?: (result: Extract<CallResultData, {kind: "transaction"}>) => void;
 }
 
 function parseAmount(value: string) {
@@ -51,10 +55,11 @@ function parseAmount(value: string) {
     return BigInt(value.trim());
 }
 
-export default function ApprovalRecoveryDialog({request, onClose, onOriginalResult}: ApprovalRecoveryDialogProps) {
+export default function ApprovalRecoveryDialog({request, mode = "recover", beforeCallId, onClose, onOriginalResult}: ApprovalRecoveryDialogProps) {
     const wallet = useWalletSession();
     const plan = useTransactionPlan();
     const planUi = useTransactionPlanUi();
+    const insertMode = mode === "insert";
     const [tokenAddress, setTokenAddress] = useState("");
     const [amount, setAmount] = useState("");
     const [validated, setValidated] = useState<ValidatedApprovalRecovery | null>(null);
@@ -135,6 +140,12 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
 
     const addToPlan = () => {
         if (!request || !validated || !plan.canEdit || !walletMatches) return;
+        if (insertMode) {
+            if (!beforeCallId) return;
+            plan.dispatch({type: "INSERT_CALL_BEFORE", call: validated.approvalCall, beforeCallId});
+            onClose();
+            return;
+        }
         plan.dispatch({type: "ADD_CALL", call: validated.approvalCall});
         plan.dispatch({type: "ADD_CALL", call: request.originalCall});
         planUi.requestExecution();
@@ -156,7 +167,7 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
     };
 
     const reportOriginalResult = (result: Extract<CallResultData, {kind: "transaction"}>) => {
-        onOriginalResult(result);
+        onOriginalResult?.(result);
         setOriginalSubmissionUnresolved(result.status === "submitted" || result.status === "pending");
     };
 
@@ -190,12 +201,14 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
 
     return (
         <ResponsiveDialog open={request !== null} onClose={busy ? undefined : onClose} maxWidth="sm">
-            <DialogTitle>ERC-20 approval required</DialogTitle>
+            <DialogTitle>{insertMode ? "Add ERC-20 approval" : "ERC-20 approval required"}</DialogTitle>
             <DialogContent dividers>
                 {request && (
                     <Stack spacing={2} sx={{pt: 0.5}}>
                         <Alert severity="warning">
-                            Gas estimation reports that this transaction needs more ERC-20 allowance. Confirm the token before continuing.
+                            {insertMode
+                                ? "Simulation reports that this transaction needs more ERC-20 allowance. Confirm the token before adding an approval."
+                                : "Gas estimation reports that this transaction needs more ERC-20 allowance. Confirm the token before continuing."}
                         </Alert>
                         {!walletMatches && <Alert severity="error">Reconnect the original account and network before continuing.</Alert>}
                         <Stack spacing={0.75}>
@@ -238,9 +251,11 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                             {checking ? <CircularProgress size={20} /> : "Validate approval"}
                         </Button>
                         {validated && (
-                            wallet.isSafeMode
-                                ? <Alert severity="info">Safe execution sends the approval and target call as separate Safe transactions. Add both to the plan and complete them in order.</Alert>
-                                : <Alert severity="success">Approval and transaction both succeeded in simulation. Forced-send gas limit: {validated.gasLimit.toString()}.</Alert>
+                            insertMode
+                                ? <Alert severity="success">Approval and target call both succeeded in simulation.</Alert>
+                                : wallet.isSafeMode
+                                    ? <Alert severity="info">Safe execution sends the approval and target call as separate Safe transactions. Add both to the plan and complete them in order.</Alert>
+                                    : <Alert severity="success">Approval and transaction both succeeded in simulation. Forced-send gas limit: {validated.gasLimit.toString()}.</Alert>
                         )}
                         {error && <Alert severity="error">{error.message}</Alert>}
                         {approvalResult && (
@@ -249,7 +264,19 @@ export default function ApprovalRecoveryDialog({request, onClose, onOriginalResu
                                 <CallResult result={approvalResult} />
                             </Stack>
                         )}
-                        {originalSubmissionUnresolved ? (
+                        {insertMode ? (
+                            validated && (
+                                <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    disabled={busy || !plan.canEdit || !walletMatches || !beforeCallId}
+                                    onClick={addToPlan}
+                                    sx={{minHeight: {xs: 44, sm: "auto"}}}
+                                >
+                                    {wallet.isSafeMode ? "Add approval before this Safe call" : "Add approval before this call"}
+                                </Button>
+                            )
+                        ) : originalSubmissionUnresolved ? (
                             <Alert severity="warning">
                                 The original transaction was submitted but remains unresolved. Verify its hash before taking any further action.
                             </Alert>

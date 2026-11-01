@@ -8,7 +8,7 @@ import { useTransactionPlanUi } from "../transaction-plan/uiContext";
 import { useWalletSession } from "../wallet/WalletSessionContext";
 import { inferDirectApprovalToken, validateApprovalRecovery } from "../transactions/approvalRecovery";
 import { forceSendPreparedTransaction, sendPreparedTransaction } from "../transactions/sendTransaction";
-import ApprovalRecoveryDialog, { ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
+import ApprovalRecoveryDialog, { ApprovalDialogMode, ApprovalRecoveryRequest } from "./ApprovalRecoveryDialog";
 
 vi.mock("../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}));
 vi.mock("../transaction-plan/uiContext", () => ({useTransactionPlanUi: vi.fn()}));
@@ -89,8 +89,8 @@ describe("ApprovalRecoveryDialog", () => {
         mockedValidate.mockResolvedValue({approvalCall, gasLimit: BigInt(120), blockNumber: "0x20"});
     });
 
-    async function renderValidated() {
-        render(<ApprovalRecoveryDialog request={request} onClose={onClose} onOriginalResult={onOriginalResult} />);
+    async function renderValidated(mode: ApprovalDialogMode = "recover", beforeCallId?: string) {
+        render(<ApprovalRecoveryDialog request={request} mode={mode} beforeCallId={beforeCallId} onClose={onClose} onOriginalResult={onOriginalResult} />);
         await waitFor(() => expect(screen.getByRole("textbox", {name: "Token contract address"})).toHaveValue(TOKEN));
         expect(window.getComputedStyle(screen.getByText(SPENDER)).overflowWrap).toBe("anywhere");
         fireEvent.click(screen.getByRole("button", {name: "Validate approval"}));
@@ -106,6 +106,17 @@ describe("ApprovalRecoveryDialog", () => {
             {type: "ADD_CALL", call: originalCall},
         ]);
         expect(requestExecution).toHaveBeenCalledTimes(1);
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("inserts only the approval before the target call in insert mode", async () => {
+        await renderValidated("insert", originalCall.id);
+        fireEvent.click(screen.getByRole("button", {name: "Add approval before this call"}));
+
+        expect(dispatch.mock.calls.map(([action]) => action)).toEqual([
+            {type: "INSERT_CALL_BEFORE", call: approvalCall, beforeCallId: originalCall.id},
+        ]);
+        expect(requestExecution).not.toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 

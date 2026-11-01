@@ -15,6 +15,10 @@ vi.mock("../../transaction-plan/context", () => ({useTransactionPlan: vi.fn()}))
 vi.mock("../../transaction-plan/uiContext", () => ({useTransactionPlanUi: vi.fn()}));
 vi.mock("../../wallet/WalletSessionContext", () => ({useWalletSession: vi.fn()}));
 vi.mock("../../simulation/context", () => ({useSimulation: vi.fn()}));
+vi.mock("../../transactions/approvalRecovery", async () => ({
+    ...await vi.importActual("../../transactions/approvalRecovery"),
+    inferDirectApprovalToken: vi.fn().mockResolvedValue(null),
+}));
 
 const mockedTransactionPlan = vi.mocked(useTransactionPlan);
 const mockedPlanUi = vi.mocked(useTransactionPlanUi);
@@ -261,6 +265,42 @@ describe("ExecutionWorkspace", () => {
         expect(screen.getByText("1 decoded event")).toBeInTheDocument();
         expect(screen.getByText("Plan sender · TKN")).toBeInTheDocument();
         expect(screen.getByText("-5 TKN")).toBeInTheDocument();
+    });
+
+    it("surfaces simulated allowance failures and opens the insert approval flow", () => {
+        const errorInterface = new ethers.Interface([
+            "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+        ]);
+        const spender = "0x0000000000000000000000000000000000000030";
+        const revertData = errorInterface.encodeErrorResult("ERC20InsufficientAllowance", [spender, BigInt(1), BigInt(12)]);
+        mockedSimulation.mockReturnValue({
+            ...mockedSimulation(),
+            active: true,
+            status: "ready",
+            chainId: "1",
+            configured: true,
+            revision: "approval-review",
+            snapshot: {
+                revision: "approval-review", capturedAt: 1, chainId: "1", account: ACCOUNT, baseBlockNumber: "0x64", raw: {}, balanceChanges: [],
+                calls: [
+                    {
+                        callId: "abi-call", status: "0x0", returnData: "0x", gasUsed: "0x5208", logs: [], decodedEvents: [],
+                        raw: {error: {data: revertData}},
+                    },
+                    {
+                        callId: "raw-call", status: "0x1", returnData: "0x", gasUsed: "0x5208", logs: [], decodedEvents: [], raw: {},
+                    },
+                ],
+            },
+        });
+        mockWallet();
+        mockedTransactionPlan.mockReturnValue({state: queuedState(), dispatch: vi.fn(), sessionStatus: "ready", canEdit: true});
+
+        render(<ExecutionWorkspace />);
+
+        expect(screen.getByText(/insufficient ERC-20 allowance/)).toHaveTextContent(/1 available, 12 required/);
+        fireEvent.click(screen.getByRole("button", {name: "Review approval"}));
+        expect(screen.getByRole("dialog", {name: "Add ERC-20 approval"})).toBeInTheDocument();
     });
 
     it("defaults to atomic and exposes sequential as an alternative", () => {

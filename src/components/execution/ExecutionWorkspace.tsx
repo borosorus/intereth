@@ -18,12 +18,13 @@ import { useTransactionPlanUi } from "../../transaction-plan/uiContext";
 import { planExecutionPresentation, StateBadge } from "../StateBadge";
 import WorkspaceSectionHeader from "../WorkspaceSectionHeader";
 import ResponsiveDialog from "../ResponsiveDialog";
+import ApprovalRecoveryDialog from "../ApprovalRecoveryDialog";
 import SimulationInspector from "../simulation/SimulationInspector";
 import WatchPanel from "../simulation/WatchPanel";
 import InteractSimulationPreview from "../transaction-plan/InteractSimulationPreview";
 import TransactionExecutionOptions from "../transaction-plan/TransactionExecutionOptions";
 import { useAtomicBatchExecution } from "../transaction-plan/AtomicBatchExecution";
-import PlanCallItem from "./PlanCallItem";
+import PlanCallItem, { ApprovalReviewRequest } from "./PlanCallItem";
 import SessionNotice from "./SessionNotice";
 
 export default function ExecutionWorkspace({active = true}: {active?: boolean}) {
@@ -32,6 +33,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
     const simulation = useSimulation();
     const batchController = useAtomicBatchExecution(active);
     const [confirmClear, setConfirmClear] = useState(false);
+    const [approvalReview, setApprovalReview] = useState<ApprovalReviewRequest | null>(null);
     const calls = state.plan.calls;
     const watches = state.plan.watches;
     const context = state.plan.context;
@@ -72,6 +74,7 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                             total={calls.length}
                             impact={selectCallImpact({callId: call.id, revision: simulation.revision, status: simulation.status, snapshot: simulation.snapshot})}
                             metadataByAddress={simulation.tokenMetadataByAddress}
+                            onReviewApproval={setApprovalReview}
                         />
                     )) : watches.length > 0 ? (
                         <Typography variant="body2" color="text.secondary">
@@ -155,6 +158,16 @@ export default function ExecutionWorkspace({active = true}: {active?: boolean}) 
                     </Button>
                 </DialogActions>
             </ResponsiveDialog>
+
+            <ApprovalRecoveryDialog
+                request={approvalReview ? {
+                    originalCall: approvalReview.call,
+                    requirement: approvalReview.requirement,
+                } : null}
+                mode="insert"
+                beforeCallId={approvalReview?.call.id}
+                onClose={() => setApprovalReview(null)}
+            />
         </Stack>
     );
 }

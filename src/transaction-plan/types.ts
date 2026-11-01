@@ -140,6 +140,7 @@ export type TransactionPlanAction =
     | {type: "UPDATE_CALL"; call: QueuedCall}
     | {type: "REMOVE_CALL"; callId: string}
     | {type: "DUPLICATE_CALL"; call: QueuedCall; afterCallId: string}
+    | {type: "INSERT_CALL_BEFORE"; call: QueuedCall; beforeCallId: string}
     | {type: "MOVE_CALL"; callId: string; direction: "up" | "down"}
     | {type: "CLEAR_PLAN"}
     | {type: "ADD_WATCH"; watch: WatchExpression}

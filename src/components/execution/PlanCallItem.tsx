@@ -33,9 +33,11 @@ import { TextInput } from "../inputs/FormFields";
 import TransactionValueInput from "../TransactionValueInput";
 import CopyButton from "../CopyButton";
 import { shortAddress, summarizeArgument, summarizeNativeValue } from "../../calls/displayValues";
+import { detectCallApprovalRequirement } from "../../simulation/approvalPreflight";
 import { CallImpact, prioritizeBalanceChanges } from "../../simulation/callImpact";
 import { TokenMetadata } from "../../simulation/types";
 import { formatBalanceChangeAmount, metadataForToken, tokenLabel } from "../../simulation/tokenFormatting";
+import { Erc20ApprovalRequirement } from "../../transactions/approvalRecovery";
 import { callImpactPresentation, StateBadge } from "../StateBadge";
 
 function createCallId() {
@@ -267,15 +269,22 @@ function PlanCallEditor({call, onSave, onCancel}: {call: QueuedCall; onSave: (ca
     );
 }
 
-export default function PlanCallItem({call, index, total, impact, metadataByAddress}: {
+export interface ApprovalReviewRequest {
+    call: QueuedCall;
+    requirement: Erc20ApprovalRequirement;
+}
+
+export default function PlanCallItem({call, index, total, impact, metadataByAddress, onReviewApproval}: {
     call: QueuedCall;
     index: number;
     total: number;
     impact: CallImpact;
     metadataByAddress: Record<string, TokenMetadata>;
+    onReviewApproval?: (request: ApprovalReviewRequest) => void;
 }) {
     const {dispatch, canEdit} = useTransactionPlan();
     const [editing, setEditing] = useState(false);
+    const approvalRequirement = impact.state === "ready" ? detectCallApprovalRequirement(impact.call) : null;
 
     return (
         <Paper variant="outlined" sx={{...workspaceSurfaceSx, p: 2}}>
@@ -292,6 +301,24 @@ export default function PlanCallItem({call, index, total, impact, metadataByAddr
                 <Stack spacing={1.5}>
                     <CallSummary call={call} index={index} />
                     <CallImpactSummary impact={impact} call={call} metadataByAddress={metadataByAddress} />
+                    {approvalRequirement && (
+                        <Alert
+                            severity="warning"
+                            action={onReviewApproval && (
+                                <Button
+                                    size="small"
+                                    color="inherit"
+                                    disabled={!canEdit}
+                                    onClick={() => onReviewApproval({call, requirement: approvalRequirement})}
+                                >
+                                    Review approval
+                                </Button>
+                            )}
+                        >
+                            Simulation reports insufficient ERC-20 allowance for {shortAddress(approvalRequirement.spender)}:
+                            {" "}{approvalRequirement.currentAllowance.toString()} available, {approvalRequirement.needed.toString()} required.
+                        </Alert>
+                    )}
                     <Divider />
                     <Box sx={{
                         display: "flex",

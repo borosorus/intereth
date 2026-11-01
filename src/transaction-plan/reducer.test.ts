@@ -99,6 +99,20 @@ describe("transactionPlanReducer", () => {
         expect(state.plan.context).toBeNull();
     });
 
+    it("inserts an approval call before its target and rejects invalid inserts", () => {
+        const first = call();
+        const second = call({id: "call-2", data: "0xabcd"});
+        let state = addCalls(first, second);
+        const approval = call({id: "approval", to: OTHER_ACCOUNT, data: "0x095ea7b3"});
+
+        state = transactionPlanReducer(state, {type: "INSERT_CALL_BEFORE", call: approval, beforeCallId: second.id});
+        expect(state.plan.calls.map((item) => item.id)).toEqual(["call-1", "approval", "call-2"]);
+
+        expect(transactionPlanReducer(state, {type: "INSERT_CALL_BEFORE", call: call({id: "missing-target"}), beforeCallId: "not-there"})).toBe(state);
+        expect(transactionPlanReducer(state, {type: "INSERT_CALL_BEFORE", call: call({id: "approval"}), beforeCallId: second.id})).toBe(state);
+        expect(transactionPlanReducer(state, {type: "INSERT_CALL_BEFORE", call: call({id: "wrong-chain", chainId: "10"}), beforeCallId: second.id})).toBe(state);
+    });
+
     it("establishes context from a watch and preserves watches when the queue becomes empty", () => {
         const withWatch = transactionPlanReducer(createEmptyTransactionPlanState(), {type: "ADD_WATCH", watch: watch()});
         expect(withWatch.plan.context).toEqual({account: ACCOUNT, chainId: "1"});
