@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 // GitHub Pages serves this app from the /intereth/ repository subpath.
+// Chunking uses Rolldown's defaults: the manual codeSplitting groups that
+// used to live here produced a chunk graph whose initialization order left
+// a React binding undefined in the web3-onboard chunk, blanking the page
+// only in production builds.
 export default defineConfig({
   base: '/intereth/',
   plugins: [react()],
@@ -10,21 +14,6 @@ export default defineConfig({
   // namespace instead of its .default, so React receives an object and the
   // app renders blank. This flag restores the __esModule-aware interop.
   legacy: { inconsistentCjsInterop: true },
-  build: {
-    rolldownOptions: {
-      output: {
-        codeSplitting: {
-          groups: [
-            { name: 'safe', test: /node_modules[\\/]@safe-global[\\/]/, priority: 40, includeDependenciesRecursively: false },
-            { name: 'web3-onboard', test: /node_modules[\\/]@web3-onboard[\\/](core|react)[\\/]/, priority: 30, includeDependenciesRecursively: false, maxSize: 450_000 },
-            { name: 'ethers', test: /node_modules[\\/]ethers[\\/]/, priority: 20 },
-            { name: 'mui', test: /node_modules[\\/](@mui|@emotion)[\\/]/, priority: 10 },
-            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 5 },
-          ],
-        },
-      },
-    },
-  },
   test: {
     environment: 'jsdom',
     globals: true,
